@@ -8,7 +8,11 @@ window.SCHEMAS["example"] = {
     "version": 1,
     "spatialRef": 2039,
     "spatialRefName": "Israel TM Grid (ITM)",
-    "source": "פרויקט לדוגמה גנרי (ללא נתוני ארגון)"
+    "source": "פרויקט לדוגמה גנרי (ללא נתוני ארגון)",
+    "rules": {
+      "minTextLength": 255,
+      "domainCodeEqualsLabel": true
+    }
   },
   "domains": {
     "YesNo": {
@@ -82,7 +86,7 @@ window.SCHEMAS["example"] = {
           "name": "AssetID",
           "alias": "מזהה נכס",
           "type": "TEXT",
-          "length": "20",
+          "length": "255",
           "domain": "",
           "mode": "אוטומטי",
           "visible": "קריאה בלבד",
@@ -94,7 +98,7 @@ window.SCHEMAS["example"] = {
           "name": "AssetType",
           "alias": "סוג נכס",
           "type": "TEXT",
-          "length": "50",
+          "length": "255",
           "domain": "AssetType",
           "mode": "רשימה",
           "visible": "תמיד",
@@ -106,7 +110,7 @@ window.SCHEMAS["example"] = {
           "name": "Condition",
           "alias": "מצב",
           "type": "TEXT",
-          "length": "50",
+          "length": "255",
           "domain": "Condition",
           "mode": "רשימה",
           "visible": "תמיד",
@@ -118,7 +122,7 @@ window.SCHEMAS["example"] = {
           "name": "RequiresRepair",
           "alias": "דורש תיקון",
           "type": "TEXT",
-          "length": "10",
+          "length": "255",
           "domain": "YesNo",
           "mode": "רשימה",
           "visible": "תמיד",
@@ -176,7 +180,7 @@ window.SCHEMAS["example"] = {
           "name": "ConditionAtInspection",
           "alias": "מצב בעת הביקורת",
           "type": "TEXT",
-          "length": "50",
+          "length": "255",
           "domain": "Condition",
           "mode": "רשימה",
           "visible": "תמיד",

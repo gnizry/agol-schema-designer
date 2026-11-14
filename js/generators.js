@@ -18,6 +18,7 @@
   /* ---------- ולידציה ---------- */
   function validate(S) {
     const issues = []; // {level:'error'|'warn', where, msg}
+    const R = (S.meta && S.meta.rules) || {}; // כללי ארגון: minTextLength, domainCodeEqualsLabel
     const add = (level, where, msg) => issues.push({ level, where, msg });
     const entNames = {};
 
@@ -35,6 +36,7 @@
         if (RESERVED.indexOf(up) >= 0) add('error', where, 'שם שמור של המערכת');
         if (e.editorTracking && TRACKING.indexOf(up) >= 0) add('error', where, 'שם מתנגש עם שדות Editor Tracking (נוצרים אוטומטית)');
         if (f.type === 'TEXT' && !(Number(f.length) > 0)) add('error', where, 'שדה טקסט ללא אורך');
+        else if (f.type === 'TEXT' && R.minTextLength && Number(f.length) < R.minTextLength) add('warn', where, 'אורך טקסט ' + f.length + ' קטן מהמינימום בכללי הפרויקט (' + R.minTextLength + ') — קשה להרחיב שדה קיים בשכבה מתארחת');
         if (f.domain) {
           const d = S.domains[f.domain];
           if (!d) add('error', where, 'דומיין "' + f.domain + '" לא קיים');
@@ -56,6 +58,7 @@
         codes[v.code] = true;
         if (isNum(d.fieldType) && !/^-?\d+$/.test(String(v.code))) add('error', 'דומיין ' + k, 'קוד לא מספרי בדומיין ' + d.fieldType + ': ' + v.code);
         if (!v.label) add('warn', 'דומיין ' + k, 'ערך ללא תווית: ' + v.code);
+        if (R.domainCodeEqualsLabel && d.fieldType === 'TEXT' && v.label && v.code !== v.label) add('warn', 'דומיין ' + k, 'הקוד שונה מהתווית (' + v.code + ' ≠ ' + v.label + ') — בכללי הפרויקט קוד = תווית; קוד לממשקים יוגדר בשדה מחושב (מפתח חיצוני)');
       });
       const used = S.entities.some((e) => e.fields.some((f) => f.domain === k));
       if (!used) add('warn', 'דומיין ' + k, 'דומיין שאינו בשימוש');
@@ -267,9 +270,9 @@ print("\\n>>> הסתיים. המשך: Share As Web Layer.")
       const d = S.domains[k];
       L.push('### ' + d.name + ' — ' + d.desc + ' (' + d.fieldType + ', ' + d.values.length + ' ערכים)');
       L.push('');
-      L.push('| קוד | תווית | הורה |');
-      L.push('|---|---|---|');
-      d.values.forEach((v) => L.push('| ' + md(v.code) + ' | ' + md(v.label) + ' | ' + md(v.parent) + ' |'));
+      L.push('| קוד | תווית | הורה | מפתח חיצוני |');
+      L.push('|---|---|---|---|');
+      d.values.forEach((v) => L.push('| ' + md(v.code) + ' | ' + md(v.label) + ' | ' + md(v.parent) + ' | ' + md(v.ext) + ' |'));
       L.push('');
     });
     L.push('## החלטות פתוחות');

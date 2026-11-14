@@ -43,16 +43,16 @@ DOMAINS = {
 # ---------------------------------------------------------------- ישויות
 ENTITIES = [
     {"name": "Assets", "alias": "נכסים", "kind": "POINT", "attachments": True, "editor_tracking": True, "fields": [
-        {"name": "AssetID", "alias": "מזהה נכס", "type": "TEXT", "length": 20, "domain": None},
-        {"name": "AssetType", "alias": "סוג נכס", "type": "TEXT", "length": 50, "domain": "AssetType"},
-        {"name": "Condition", "alias": "מצב", "type": "TEXT", "length": 50, "domain": "Condition"},
-        {"name": "RequiresRepair", "alias": "דורש תיקון", "type": "TEXT", "length": 10, "domain": "YesNo"},
+        {"name": "AssetID", "alias": "מזהה נכס", "type": "TEXT", "length": 255, "domain": None},
+        {"name": "AssetType", "alias": "סוג נכס", "type": "TEXT", "length": 255, "domain": "AssetType"},
+        {"name": "Condition", "alias": "מצב", "type": "TEXT", "length": 255, "domain": "Condition"},
+        {"name": "RequiresRepair", "alias": "דורש תיקון", "type": "TEXT", "length": 255, "domain": "YesNo"},
         {"name": "Notes", "alias": "הערות", "type": "TEXT", "length": 1000, "domain": None},
     ]},
     {"name": "Inspections", "alias": "ביקורות", "kind": "TABLE", "attachments": True, "editor_tracking": True, "fields": [
         {"name": "ParentGlobalID", "alias": "מזהה נכס אב", "type": "GUID", "length": None, "domain": None},
         {"name": "InspectionDate", "alias": "תאריך ביקורת", "type": "DATE", "length": None, "domain": None},
-        {"name": "ConditionAtInspection", "alias": "מצב בעת הביקורת", "type": "TEXT", "length": 50, "domain": "Condition"},
+        {"name": "ConditionAtInspection", "alias": "מצב בעת הביקורת", "type": "TEXT", "length": 255, "domain": "Condition"},
         {"name": "Notes", "alias": "הערות", "type": "TEXT", "length": 1000, "domain": None},
     ]},
 ]

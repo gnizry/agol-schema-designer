@@ -27,7 +27,7 @@
   let S = load(cur);
   let V = { page: 'entity', idx: 0, script: 'arcpy' };
   const blank = (key, title) => ({
-    meta: { key, project: key, title, version: 1, spatialRef: 2039, spatialRefName: 'Israel TM Grid (ITM)', source: '' },
+    meta: { key, project: key, title, version: 1, spatialRef: 2039, spatialRefName: 'Israel TM Grid (ITM)', source: '', rules: { minTextLength: 255, domainCodeEqualsLabel: true } },
     domains: { YesNo: { name: 'YesNo', desc: 'כן / לא', fieldType: 'TEXT', values: [{ code: 'כן', label: 'כן', parent: '' }, { code: 'לא', label: 'לא', parent: '' }] } },
     entities: [{ name: 'Features', alias: 'שכבה ראשית', kind: 'point', attachments: true, editorTracking: true, description: '', fields: [
       { category: 'כללי', name: 'FeatureID', alias: 'מזהה', type: 'TEXT', length: '50', domain: '', mode: 'אוטומטי', visible: 'תמיד', open: false, note: '' }] }],
@@ -127,14 +127,14 @@
   function domainsPage() {
     const cards = Object.keys(S.domains).map((k) => {
       const d = S.domains[k];
-      const text = d.values.map((v) => v.parent ? `${v.code} | ${v.label} | ${v.parent}` : (v.code === v.label ? v.code : `${v.code} | ${v.label}`)).join('\n');
+      const text = d.values.map((v) => v.ext ? `${v.code} | ${v.label} | ${v.parent || ''} | ${v.ext}` : v.parent ? `${v.code} | ${v.label} | ${v.parent}` : (v.code === v.label ? v.code : `${v.code} | ${v.label}`)).join('\n');
       const users = [];
       S.entities.forEach((e) => e.fields.forEach((f) => { if (f.domain === k) users.push(e.name + '.' + f.name); }));
       return `<div class="card">
         <div class="row"><div style="flex:1"><label>${esc(d.name)}</label><input type="text" value="${esc(d.desc)}" onchange="A.d('${k}','desc',this.value)"></div>
           <div style="width:90px"><label>סוג קוד</label><select onchange="A.d('${k}','fieldType',this.value)"><option ${d.fieldType === 'TEXT' ? 'selected' : ''}>TEXT</option><option ${d.fieldType === 'SHORT' ? 'selected' : ''}>SHORT</option><option ${d.fieldType === 'LONG' ? 'selected' : ''}>LONG</option></select></div>
           <button class="danger mini" onclick="A.dd('${k}')">מחק</button></div>
-        <label style="margin-top:8px">ערכים (${d.values.length}) — שורה לערך: <b>קוד | תווית | הורה</b> (תווית והורה אופציונליים)</label>
+        <label style="margin-top:8px">ערכים (${d.values.length}) — שורה לערך: <b>קוד | תווית | הורה | מפתח חיצוני</b> (כל מה שאחרי הקוד אופציונלי; מפתח חיצוני = קוד טכני לממשקים, בדרך כלל מועתק לשדה מחושב)</label>
         <textarea class="mono" rows="${Math.min(14, d.values.length + 1)}" onchange="A.dv('${k}',this.value)">${esc(text)}</textarea>
         <p class="hint">בשימוש: ${users.length ? esc(users.join(', ')) : 'לא בשימוש'}</p></div>`;
     }).join('');
@@ -226,7 +226,7 @@
     dv(k, text) {
       S.domains[k].values = text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
         const p = l.split('|').map((x) => x.trim());
-        return { code: p[0], label: p[1] || p[0], parent: p[2] || '' };
+        return { code: p[0], label: p[1] || p[0], parent: p[2] || '', ext: p[3] || '' };
       });
       commit();
     },
