@@ -82,6 +82,7 @@
       '<h4>מבנה</h4>' + it('domains', 0, 'דומיינים', Object.keys(S.domains).length) + it('rels', 0, 'קשרים', S.relationships.length) +
       '<h4>ניהול</h4>' + it('decisions', 0, 'החלטות פתוחות', open) +
       it('validate', 0, 'בדיקות', errs + warns, errs ? 'err' : '') +
+      '<h4>סימולציה</h4>' + it('sim', 0, 'סימולטור Survey123 / Field Maps') +
       '<h4>תוצרים</h4>' + it('output', 0, 'סקריפט / מילון נתונים');
     $('subtitle').textContent = S.meta.title + ' · ' + S.meta.source;
   }
@@ -191,11 +192,11 @@
       <p class="hint">בריפו, הקבצים נוצרים גם משורת פקודה: <code dir="ltr">node tools/generate.js</code> → תיקיית generated/.</p>`;
   }
 
-  const TITLES = { entity: null, domains: 'דומיינים (Coded Value Domains)', rels: 'קשרים בין ישויות', decisions: 'החלטות פתוחות מול הלקוח', validate: 'בדיקות תקינות', output: 'תוצרים' };
+  const TITLES = { entity: null, domains: 'דומיינים (Coded Value Domains)', rels: 'קשרים בין ישויות', decisions: 'החלטות פתוחות מול הלקוח', validate: 'בדיקות תקינות', output: 'תוצרים', sim: 'סימולטור חוויית משתמש' };
   function render() {
     renderNav();
     const t = V.page === 'entity' ? esc(S.entities[V.idx].alias) + ' — ' + esc(S.entities[V.idx].name) : TITLES[V.page];
-    const body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, validate: validatePage, output: outputPage }[V.page]();
+    const body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, validate: validatePage, output: outputPage, sim: () => (window.Sim ? Sim.render(S) : '') }[V.page]();
     $('main').innerHTML = `<h2 style="margin:0 0 10px">${t}</h2>` + body;
   }
 
@@ -203,6 +204,7 @@
   const pascal = (s) => String(s).replace(/[^a-zA-Z0-9_]/g, '');
   window.A = {
     go(p, i) { V.page = p; V.idx = i; render(); window.scrollTo(0, 0); },
+    refresh() { const y = window.scrollY; render(); window.scrollTo(0, y); },
     script(x) { V.script = x; render(); },
     copy() { copy(this.cur()); },
     dl() { const k = keyName(); const m = { arcpy: ['create_' + k + '_schema.py', ''], md: ['data_dictionary_' + k + '.md', ''], csv: ['data_dictionary_' + k + '.csv', '\ufeff'] }[V.script]; download(m[0], m[1] + this.cur()); },
