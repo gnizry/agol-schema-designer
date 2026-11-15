@@ -148,6 +148,11 @@
     .simroot table { min-width:0; width:auto; } .simroot th { position:static; text-transform:none; letter-spacing:0; font-size:12px; color:inherit; padding:3px 6px; } .simroot td { padding:3px 6px; }
     @media (max-width: 1000px) { .simgrid { grid-template-columns:1fr; } .simphone { position:static; } }
     @media (max-width: 900px) { .layout { flex-direction:column; padding:12px; } nav { width:100%; position:static; max-height:none; } }
+    .menu { position:relative; display:inline-block; }
+    #menu-pop { position:absolute; top:calc(100% + 6px); inset-inline-start:0; z-index:40; background:#fff; border:1px solid #E2E8F0; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.18); padding:6px; display:flex; flex-direction:column; gap:2px; min-width:250px; }
+    #menu-pop[hidden] { display:none; }
+    #menu-pop button { text-align:start; border:0; background:transparent; width:100%; }
+    #menu-pop button:hover { background:#F1F5F9; }
     body.simonly nav, body.simonly .btns { display:none; }
     body.simonly .layout { display:block; }
     #fbk { position:fixed; inset-inline-end:16px; bottom:16px; z-index:50; }
@@ -170,8 +175,13 @@
     <button id="b-save" class="primary" hidden>💾 שמור לתיקייה</button>
     <button id="b-new">פרויקט חדש…</button>
     <button id="b-import">ייבוא סכמה…</button>
-    <button id="b-publish" class="primary" title="כותב את הסכמה והתמונות לתיקיית האתר; אחרי Push השותפים רואים קישור קבוע ומעודכן">🌐 פרסם סימולטור לשותפים</button>
-    <button id="b-share" title="קובץ HTML יחיד עם הסימולטור, לשליחה לשותפים">📤 קובץ HTML בודד</button>
+    <div class="menu"><button id="b-menu">📤 ייצוא ושיתוף ▾</button>
+      <div id="menu-pop" hidden>
+        <button id="b-publish" title="כותב את הסכמה והתמונות לתיקיית האתר; אחרי Push השותפים רואים קישור קבוע ומעודכן">🌐 פרסם סימולטור לשותפים</button>
+        <button id="b-doc-word">📄 מסמך אפיון (Word)</button>
+        <button id="b-doc-pdf">📕 מסמך אפיון (PDF)</button>
+        <button id="b-share" title="קובץ HTML יחיד עם הסימולטור, לשימוש בלי אינטרנט">🗂 סימולטור כקובץ HTML בודד</button>
+      </div></div>
     <button id="b-export" class="primary">ייצוא סכמה (schema.js)</button>
     <button id="b-reset" class="danger">איפוס לגרסת הריפו</button>
     <input type="file" id="file-in" accept=".js,.json" hidden>
@@ -191,7 +201,7 @@
   var sim = (new URLSearchParams(location.search).get('sim') || '').replace(/[^A-Za-z0-9_\-]/g, '');
   var files = sim ? ['share/' + sim + '/schema.js'] : (window.PROJECT_FILES || []);
   if (sim) { window.__SIM_ONLY = true; window.__MEDIA_BASE = 'share/' + sim + '/'; }
-  files = files.concat(['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js', 'js/share.js']);
+  files = files.concat(['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js', 'js/share.js', 'js/specdoc.js']);
   (function next(i) {
     if (i >= files.length) return;
     var s = document.createElement('script'); s.src = files[i];
