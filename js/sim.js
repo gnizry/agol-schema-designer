@@ -12,7 +12,7 @@
     const kids = S.relationships.filter((r) => r.origin === main.name).map((r) => ({ rel: r, ent: S.entities.find((e) => e.name === r.destination) })).filter((k) => k.ent);
     return { main, A: kids[0], B: kids[1] };
   }
-  const hidden = (f) => /^מוסתר/.test(f.visible || '') || f.mode === 'מערכת' || f.mode === 'היסטורי' || f.type === 'GUID';
+  const hidden = (f) => /^מוסתר/.test(f.visible || '') || f.mode === 'מערכת' || f.mode === 'היסטורי' || (f.type === 'GUID' && !f.pickFrom);
   const readonly = (f) => f.mode === 'אוטומטי' || /קריאה בלבד/.test(f.visible || '');
   function dom(S, f) { return f.domain && S.domains[f.domain] ? S.domains[f.domain] : null; }
   function parentField(S, ent, f) {
@@ -22,6 +22,7 @@
   }
   function relOk(f, vals, up) {
     const r = f.rel; if (!r) return true;
+    if (r.all) return r.all.every((x) => relOk({ rel: x }, vals, up));
     const v = r.f[0] === '^' ? (up || {})[r.f.slice(1)] : vals[r.f];
     const arr = Array.isArray(r.v) ? r.v : [r.v];
     if (r.op === 'in') return arr.includes(v);
@@ -99,12 +100,34 @@
   const geoFields = (M) => M.main.fields.filter((f) => /@layer/.test(f.calc || '') || (GEO[f.name] && f.mode === 'אוטומטי'));
   const newId = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return 'SGN-' + String(d.getFullYear()).slice(2) + p(d.getMonth() + 1) + p(d.getDate()) + '-' + (1000 + Math.floor(Math.random() * 9000)); };
   /* שדות קודים/נגזרים: ערך שדה מקור (דומיין) → תכונת ext שלו, מחושב בשינוי */
-  function derive(ent, vals) {
+  const today = () => new Date().toISOString().slice(0, 10);
+  const autoVal = (f) => f.autoValue === 'today' ? today() : f.autoValue === 'username' ? 'משתמש מחובר' : '';
+  const isReq = (f, vals, up) => f.required === true || (f.reqIf ? relOk({ rel: f.reqIf }, vals, up) : false);
+  const newRow = (ent) => { const o = {}; ent.fields.forEach((f) => { if (f.autoValue && !f.autoOnCreate) o[f.name] = autoVal(f); }); return o; };
+  function derive(ent, vals, up) {
     ent.fields.forEach((g) => { const pf = dom(st.S, g) && parentField(st.S, ent, g); if (pf && vals[g.name]) { const hit = dom(st.S, g).values.find((x) => x.label === vals[g.name]); if (!hit || (hit.parent && hit.parent !== vals[pf.name])) vals[g.name] = ''; } });
-    ent.fields.filter((f) => f.derive).forEach((f) => {
-      const src = ent.fields.find((g) => g.name === f.derive.from), d = src && dom(st.S, src), hit = d && d.values.find((x) => x.label === vals[src.name]);
-      vals[f.name] = hit ? (hit[f.derive.attr || 'ext'] || '') : '';
+    ent.fields.forEach((g) => { const pf = dom(st.S, g) && parentField(st.S, ent, g); if (pf && !vals[g.name] && vals[pf.name]) { const o = dom(st.S, g).values.filter((x) => !x.parent || x.parent === vals[pf.name]); if (o.length === 1) vals[g.name] = o[0].label; } });
+    ent.fields.forEach((f) => {
+      if (f.derive) { const src = ent.fields.find((g) => g.name === f.derive.from), d = src && dom(st.S, src), hit = d && d.values.find((x) => x.label === vals[src.name]); vals[f.name] = hit ? (hit[f.derive.attr || 'ext'] || '') : ''; }
+      if (f.rel && !relOk(f, vals, up)) { if (!f.fromVisit) vals[f.name] = ''; }
+      else if (f.autoValue && !vals[f.name] && !(f.autoOnCreate && st.editId)) vals[f.name] = autoVal(f);
     });
+  }
+  /* עותק נוכחי בשלט מהביקור האחרון (indexed-repeat על שורת הביקור האחרונה) */
+  function syncSign() {
+    const M = model(st.S), lv = st.visits[st.visits.length - 1]; if (!lv) return;
+    M.main.fields.filter((f) => f.fromVisit).forEach((f) => { if (lv[f.fromVisit] && (!f.fromVisitWhen || lv[f.fromVisitWhen.f] === f.fromVisitWhen.v)) st.sign[f.name] = lv[f.fromVisit]; else if (f.fromVisitWhen && lv[f.fromVisitWhen.f]) st.sign[f.name] = ''; });
+    derive(M.main, st.sign, {});
+  }
+  function allDerive() { const M = model(st.S); derive(M.main, st.sign, {}); st.parts.forEach((p) => derive(M.A.ent, p, st.sign)); if (M.B) st.visits.forEach((v) => derive(M.B.ent, v, st.sign)); syncSign(); }
+  function missing() {
+    const M = model(st.S), out = [];
+    if (!st.editId && !st.loc) out.push('מיקום השלט');
+    const chk = (ent, vals, up, tag) => ent.fields.forEach((f) => { if (isShown(f, vals, up) && !readonly(f) && isReq(f, vals, up) && (vals[f.name] == null || vals[f.name] === '')) out.push(tag + (f.alias || f.name)); });
+    chk(M.main, st.sign, {}, '');
+    st.parts.forEach((p, i) => chk(M.A.ent, p, st.sign, 'רכיב ' + (i + 1) + ': '));
+    if (M.B && st.variant === 'sign') st.visits.forEach((v, i) => chk(M.B.ent, v, st.sign, 'ביקור ' + (i + 1) + ': '));
+    return out;
   }
   const zoneOf = (loc) => (loc.x < 0.5 ? 0 : 1) + (loc.y < 0.5 ? 0 : 2);
   function zoneVal(f, zi) { const g = GEO[f.name]; return g ? g[zi] : ['SHORT', 'LONG', 'FLOAT', 'DOUBLE'].includes(f.type) ? zi + 1 : (f.alias || f.name) + ' (דוגמה ' + (zi + 1) + ')'; }
@@ -158,16 +181,22 @@
     return sPhone(inner, { title: 'דואר נכנס', back: true, bg: '#F2F2F2' });
   }
   /* פס קבוצה מתקפל (begin group עם appearance=collapsible): כותרת מודגשת + משולש משמאל לטקסט */
-  const band = (t, key) => `<div onclick="SimA.grp('${key}')" dir="rtl" style="background:${BAND};padding:13px 16px;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:14px"><span>${t}</span><span style="font-size:13px;color:#444">${st.col[key] ? '◂' : '▾'}</span></div>`;
+  const isCol = (k) => st.col[k] === undefined ? /\|כתובת יערנית$/.test(k) : st.col[k];
+  const band = (t, key, sum) => `<div onclick="SimA.grp('${key}')" dir="rtl" style="background:${BAND};padding:13px 16px;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:14px"><span>${t}</span><span style="font-size:13px;color:#444">${isCol(key) ? '◂' : '▾'}</span>${sum && isCol(key) ? `<span style="font-weight:400;font-size:13px;color:#4F6B4C;margin-right:auto">${esc(sum)}</span>` : ''}</div>`;
   function mControl(S, ent, f, vals, up, onch) {
     const d = dom(S, f), v = vals[f.name] == null ? '' : vals[f.name], ro = readonly(f);
-    const lab = `<div style="font-size:16px;margin:16px 0 5px;color:#222">${esc(f.alias || f.name)}</div>`;
-    const box = `position:relative;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid ${LINE};border-radius:3px;min-height:42px;padding:0 10px;box-sizing:border-box`;
+    const req = !ro && isReq(f, vals, up), bad = req && st.showReq && (v === '' || v == null);
+    const lab = `<div style="font-size:16px;margin:16px 0 5px;color:#222">${esc(f.alias || f.name)}${req ? ' <span style="color:#C62828">*</span>' : ''}</div>`;
+    const box = `position:relative;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid ${bad ? '#C62828' : LINE};border-radius:3px;min-height:42px;padding:0 10px;box-sizing:border-box`;
     const clr = (has) => has && !ro ? `<span onclick="${onch}('${f.name}','')" style="position:relative;z-index:2;color:#5F6B5C;font-size:17px;cursor:pointer;line-height:1">⊗</span>` : '';
     const val = (t, ph) => `<span style="flex:1;color:${t ? BLUE : '#9AA39A'};min-height:20px">${t ? esc(t) : esc(ph || '')}</span>`;
     const inpS = `flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;color:${BLUE};padding:10px 0`;
     let inp;
-    if (ro) inp = `<div style="${box};background:#F4F6F3;color:${v ? BLUE : '#7A837A'}">${v ? esc(v) : f.derive ? 'יחושב לאחר בחירת ' + ((ent.fields.find((g) => g.name === f.derive.from) || {}).alias || f.derive.from) : (f.calc && /@layer/.test(f.calc)) || GEO[f.name] ? (st.loc ? (st.online ? '—' : 'תחושב בשרת אחרי סנכרון') : 'יחושב לאחר בחירת מיקום') : '—'}</div>`;
+    if (f.pickFrom && !ro) {
+      const key = (p) => p.GlobalID || p.__k || (p.__k = uid()), lbl = (p, i) => (i + 1) + '. ' + (p.ComponentType || 'רכיב') + (p.Direction ? ' · ' + p.Direction : '') + (p.Level ? ' · ' + p.Level : '') + (p.WingNumber ? ' · כנף ' + p.WingNumber : '');
+      const hit = st.parts.find((p, i) => key(p) === v);
+      inp = `<div style="${box}">${val(hit ? lbl(hit, st.parts.indexOf(hit)) : '', st.parts.length ? '' : 'אין רכיבים בטופס')}${clr(v)}<span style="color:#555;font-size:15px">⌄</span><select style="position:absolute;inset:0;width:100%;opacity:0;cursor:pointer" onchange="${onch}('${f.name}',this.value)"><option value=""></option>${st.parts.map((p, i) => `<option value="${esc(key(p))}" ${key(p) === v ? 'selected' : ''}>${esc(lbl(p, i))}</option>`).join('')}</select></div>`;
+    } else if (ro) inp = `<div style="${box};background:#F4F6F3;color:${v ? BLUE : '#7A837A'}">${v ? esc(v) : f.derive ? 'יחושב לאחר בחירת ' + ((ent.fields.find((g) => g.name === f.derive.from) || {}).alias || f.derive.from) : (f.calc && /@layer/.test(f.calc)) || GEO[f.name] ? (st.loc ? (st.online ? '—' : 'תחושב בשרת אחרי סנכרון') : 'יחושב לאחר בחירת מיקום') : '—'}</div>`;
     else if (d) {
       const pf = parentField(S, ent, f); const pv = pf ? vals[pf.name] : null;
       const opts = d.values.filter((x) => !pf || !x.parent || x.parent === pv);
@@ -180,14 +209,15 @@
     } else if (['SHORT', 'LONG', 'FLOAT', 'DOUBLE'].includes(f.type)) inp = `<div style="${box}"><input type="number" inputmode="numeric" style="${inpS}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">${clr(v)}</div>`;
     else if (Number(f.length) >= 500) inp = `<div style="${box}"><textarea rows="3" style="${inpS}" onchange="${onch}('${f.name}',this.value)">${esc(v)}</textarea></div>`;
     else inp = `<div style="${box}"><input type="text" style="${inpS}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">${clr(v)}</div>`;
-    return lab + inp;
+    const warn = f.warn === 'partsNotOk' && v === 'תקין' && st.parts.some((p) => ['לא תקין', 'חסר'].includes(p.PartStatus)) ? `<div style="margin-top:6px;background:#FFF4D6;border:1px solid #F0C36D;border-radius:3px;padding:6px 10px;font-size:13px;color:#7A5200">שים לב: דווח רכיב לא תקין או חסר בשלט, והמצב שנבחר הוא תקין.</div>` : '';
+    return lab + inp + (bad ? '<div style="color:#C62828;font-size:12px;margin-top:3px">זהו שדה חובה</div>' : '') + warn;
   }
   const attach = (ent) => ent.attachments ? `<div style="font-size:16px;margin:18px 0 4px">תמונה/ות</div><div style="display:flex;gap:30px;justify-content:center;padding:8px 0">${IC.folder}${IC.camera}</div>` : '';
   function mFields(S, ent, vals, up, onch, flat) {
     const vis = ent.fields.filter((f) => isShown(f, vals, up));
     if (flat) return `<div style="padding:0 10px 4px">${vis.map((f) => mControl(S, ent, f, vals, up, onch)).join('')}${attach(ent)}</div>`;
     const groups = {}; vis.forEach((f) => (groups[f.category || 'כללי'] = groups[f.category || 'כללי'] || []).push(f));
-    return Object.keys(groups).map((g) => { const k = ent.name + '|' + g; return band(esc(g), k) + (st.col[k] ? '' : `<div style="padding:0 14px 8px">${groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`); }).join('') + `<div style="padding:0 14px">${attach(ent)}</div>`;
+    const ord = ent.groupOrder || []; return Object.keys(groups).sort((a, b) => (ord.indexOf(a) < 0 ? 99 : ord.indexOf(a)) - (ord.indexOf(b) < 0 ? 99 : ord.indexOf(b))).map((g) => { const k = ent.name + '|' + g; return band(esc(g), k, g === 'כתובת יערנית' ? vals.ForestName : '') + (isCol(k) ? '' : `<div style="padding:0 14px 8px">${groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`); }).join('') + `<div style="padding:0 14px">${attach(ent)}</div>`;
   }
   const dms = (v, p, n) => { const a = Math.abs(v), d = Math.floor(a), m = Math.floor((a - d) * 60); return d + '°' + m + "'" + (v >= 0 ? p : n); };
   function s123Phone(S, M, title) {
@@ -198,21 +228,21 @@
     const zlab = (n, p) => `<span style="position:absolute;${p};font-size:10px;color:#4F7A4B;opacity:.85;pointer-events:none">יער דוגמה ${n}</span>`;
     const map = `<div onclick="SimA.pinAt(event,this)" style="position:relative;height:130px;overflow:hidden;background:#E6EDDA;cursor:crosshair"><svg width="100%" height="100%" viewBox="0 0 100 60" preserveAspectRatio="none" style="position:absolute;inset:0;pointer-events:none"><path d="M0 44C25 34 48 58 100 22" stroke="#fff" stroke-width="2.2" fill="none"/><path d="M0 14C30 20 55 6 100 12" stroke="#C9D6B8" stroke-width="1" fill="none"/><path d="M0 52C35 46 60 54 100 46" stroke="#C9D6B8" stroke-width="1" fill="none"/><path d="M50 0V60M0 30H100" stroke="#9FBE97" stroke-width=".5" stroke-dasharray="2 2"/></svg>${zlab(1, 'right:6px;top:4px')}${zlab(2, 'left:6px;top:4px')}${zlab(3, 'right:6px;bottom:14px')}${zlab(4, 'left:6px;bottom:14px')}${dots}${pin}<span style="position:absolute;left:6px;bottom:2px;font-size:9px;color:#555;pointer-events:none">50 מ׳</span><span style="position:absolute;right:6px;bottom:2px;font-size:9px;color:#777;pointer-events:none">Esri</span></div>`;
     const coord = L ? `<span dir="ltr" style="flex:1;font-size:13px;color:${BLUE};text-align:right">${dms(lat, 'N', 'S')} ${dms(lon, 'E', 'W')} ± 4.0 m</span>` : `<span style="flex:1;font-size:13px;color:#8A938A">לחץ על המפה להצבת הנקודה, או על ⌖ לקליטת GPS</span>`;
-    const loc = st.editId ? '' : `<div style="padding:0 14px"><div style="font-size:16px;margin:16px 0 5px">מיקום השלט</div><div style="background:#fff;border:1px solid ${LINE};border-radius:3px;overflow:hidden"><div dir="rtl" style="display:flex;align-items:center;gap:10px;padding:6px 10px"><span onclick="SimA.gps()" style="cursor:pointer;display:flex">${IC.gps('#2F6FB5')}</span>${coord}</div>${map}</div></div>`;
+    const loc = st.editId ? '' : `<div style="padding:0 14px"><div style="font-size:16px;margin:16px 0 5px">מיקום השלט <span style="color:#C62828">*</span></div><div style="background:#fff;border:1px solid ${st.showReq && !L ? '#C62828' : LINE};border-radius:3px;overflow:hidden"><div dir="rtl" style="display:flex;align-items:center;gap:10px;padding:6px 10px"><span onclick="SimA.gps()" style="cursor:pointer;display:flex">${IC.gps('#2F6FB5')}</span>${coord}</div>${map}</div>${st.showReq && !L ? '<div style="color:#C62828;font-size:12px;margin-top:3px">זהו שדה חובה</div>' : ''}</div>`;
     /* חזרה (repeat): פס כותרת מתקפל, תת-טופס של הרשומה הנוכחית, ופס דפדוף: + משמאל, "1 מתוך N" באמצע, פח מימין */
     const repeat = (title, arr, idx, kind, ent, up, onchFn) => {
       const n = arr.length, i = Math.min(idx, Math.max(0, n - 1)), key = 'rep|' + kind;
       const arrow = (t, on, dis) => `<span onclick="${dis ? '' : on}" style="font-size:22px;padding:0 6px;color:${dis ? '#BDBDBD' : '#444'};cursor:${dis ? 'default' : 'pointer'}">${t}</span>`;
       const bar = `<div dir="ltr" style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 6px;border:1px solid ${LINE};border-radius:26px;background:#F4F8F3;padding:4px 8px"><span onclick="SimA.add('${kind}')" title="הוסף" style="width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid ${LINE};display:flex;align-items:center;justify-content:center;cursor:pointer">${IC.plus}</span><span style="display:flex;align-items:center;font-size:15px">${n > 1 ? arrow('‹', `SimA.pg('${kind}',-1)`, i <= 0) : ''}<span dir="rtl" style="min-width:70px;text-align:center">${n ? (i + 1) + ' מתוך ' + n : '0 מתוך 0'}</span>${n > 1 ? arrow('›', `SimA.pg('${kind}',1)`, i >= n - 1) : ''}</span><span onclick="${n ? `SimA.del('${kind}')` : ''}" title="מחק" style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:${n ? 'pointer' : 'default'}">${IC.trash(n ? '#555' : '#BDBDBD')}</span></div>`;
       const body = n ? mFields(S, ent, arr[i], up, `${onchFn}.bind(null,${i})`, true) : `<div style="padding:14px 10px;color:#757575">אין רשומות. לחץ + להוספה.</div>`;
-      return band(title, key) + (st.col[key] ? '' : `<div style="margin:0 8px;border:1px solid ${LINE};border-radius:4px;background:#DCE8DA;padding:0 4px 4px">${body}${bar}</div>`);
+      return band(title, key) + (isCol(key) ? '' : `<div style="margin:0 8px;border:1px solid ${LINE};border-radius:4px;background:#DCE8DA;padding:0 4px 4px">${body}${bar}</div>`);
     };
     const rep = repeat(esc(M.A.ent.alias), st.parts, st.pi, 'parts', M.A.ent, st.sign, 'SimA.pv');
     const nOld = st.editId && M.B ? st.db.B.filter((v) => v.ParentGlobalID === st.editId).length : 0;
     const vis = M.B && st.variant === 'sign' ? (st.editId ? `<div style="padding:6px 16px;color:#5F6B5C;font-size:12px">קיימים ${nOld} ביקורים קודמים (לא מוצגים לעריכה; כאן מוסיפים ביקורים חדשים)</div>` : '') + repeat(esc(M.B.ent.alias), st.visits, st.vi, 'visits', M.B.ent, st.sign, 'SimA.vv') : '';
     const bottom = `<div dir="ltr" style="display:flex;justify-content:space-between;align-items:center;padding:6px 16px;border-top:1px solid #D0D5CE;background:#fff;box-shadow:0 -2px 6px rgba(0,0,0,.08)"><span onclick="SimA.dlg(true)" title="שליחה" style="font-size:30px;color:#444;cursor:pointer;padding:0 8px;line-height:1.3">✓</span><span style="color:#8A938A;font-size:12px">${st.editId ? 'עריכת רשומה' : 'רשומה חדשה'}</span></div>`;
     const dlg = st.dlg ? `<div dir="rtl" style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end"><div style="background:#fff;width:100%;border-radius:14px 14px 0 0;padding:6px 0"><div onclick="SimA.send()" style="padding:14px 18px;cursor:pointer">שלח עכשיו</div><div onclick="SimA.outbox()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בדואר יוצא</div><div onclick="SimA.draft()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בטיוטות</div><div onclick="SimA.dlg(false)" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE;color:#757575">המשך מילוי</div></div></div>` : '';
-    return sPhone(`<div style="padding-bottom:16px">${loc}${mFields(S, M.main, st.sign, {}, 'SimA.sv')}${rep}${vis}</div>`, { title: esc(S.meta.title || title), close: true, bg: BODY, bottom, overlay: dlg });
+    return sPhone(`<div style="padding-bottom:16px">${loc}${mFields(S, M.main, st.sign, {}, 'SimA.sv')}${rep}${vis}</div>`, { title: esc(S.meta.title || title), close: true, bg: BODY, bottom: (st.showReq && missing().length ? `<div style="background:#C62828;color:#fff;padding:7px 14px;font-size:13px">חסרים ${missing().length} שדות חובה: ${esc(missing().slice(0, 3).join(', '))}${missing().length > 3 ? '…' : ''}</div>` : '') + bottom, overlay: dlg });
   }
   const ent_fields = (S, ent, vals, up, onch) => mFields(S, ent, vals, up, onch);
   function s123(S, M) {
@@ -317,7 +347,7 @@
     st.S = S; const M = model(S); if (!M.A) return '<p>הסימולטור דורש שכבה עם לפחות טבלה מקושרת אחת.</p>';
     const tab = (k, l) => `<button class="${st.tab === k ? 'primary' : ''}" onclick="SimA.tab('${k}')">${l}</button>`;
     const body = st.tab === 'flow' ? flowTab(S, M) : st.tab === 's123' ? s123(S, M) : st.tab === 'fm' ? fm(S, M) : data(S, M);
-    return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${tab('flow', 'זרימה Field Maps ↔ Survey123')}${tab('s123', 'Survey123')}${tab('fm', 'Field Maps')}${tab('data', 'נתונים והשוואה')}<span style="margin-inline-start:16px">קשר ביקורים: <select onchange="SimA.variant(this.value)"><option value="sign" ${st.variant === 'sign' ? 'selected' : ''}>ביקור → שלט</option><option value="part" ${st.variant === 'part' ? 'selected' : ''}>ביקור → רכיב</option></select></span><label style="margin-inline-start:12px"><input type="checkbox" ${st.online ? 'checked' : ''} onchange="SimA.online(this.checked)"> מחובר לרשת</label><label style="margin-inline-start:12px"><input type="checkbox" ${st.auto ? 'checked' : ''} onchange="SimA.auto(this.checked)"> עדכון מצב שלט אוטומטי מהביקור</label></div>${body}`;
+    return `<div style="font-size:11px;color:#64748B;margin-bottom:4px">גרסת סכימה בסימולטור: v${S.meta.version || '?'}</div><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${tab('flow', 'זרימה Field Maps ↔ Survey123')}${tab('s123', 'Survey123')}${tab('fm', 'Field Maps')}${tab('data', 'נתונים והשוואה')}<span style="margin-inline-start:16px">קשר ביקורים: <select onchange="SimA.variant(this.value)"><option value="sign" ${st.variant === 'sign' ? 'selected' : ''}>ביקור → שלט</option><option value="part" ${st.variant === 'part' ? 'selected' : ''}>ביקור → רכיב</option></select></span><label style="margin-inline-start:12px"><input type="checkbox" ${st.online ? 'checked' : ''} onchange="SimA.online(this.checked)"> מחובר לרשת</label><label style="margin-inline-start:12px"><input type="checkbox" ${st.auto ? 'checked' : ''} onchange="SimA.auto(this.checked)"> עדכון מצב שלט אוטומטי מהביקור</label></div>${body}`;
   }
   const rr = () => {
     if (!(window.A && A.refresh)) return;
@@ -329,9 +359,9 @@
   window.SimA = {
     grp(k) { st.col[k] = !st.col[k]; rr(); },
     tab(k) { st.tab = k; rr(); }, variant(v) { st.variant = v; st.modal = null; rr(); }, auto(c) { st.auto = c; rr(); },
-    sv(n, v) { st.sign[n] = v; derive(model(st.S).main, st.sign); rr(); }, pv(i, n, v) { st.parts[i][n] = v; derive(model(st.S).A.ent, st.parts[i]); rr(); }, vv(i, n, v) { st.visits[i][n] = v; derive(model(st.S).B.ent, st.visits[i]); rr(); },
-    add(k) { const a = k === 'parts' ? st.parts : st.visits; a.push({}); if (k === 'parts') st.pi = a.length - 1; else st.vi = a.length - 1; rr(); },
-    del(k) { const a = k === 'parts' ? st.parts : st.visits; const i = k === 'parts' ? st.pi : st.vi; a.splice(i, 1); if (k === 'parts') st.pi = Math.max(0, st.pi - 1); else st.vi = Math.max(0, st.vi - 1); rr(); },
+    sv(n, v) { st.sign[n] = v; allDerive(); rr(); }, pv(i, n, v) { st.parts[i][n] = v; allDerive(); rr(); }, vv(i, n, v) { st.visits[i][n] = v; allDerive(); rr(); },
+    add(k) { const a = k === 'parts' ? st.parts : st.visits; a.push(newRow(k === 'parts' ? model(st.S).A.ent : model(st.S).B.ent)); if (k === 'parts') st.pi = a.length - 1; else st.vi = a.length - 1; allDerive(); rr(); },
+    del(k) { const a = k === 'parts' ? st.parts : st.visits; const i = k === 'parts' ? st.pi : st.vi; a.splice(i, 1); if (k === 'parts') st.pi = Math.max(0, st.pi - 1); else st.vi = Math.max(0, st.vi - 1); allDerive(); rr(); },
     pg(k, d) { if (k === 'parts') st.pi = Math.max(0, Math.min(st.parts.length - 1, st.pi + d)); else st.vi = Math.max(0, Math.min(st.visits.length - 1, st.vi + d)); rr(); },
     send() {
       const S = st.S, M = model(S); ensure(S);
@@ -346,8 +376,8 @@
         s = Object.assign({}, st.sign, { GlobalID: uid() }); if (st.loc) { s.__loc = st.loc; s.__pending = st.pendingGeo; } st.db.main.push(s);
         st.parts.forEach((p) => st.db.A.push(Object.assign({}, p, { GlobalID: uid(), ParentGlobalID: s.GlobalID })));
       }
-      if (M.B && st.variant === 'sign') st.visits.forEach((v) => { if (Object.keys(v).length) addVisit(S, M, s, s, Object.assign({}, v)); });
-      st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.loc = null; st.pendingGeo = false; st.editId = null; st.sent += 1; st.sel = st.db.main.indexOf(s);
+      if (M.B && st.variant === 'sign') st.visits.forEach((v) => { if (v.VisitType || v.StatusAtVisit) addVisit(S, M, s, s, Object.assign({}, v)); });
+      st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; st.loc = null; st.pendingGeo = false; st.editId = null; st.sent += 1; st.sel = st.db.main.indexOf(s);
       if (st.tab === 'flow') st.step = FLOWS[st.flow].length - 1; else st.tab = 'fm';
       rr();
     },
@@ -355,17 +385,17 @@
     gps() { st.loc = { x: 0.5 + (Math.random() - 0.5) * 0.6, y: 0.5 + (Math.random() - 0.5) * 0.6 }; applyGeo(); rr(); },
     online(c) { st.online = c; applyGeo(); rr(); },
     sync() { const M = model(st.S); st.db.main.forEach((sg) => { if (sg.__pending && sg.__loc) { geoFields(M).forEach((f) => { sg[f.name] = zoneVal(f, zoneOf(sg.__loc)); }); sg.__pending = false; } }); rr(); },
-    dlg(v) { st.dlg = v; rr(); },
-    outbox() { st.dlg = false; st.outbox += 1; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
-    draft() { st.dlg = false; st.drafts += 1; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
-    flowSet(f) { st.loc = null; st.pendingGeo = false; st.flow = f; st.step = 0; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; rr(); },
+    dlg(v) { if (v && missing().length) { st.showReq = true; rr(); return; } st.dlg = v; rr(); },
+    outbox() { st.dlg = false; st.outbox += 1; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
+    draft() { st.dlg = false; st.drafts += 1; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
+    flowSet(f) { st.loc = null; st.pendingGeo = false; st.flow = f; st.step = 0; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; rr(); },
     step(n) { st.step = n; rr(); }, inboxSet(c) { st.inbox = c; rr(); },
     pick(i) { st.sel = i; st.step = 1; rr(); }, sel0(i) { st.sel = i; rr(); },
     startEdit() {
       const sg = st.db.main[st.sel]; if (!sg) return;
-      st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visits = []; st.pi = 0; st.vi = 0; st.step = 3; rr();
+      st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visits = [newRow(model(st.S).B ? model(st.S).B.ent : { fields: [] })]; st.pi = 0; st.vi = 0; st.showReq = false; st.step = 3; allDerive(); rr();
     },
-    startNew() { st.loc = null; st.pendingGeo = false; st.editId = null; st.sign = { SignID: newId() }; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.step = 1; rr(); },
+    startNew() { st.loc = null; st.pendingGeo = false; st.editId = null; st.sign = { SignID: newId() }; st.parts = []; st.visits = [newRow(model(st.S).B ? model(st.S).B.ent : { fields: [] })]; st.pi = 0; st.vi = 0; st.showReq = false; st.step = 1; allDerive(); rr(); },
     seed() { seed(st.S); st.sel = null; rr(); }, sel(i) { st.sel = i; st.modal = null; rr(); },
     addv() { st.modal = { v: {}, part: '' }; rr(); }, mv(n, v) { st.modal.v[n] = v; rr(); }, mp(id) { st.modal.part = id; rr(); }, cancel() { st.modal = null; rr(); },
     savev() {
