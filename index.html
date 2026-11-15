@@ -83,7 +83,7 @@
 <script>
 /* טוען את קבצי הפרויקטים (לפי manifest) ואחריהם את הקוד — עובד גם בפתיחה ישירה מהדיסק (file://) */
 (function () {
-  var files = (window.PROJECT_FILES || []).concat(['js/generators.js', 'js/sim.js', 'js/app.js']);
+  var files = (window.PROJECT_FILES || []).concat(['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js']);
   (function next(i) {
     if (i >= files.length) return;
     var s = document.createElement('script'); s.src = files[i];
