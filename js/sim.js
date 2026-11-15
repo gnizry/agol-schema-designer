@@ -4,7 +4,7 @@
   'use strict';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const uid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); })).toUpperCase();
-  const st = { tab: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visit: {}, db: null, sel: null, modal: null, S: null };
+  const st = { tab: 'flow', flow: 'edit', step: 0, inbox: true, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visit: {}, db: null, sel: null, modal: null, S: null };
 
   /* ---------- מבנה הסכמה ---------- */
   function model(S) {
@@ -87,14 +87,65 @@
   }
 
   /* ---------- Survey123 ---------- */
-  function s123(S, M) {
-    let h = `<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">`;
+  function s123Phone(S, M, title) {
     const f1 = formFields(S, M.main, st.sign, {}, 'SimA.sv');
     const partsHtml = st.parts.map((p, i) => `<div style="border:1px dashed #94A3B8;border-radius:8px;padding:0 8px 8px;margin:8px 0;background:#fff"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(M.A.ent.alias)} #${i + 1}</b><button class="mini" onclick="SimA.rp(${i})">מחק</button></div>${formFields(S, M.A.ent, p, st.sign, `SimA.pv.bind(null,${i})`)}</div>`).join('');
-    const vis = M.B && st.variant === 'sign' ? `<div style="border:1px solid #E2E8F0;border-radius:10px;padding:0 8px 8px;margin:10px 0"><b>${esc(M.B.ent.alias)} (ביקור ראשון)</b>${formFields(S, M.B.ent, st.visit, st.sign, 'SimA.vv')}</div>` : '';
-    h += phone('Survey123 · ' + esc(M.main.alias), f1 + `<div style="font-weight:700;color:#1E3A8A;margin-top:12px">${esc(M.A.ent.alias)} — Repeat</div>${partsHtml}<button class="primary" onclick="SimA.ap()">+ הוסף ${esc(M.A.ent.alias)}</button>${vis}<div style="margin-top:14px"><button class="primary" style="width:100%;padding:10px" onclick="SimA.send()">שלח</button></div>`);
-    h += `<div style="flex:1;min-width:260px"><h3 style="margin-top:0">מה אתה בודק כאן</h3><ul style="line-height:1.9"><li>אילו שדות הסוקר רואה ובאיזה סדר; שדות אוטומטיים מוצגים אפורים.</li><li>תנאי תצוגה: מוצגים לפי <code>rel</code> בשדה (לדוגמה סיכון בטיחותי רק כש"לא תקין").</li><li>סינון דגם לפי משפחה (תת-דגם מסונן לפי הבחירה הקודמת).</li><li>כמה שדות וכמה Repeat צריך למלא כדי לתעד שלט אחד.</li></ul><p style="color:#64748B">שליחה יוצרת רשומות בטבלאות הסימולציה, ואפשר לראות אותן בלשונית Field Maps ובלשונית נתונים.</p></div></div>`;
-    return h;
+    const nOld = st.editId && M.B ? st.db.B.filter((v) => v.ParentGlobalID === st.editId).length : 0;
+    const vis = M.B && st.variant === 'sign' ? `<div style="border:1px solid #E2E8F0;border-radius:10px;padding:0 8px 8px;margin:10px 0"><b>${st.editId ? 'ביקור חדש' : 'ביקור ראשון'} · ${esc(M.B.ent.alias)}</b>${st.editId ? `<div style="color:#64748B;font-size:12px">קיימים ${nOld} ביקורים קודמים (לא מוצגים לעריכה)</div>` : ''}${formFields(S, M.B.ent, st.visit, st.sign, 'SimA.vv')}</div>` : '';
+    return phone(title, f1 + `<div style="font-weight:700;color:#1E3A8A;margin-top:12px">${esc(M.A.ent.alias)} — Repeat</div>${partsHtml}<button class="primary" onclick="SimA.ap()">+ הוסף ${esc(M.A.ent.alias)}</button>${vis}<div style="margin-top:14px"><button class="primary" style="width:100%;padding:10px" onclick="SimA.send()">${st.editId ? 'שמור שינויים' : 'שלח'}</button></div>`);
+  }
+  function s123(S, M) {
+    return `<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">${s123Phone(S, M, 'Survey123 · ' + esc(M.main.alias))}<div style="flex:1;min-width:260px"><h3 style="margin-top:0">מה אתה בודק כאן</h3><ul style="line-height:1.9"><li>אילו שדות הסוקר רואה ובאיזה סדר; שדות אוטומטיים מוצגים אפורים.</li><li>תנאי תצוגה: מוצגים לפי <code>rel</code> בשדה (לדוגמה סיכון בטיחותי רק כש"לא תקין").</li><li>סינון דגם לפי משפחה (תת-דגם מסונן לפי הבחירה הקודמת).</li><li>כמה שדות וכמה Repeat צריך למלא כדי לתעד שלט אחד.</li></ul><p style="color:#64748B">שליחה יוצרת רשומות בטבלאות הסימולציה, ואפשר לראות אותן בלשונית Field Maps ובלשונית נתונים.</p></div></div>`;
+  }
+
+  /* ---------- זרימה: Field Maps ↔ Survey123 ---------- */
+  const ITEM = '<SURVEY_ITEM_ID>';
+  const FLOWS = {
+    edit: ['Field Maps: בחירת שלט', 'Field Maps: פופאפ וקישור', 'Survey123: Inbox', 'Survey123: טופס עריכה', 'חזרה ל-Field Maps'],
+    new: ['Field Maps: הוספת שלט', 'Survey123: טופס חדש', 'חזרה ל-Field Maps'],
+  };
+  function dots(onc) {
+    return st.db.main.map((s, i) => { const x = 40 + (i * 83) % 280, y = 40 + (i * 61) % 180; return `<div onclick="${onc}(${i})" style="position:absolute;left:${x}px;top:${y}px;width:22px;height:22px;border-radius:50%;background:${statusColor(s.SignStatus)};border:3px solid ${st.sel === i ? '#0F172A' : '#fff'};box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer"></div>`; }).join('');
+  }
+  const mapBox = (inner) => `<div style="position:relative;height:260px;background:linear-gradient(135deg,#DCFCE7,#BBF7D0);border-radius:8px;overflow:hidden">${inner}</div>`;
+  function flowTab(S, M) {
+    ensure(S);
+    const steps = FLOWS[st.flow], cur = Math.min(st.step, steps.length - 1);
+    const sg = st.sel != null ? st.db.main[st.sel] : null;
+    const gid = sg ? sg.GlobalID : '<GlobalID>';
+    const urlE = `arcgis-survey123://?itemID=${ITEM}&action=edit&q:globalId=${gid}&folder=inbox&update=true&callback=https://fieldmaps.arcgis.app`;
+    const urlN = `arcgis-survey123://?itemID=${ITEM}&action=collect&callback=https://fieldmaps.arcgis.app`;
+    const chips = steps.map((l, i) => `<span style="padding:5px 10px;border-radius:14px;font-size:12px;border:1px solid ${i === cur ? '#1E3A8A' : '#CBD5E1'};background:${i === cur ? '#1E3A8A' : i < cur ? '#DBEAFE' : '#fff'};color:${i === cur ? '#fff' : '#0F172A'}">${i + 1}. ${esc(l)}</span>`).join('<span style="color:#94A3B8">›</span>');
+    let screen = '', note = '';
+    if (st.flow === 'edit') {
+      if (cur === 0) { screen = phone('Field Maps · מפה', mapBox(dots('SimA.pick')) + `<div style="padding:8px;color:#64748B">${sg ? 'נבחר: ' + esc(sg.SignID || '') : 'הקש על שלט במפה'}</div>`); note = 'הקשה 1: בחירת השלט במפה.'; }
+      else if (cur === 1 && sg) { screen = phone('Field Maps · פופאפ', `<div style="font-weight:700;color:#1E3A8A;font-size:16px">${esc(sg.SignID || '')}</div><div>${chipHtml(sg.SignStatus)}</div><div style="margin:8px 0;color:#64748B">${esc(sg.SignModel || '')}</div><a style="display:block;background:#1E3A8A;color:#fff;text-align:center;border-radius:8px;padding:10px;cursor:pointer" onclick="SimA.step(2)">ערוך ב-Survey123 ›</a>`); note = 'הקשה 2: קישור בפופאפ (ביטוי Arcade). הקישור פותח את Survey123 ישירות על הרשומה.'; }
+      else if (cur === 2) {
+        screen = st.inbox ? phone('Survey123 · Inbox', `<div style="color:#64748B;font-size:12px;margin:6px 0">מסונן לפי q:globalId · עודכן (update=true)</div><div style="border:1px solid #1E3A8A;border-radius:8px;padding:10px;background:#EFF6FF"><b>${esc(sg ? sg.SignID || 'שלט' : '')}</b><div style="color:#64748B">${esc(sg ? sg.SignModel || '' : '')}</div></div><div style="color:#64748B;margin-top:10px;font-size:12px">רשומה יחידה → נפתחת אוטומטית לעריכה</div><button class="primary" style="width:100%;margin-top:10px" onclick="SimA.startEdit()">נפתח לעריכה ›</button>`)
+          : phone('Survey123 · Inbox', `<div style="background:#FEF2F2;color:#991B1B;border-radius:8px;padding:12px;margin-top:8px"><b>הרשומה לא נמצאה</b><div>Inbox כבוי בטופס, ולכן אין רשומות לעריכה. יש להפעיל Inbox ב-Survey123 (Collaborate › Inbox).</div></div>`);
+        note = st.inbox ? 'ללא הקשות נוספות: רשומה אחת מסוננת נפתחת בעצמה.' : 'כשInbox כבוי הקישור לא מצליח לפתוח את הרשומה לעריכה.';
+      }
+      else if (cur === 3) { screen = s123Phone(S, M, 'Survey123 · עריכת שלט'); note = 'הרשומה והרכיבים הקיימים נטענו. הוספת ביקור חדש מעדכנת את מצב השלט אחרי שמירה.'; }
+      else { screen = resultPhone(M); note = 'חזרה אוטומטית ל-Field Maps (callback). הצבע בנקודה משקף את המצב המעודכן.'; }
+    } else {
+      if (cur === 0) { screen = phone('Field Maps · מפה', mapBox(dots('SimA.sel0')) + `<button class="primary" style="width:100%;margin-top:8px;padding:10px" onclick="SimA.startNew()">+ שלט חדש ב-Survey123</button>`); note = 'הקשה 1: כפתור/קישור "שלט חדש" (action=collect).'; }
+      else if (cur === 1) { screen = s123Phone(S, M, 'Survey123 · שלט חדש'); note = 'המיקום נקלט בטופס (GPS) ואפשר לתקנו במפה. מצב ושדות אחרים לפי תנאי התצוגה.'; }
+      else { screen = resultPhone(M); note = 'השלט החדש הוא נקודה חדשה בשכבה; חזרה ל-Field Maps.'; }
+    }
+    const back = cur > 0 ? `<button onclick="SimA.step(${cur - 1})">‹ חזרה</button>` : '';
+    const chk = (ok, t) => `<li style="color:${ok ? '#166534' : '#991B1B'}">${ok ? '✓' : '✗'} ${t}</li>`;
+    const arcade = `var params = {\n  itemID: '${ITEM}',\n  action: 'edit',\n  'q:globalId': StandardizeGuid($feature.GlobalID, 'digits-hyphen'),\n  folder: 'inbox',\n  update: 'true',\n  callback: 'https://fieldmaps.arcgis.app'\n};\nreturn 'arcgis-survey123://?' + UrlEncode(params);`;
+    const side = `<div style="flex:1;min-width:280px"><div style="margin-bottom:10px"><b>${note}</b></div>${back}
+      <h4>קישור (${st.flow === 'edit' ? 'עריכה' : 'חדש'})</h4><pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;background:#0F172A;color:#E2E8F0;padding:8px;border-radius:6px;font-size:11px">${esc(st.flow === 'edit' ? urlE : urlN)}</pre>
+      ${st.flow === 'edit' ? `<details><summary>ביטוי Arcade לקישור בפופאפ / Task</summary><pre dir="ltr" style="background:#F1F5F9;padding:8px;font-size:11px;overflow:auto">${esc(arcade)}</pre></details>` : ''}
+      <h4>הגדרות נדרשות</h4><ul style="line-height:1.8"><li><label><input type="checkbox" ${st.inbox ? 'checked' : ''} onchange="SimA.inboxSet(this.checked)"> Inbox מופעל בטופס</label></li>${chk(st.flow === 'new' || true, 'הטופס פורסם מעל השכבה/הטבלאות (Repeat לרכיבים, לביקורים)')}${chk(true, 'המשתמש מחובר לאותו Portal ב-Field Maps וב-Survey123')}${chk(true, 'update=true מרענן את ה-Inbox לפני הפתיחה')}</ul>
+      <p style="color:#64748B;font-size:12px">הערה: פרמטרי הקישור לפי דוגמאות קהילת Esri; לאמת מול התיעוד הרשמי ובגרסת האפליקציה בשטח.</p></div>`;
+    return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center"><button class="${st.flow === 'edit' ? 'primary' : ''}" onclick="SimA.flowSet('edit')">עריכת שלט קיים</button><button class="${st.flow === 'new' ? 'primary' : ''}" onclick="SimA.flowSet('new')">הוספת שלט חדש</button><button onclick="SimA.seed()">טען נתוני דוגמה</button></div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px">${chips}</div><div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">${screen}${side}</div>`;
+  }
+  function chipHtml(t) { return t ? `<span style="background:${statusColor(t)};color:#fff;border-radius:10px;padding:2px 10px;font-size:12px">${esc(t)}</span>` : ''; }
+  function resultPhone(M) {
+    const sg = st.db.main[st.sel];
+    return phone('Field Maps · מפה', mapBox(dots('SimA.sel0')) + `<div style="padding:8px">${sg ? `<b>${esc(sg.SignID || 'שלט')}</b> ${chipHtml(sg.SignStatus)}<div style="color:#64748B">נשמר. ${M.B ? 'ביקורים: ' + visitsOf(M, sg).length : ''}</div>` : ''}</div>`);
   }
 
   /* ---------- Field Maps ---------- */
@@ -141,8 +192,8 @@
   function render(S) {
     st.S = S; const M = model(S); if (!M.A) return '<p>הסימולטור דורש שכבה עם לפחות טבלה מקושרת אחת.</p>';
     const tab = (k, l) => `<button class="${st.tab === k ? 'primary' : ''}" onclick="SimA.tab('${k}')">${l}</button>`;
-    const body = st.tab === 's123' ? s123(S, M) : st.tab === 'fm' ? fm(S, M) : data(S, M);
-    return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${tab('s123', 'Survey123')}${tab('fm', 'Field Maps')}${tab('data', 'נתונים והשוואה')}<span style="margin-inline-start:16px">קשר ביקורים: <select onchange="SimA.variant(this.value)"><option value="sign" ${st.variant === 'sign' ? 'selected' : ''}>ביקור → שלט</option><option value="part" ${st.variant === 'part' ? 'selected' : ''}>ביקור → רכיב</option></select></span><label style="margin-inline-start:12px"><input type="checkbox" ${st.auto ? 'checked' : ''} onchange="SimA.auto(this.checked)"> עדכון מצב שלט אוטומטי מהביקור</label></div>${body}`;
+    const body = st.tab === 'flow' ? flowTab(S, M) : st.tab === 's123' ? s123(S, M) : st.tab === 'fm' ? fm(S, M) : data(S, M);
+    return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${tab('flow', 'זרימה Field Maps ↔ Survey123')}${tab('s123', 'Survey123')}${tab('fm', 'Field Maps')}${tab('data', 'נתונים והשוואה')}<span style="margin-inline-start:16px">קשר ביקורים: <select onchange="SimA.variant(this.value)"><option value="sign" ${st.variant === 'sign' ? 'selected' : ''}>ביקור → שלט</option><option value="part" ${st.variant === 'part' ? 'selected' : ''}>ביקור → רכיב</option></select></span><label style="margin-inline-start:12px"><input type="checkbox" ${st.auto ? 'checked' : ''} onchange="SimA.auto(this.checked)"> עדכון מצב שלט אוטומטי מהביקור</label></div>${body}`;
   }
   const rr = () => { if (window.A && A.refresh) A.refresh(); };
   window.SimA = {
@@ -151,11 +202,30 @@
     ap() { st.parts.push({}); rr(); }, rp(i) { st.parts.splice(i, 1); rr(); },
     send() {
       const S = st.S, M = model(S); ensure(S);
-      const s = Object.assign({}, st.sign, { GlobalID: uid() }); st.db.main.push(s);
-      const ps = st.parts.map((p) => { const r = Object.assign({}, p, { GlobalID: uid(), ParentGlobalID: s.GlobalID }); st.db.A.push(r); return r; });
+      let s;
+      if (st.editId) {
+        s = st.db.main.find((x) => x.GlobalID === st.editId);
+        Object.keys(st.sign).forEach((k) => { if (k !== 'GlobalID') s[k] = st.sign[k]; });
+        const keep = st.parts.map((p) => p.GlobalID).filter(Boolean);
+        st.db.A = st.db.A.filter((p) => p.ParentGlobalID !== s.GlobalID || keep.includes(p.GlobalID));
+        st.parts.forEach((p) => { if (p.GlobalID) Object.assign(st.db.A.find((x) => x.GlobalID === p.GlobalID), p); else st.db.A.push(Object.assign({}, p, { GlobalID: uid(), ParentGlobalID: s.GlobalID })); });
+      } else {
+        s = Object.assign({}, st.sign, { GlobalID: uid() }); st.db.main.push(s);
+        st.parts.forEach((p) => st.db.A.push(Object.assign({}, p, { GlobalID: uid(), ParentGlobalID: s.GlobalID })));
+      }
       if (M.B && st.variant === 'sign' && Object.keys(st.visit).length) addVisit(S, M, s, s, Object.assign({}, st.visit));
-      st.sign = {}; st.parts = []; st.visit = {}; st.sel = st.db.main.length - 1; st.tab = 'fm'; rr();
+      st.sign = {}; st.parts = []; st.visit = {}; st.editId = null; st.sel = st.db.main.indexOf(s);
+      if (st.tab === 'flow') st.step = FLOWS[st.flow].length - 1; else st.tab = 'fm';
+      rr();
     },
+    flowSet(f) { st.flow = f; st.step = 0; st.editId = null; st.sign = {}; st.parts = []; st.visit = {}; rr(); },
+    step(n) { st.step = n; rr(); }, inboxSet(c) { st.inbox = c; rr(); },
+    pick(i) { st.sel = i; st.step = 1; rr(); }, sel0(i) { st.sel = i; rr(); },
+    startEdit() {
+      const sg = st.db.main[st.sel]; if (!sg) return;
+      st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visit = {}; st.step = 3; rr();
+    },
+    startNew() { st.editId = null; st.sign = {}; st.parts = []; st.visit = {}; st.step = 1; rr(); },
     seed() { seed(st.S); st.sel = null; rr(); }, sel(i) { st.sel = i; st.modal = null; rr(); },
     addv() { st.modal = { v: {}, part: '' }; rr(); }, mv(n, v) { st.modal.v[n] = v; rr(); }, mp(id) { st.modal.part = id; rr(); }, cancel() { st.modal = null; rr(); },
     savev() {
