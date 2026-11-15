@@ -49,6 +49,59 @@
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${H}" viewBox="0 0 ${totalW} ${H}" font-family="Segoe UI, Arial, sans-serif"><defs><marker id="ar" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#64748B"/></marker></defs><rect width="100%" height="100%" fill="#fff"/>${o}</svg>`;
     return { svg, w: totalW, h: H };
   }
+
+  /* ---------- תרשים תהליך (נתיבים) ---------- */
+  function wrap(t, n) {
+    const w = String(t || '').split(/\s+/).filter(Boolean), out = []; let c = '';
+    w.forEach((x) => { if ((c + ' ' + x).trim().length > n && c) { out.push(c); c = x; } else c = (c + ' ' + x).trim(); });
+    if (c) out.push(c);
+    return out.length > 4 ? out.slice(0, 3).concat([out[3] + '…']) : out;
+  }
+  function flowSvg(f) {
+    const lanes = f.lanes || [], steps = f.steps || [], li = {}, byId = {}, nxt = {};
+    lanes.forEach((l, i) => { li[l.id] = i; });
+    steps.forEach((s) => { byId[s.id] = s; nxt[s.id] = (s.next || []).map((x) => (typeof x === 'string' ? { to: x } : x)); });
+    const preds = {}; steps.forEach((s) => nxt[s.id].forEach((n) => { (preds[n.to] = preds[n.to] || []).push(s.id); }));
+    const col = {}, occ = {};
+    const place = (s, stack) => {
+      if (col[s.id] != null) return col[s.id];
+      if (stack.includes(s.id)) return 0;
+      let c = Math.max(0, ...((preds[s.id] || []).filter((p) => !stack.includes(p) && byId[p]).map((p) => { const ps = byId[p], pc = place(ps, stack.concat(s.id)); return pc + (ps.lane === s.lane || Math.abs(li[ps.lane] - li[s.lane]) > 1 ? 1 : 0); })));
+      while (occ[s.lane + ':' + c]) c++;
+      occ[s.lane + ':' + c] = 1; col[s.id] = c; return c;
+    };
+    steps.forEach((s) => place(s, []));
+    const ncol = Math.max(1, ...Object.values(col).map((c) => c + 1)), LW = 120, CW = 190, BW = 150, LH = 112, BH = 68;
+    const W = LW + ncol * CW + 10, H = lanes.length * LH + 10;
+    const pos = {};
+    steps.forEach((s) => { const c = col[s.id], l = li[s.lane] == null ? 0 : li[s.lane]; pos[s.id] = { x: W - LW - c * CW - CW / 2 - BW / 2 + 0, y: 5 + l * LH + (LH - BH) / 2, w: BW, h: BH }; });
+    let o = '';
+    lanes.forEach((l, i) => {
+      o += `<rect x="0" y="${5 + i * LH}" width="${W}" height="${LH}" fill="${i % 2 ? '#F8FAFC' : '#EEF2FF'}" stroke="#E2E8F0"/>`;
+      o += `<rect x="${W - LW}" y="${5 + i * LH}" width="${LW}" height="${LH}" fill="#1E3A8A"/>`;
+      wrap(l.label, 14).forEach((ln, k, a) => { o += `<text x="${W - LW / 2}" y="${5 + i * LH + LH / 2 + (k - (a.length - 1) / 2) * 16 + 4}" font-size="13" font-weight="700" fill="#fff" text-anchor="middle" direction="rtl">${esc(ln)}</text>`; });
+    });
+    steps.forEach((s) => nxt[s.id].forEach((n) => {
+      const a = pos[s.id], b = pos[n.to]; if (!a || !b) return;
+      const planned = s.status === 'planned' || (byId[n.to] && byId[n.to].status === 'planned'), da = planned ? ' stroke-dasharray="6 4"' : '';
+      let d, lx, ly;
+      if (Math.abs((a.x + a.w / 2) - (b.x + b.w / 2)) < 4) { const down = b.y > a.y; d = `M${a.x + a.w / 2},${down ? a.y + a.h : a.y} V${down ? b.y - 2 : b.y + b.h + 2}`; lx = a.x + a.w / 2 + 6; ly = (a.y + b.y) / 2 + a.h / 2; }
+      else if (b.x < a.x) { const sx = a.x, sy = a.y + a.h / 2, tx = b.x + b.w + 2, ty = b.y + b.h / 2, mx = (sx + tx) / 2; d = `M${sx},${sy} H${mx} V${ty} H${tx}`; lx = mx + 4; ly = (sy + ty) / 2 - 4; }
+      else { const sx = a.x + a.w, sy = a.y + a.h / 2, tx = b.x - 2, ty = b.y + b.h / 2, my = Math.min(a.y, b.y) - 8; d = `M${sx},${sy} H${sx + 10} V${my} H${tx - 10} V${ty} H${tx}`; lx = (sx + tx) / 2; ly = my - 3; }
+      o += `<path d="${d}" fill="none" stroke="#64748B" stroke-width="1.5"${da} marker-end="url(#fa)"/>`;
+      if (n.label) o += `<text x="${lx}" y="${ly}" font-size="11" fill="#475569" text-anchor="middle" direction="rtl">${esc(n.label)}</text>`;
+    }));
+    steps.forEach((s) => {
+      const p = pos[s.id], t = s.type || 'task', planned = s.status === 'planned';
+      const fill = t === 'decision' ? '#FEF3C7' : t === 'start' || t === 'end' ? '#DCFCE7' : planned ? '#FFF7ED' : '#fff', stroke = planned ? '#EA580C' : '#1E3A8A', da = planned ? ' stroke-dasharray="5 3"' : '';
+      if (t === 'decision') o += `<polygon points="${p.x + p.w / 2},${p.y - 4} ${p.x + p.w},${p.y + p.h / 2} ${p.x + p.w / 2},${p.y + p.h + 4} ${p.x},${p.y + p.h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"${da}/>`;
+      else o += `<rect x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="${t === 'start' || t === 'end' ? 30 : 8}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"${da}/>`;
+      const ls = wrap(s.text, t === 'decision' ? 16 : 20);
+      ls.forEach((ln, k) => { o += `<text x="${p.x + p.w / 2}" y="${p.y + p.h / 2 + (k - (ls.length - 1) / 2) * 15 + 4}" font-size="12.5" fill="#0F172A" text-anchor="middle" direction="rtl">${esc(ln)}</text>`; });
+    });
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Segoe UI, Arial, sans-serif"><defs><marker id="fa" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><path d="M0,0 L9,3.5 L0,7 z" fill="#64748B"/></marker></defs><rect width="100%" height="100%" fill="#fff"/>${o}</svg>`;
+    return { svg, w: W, h: H };
+  }
   async function svgPng(d) {
     const img = new Image(), url = URL.createObjectURL(new Blob([d.svg], { type: 'image/svg+xml;charset=utf-8' }));
     await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url; });
@@ -70,7 +123,7 @@
     if (m.rules) B.push({ t: 'p', text: 'כללי עיצוב: ' + [m.rules.minTextLength ? 'שדות טקסט באורך מינימלי ' + m.rules.minTextLength : '', m.rules.domainCodeEqualsLabel ? 'בדומיינים הקוד והתווית זהים' : ''].filter(Boolean).join(' · ') + '.' });
     B.push({ t: 'table', head: ['שם טכני', 'כינוי', 'סוג', 'שדות', 'תיאור'], w: [18, 18, 14, 8, 42], rows: S.entities.map((e) => [e.name, e.alias, kind(e.kind), String(e.fields.length), e.description || '']) });
     B.push({ t: 'h1', text: '2. ישויות וקשרים' });
-    B.push({ t: 'erd' });
+    B.push({ t: 'diagram', d: erdSvg(S) });
     if ((S.relationships || []).length) B.push({ t: 'table', head: ['שם הקשר', 'אב', 'בן', 'מפתח באב', 'מפתח בבן', 'סוג'], w: [24, 16, 16, 12, 16, 16], rows: S.relationships.map((r) => [r.name, r.origin, r.destination, r.originKey, r.destKey, 'אחד לרבים · ' + (r.type === 'COMPOSITE' ? 'מורכב' : 'פשוט')]) });
     B.push({ t: 'h1', text: '3. ישויות ושדות' });
     S.entities.forEach((e) => {
@@ -107,7 +160,9 @@
       flows.forEach((f) => {
         const lane = {}; (f.lanes || []).forEach((l) => { lane[l.id] = l.label; });
         B.push({ t: 'h2', text: 'תהליך: ' + f.title });
-        B.push({ t: 'table', head: ['#', 'גורם', 'צעד', 'הערה', 'ישויות'], w: [5, 18, 38, 24, 15], rows: (f.steps || []).map((s, i) => [String(i + 1), lane[s.lane] || s.lane || '', s.text || '', s.note || '', (s.ent || []).join(', ')]) });
+        if ((f.steps || []).length) B.push({ t: 'diagram', d: flowSvg(f) });
+        const hn = (f.steps || []).some((x) => x.note), he = (f.steps || []).some((x) => (x.ent || []).length);
+        B.push({ t: 'table', head: ['#', 'גורם', 'צעד'].concat(hn ? ['הערה'] : []).concat(he ? ['ישויות'] : []), w: [5, 18, 38].concat(hn ? [24] : []).concat(he ? [15] : []), rows: (f.steps || []).map((x, i) => [String(i + 1), lane[x.lane] || x.lane || '', x.text || ''].concat(hn ? [x.note || ''] : []).concat(he ? [(x.ent || []).join(', ')] : [])) });
       });
     }
     return B;
@@ -123,14 +178,14 @@
       if (b.t === 'pb') return '<div class="pb"></div>';
       if (b.t === 'h1' || b.t === 'h2') return '<' + b.t + '>' + esc(b.text) + '</' + b.t + '>';
       if (b.t === 'p') return '<p>' + esc(b.text) + '</p>';
-      if (b.t === 'erd') return '<div class="erd">' + erd.svg + '</div>';
+      if (b.t === 'diagram') return '<div class="erd">' + b.d.svg + '</div>';
       if (b.t === 'table') return '<table><thead><tr>' + b.head.map((h, i) => '<th style="width:' + (b.w[i] * 100 / wsum(b.w)).toFixed(1) + '%">' + esc(h) + '</th>').join('') + '</tr></thead><tbody>' + b.rows.map((r) => '<tr>' + r.map((c) => '<td>' + esc(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
       return '';
     }).join('\n');
     return '<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>מסמך אפיון · ' + esc(S.meta.title || S.meta.key) + '</title><style>' + css + '</style></head><body>' + body + '</body></html>';
   }
   async function pdf(S, o) {
-    const B = model(S, o), erd = erdSvg(S), f = document.createElement('iframe');
+    const B = model(S, o), erd = null, f = document.createElement('iframe');
     f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     document.body.appendChild(f);
     f.contentDocument.open(); f.contentDocument.write(html(S, B, erd)); f.contentDocument.close();
@@ -146,7 +201,8 @@
   }
   async function word(S, o) {
     await loadDocx();
-    const D = window.docx, B = model(S, o), erd = erdSvg(S), png = await svgPng(erd);
+    const D = window.docx, B = model(S, o);
+    for (const b of B) if (b.t === 'diagram') b.png = await svgPng(b.d);
     const FONT = { ascii: 'Arial', hAnsi: 'Arial', cs: 'Arial' }, USABLE = 14800;
     const run = (text, o) => new D.TextRun(Object.assign({ text: String(text == null ? '' : text), rightToLeft: true, font: FONT }, o || {}));
     const para = (text, o, po) => new D.Paragraph(Object.assign({ bidirectional: true, alignment: D.AlignmentType.START, spacing: { after: 80 }, children: [run(text, o)] }, po || {}));
@@ -167,7 +223,7 @@
       else if (b.t === 'h1') kids.push(para(b.text, { bold: true, size: 36, color: '1E3A8A' }, { heading: D.HeadingLevel.HEADING_1, spacing: { before: 360, after: 120 }, keepNext: true }));
       else if (b.t === 'h2') kids.push(para(b.text, { bold: true, size: 28, color: '1E3A8A' }, { heading: D.HeadingLevel.HEADING_2, spacing: { before: 240, after: 80 }, keepNext: true }));
       else if (b.t === 'p') kids.push(para(b.text, { size: 21 }));
-      else if (b.t === 'erd') { const mw = 880, k = Math.min(1, mw / erd.w); kids.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, children: [new D.ImageRun({ type: 'png', data: png, transformation: { width: Math.round(erd.w * k), height: Math.round(erd.h * k) } })] })); }
+      else if (b.t === 'diagram') { const mw = 940, mh = 560, k = Math.min(1, mw / b.d.w, mh / b.d.h); kids.push(new D.Paragraph({ alignment: D.AlignmentType.CENTER, spacing: { after: 120 }, children: [new D.ImageRun({ type: 'png', data: b.png, transformation: { width: Math.round(b.d.w * k), height: Math.round(b.d.h * k) } })] })); }
       else if (b.t === 'table') { kids.push(table(b)); kids.push(new D.Paragraph({ spacing: { after: 120 }, children: [] })); }
     });
     const doc = new D.Document({
@@ -182,7 +238,7 @@
   }
   function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
 
-  window.SpecDoc = { model, erdSvg, word, pdf, html };
+  window.SpecDoc = { model, erdSvg, flowSvg, word, pdf, html };
   const mb = $('b-menu'), mp = $('menu-pop');
   if (mb && mp) { mb.onclick = (e) => { e.stopPropagation(); mp.hidden = !mp.hidden; }; document.addEventListener('click', (e) => { if (!mp.hidden && !mp.contains(e.target)) mp.hidden = true; }); }
   const act = (id, fn) => { const b = $(id); if (b) b.onclick = async () => { b.disabled = true; try { await fn(window.__designer.S, { client: !!($('doc-client') && $('doc-client').checked) }); } catch (e) { toast('שגיאת ייצוא: ' + e.message); } finally { b.disabled = false; const p = $('menu-pop'); if (p) p.hidden = true; } }; };
