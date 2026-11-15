@@ -4,7 +4,7 @@
   'use strict';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const uid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); })).toUpperCase();
-  const st = { tab: 'flow', flow: 'edit', step: 0, inbox: true, drafts: 0, outbox: 0, dlg: false, sent: 0, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visit: {}, db: null, sel: null, modal: null, S: null };
+  const st = { tab: 'flow', flow: 'edit', step: 0, inbox: true, drafts: 0, outbox: 0, dlg: false, sent: 0, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visits: [], pi: 0, vi: 0, db: null, sel: null, modal: null, S: null };
 
   /* ---------- מבנה הסכמה ---------- */
   function model(S) {
@@ -137,12 +137,20 @@ ${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', '
   }
   function s123Phone(S, M, title) {
     const loc = st.editId ? '' : `<div style="padding:12px 16px;border-bottom:1px solid #EEEEEE"><div style="font-size:15px">מיקום השלט</div><div style="margin-top:6px;background:#E8F5E9;border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center"><span style="color:#1B5E20">⌖ נקלט GPS · דיוק ±4 מ׳</span><span style="color:${GREEN}">מפה</span></div></div>`;
-    const partsHtml = st.parts.map((p, i) => `<div style="margin:8px 12px;border:1px solid #E0E0E0;border-radius:8px;overflow:hidden"><div style="display:flex;justify-content:space-between;align-items:center;background:#F5F5F5;padding:6px 12px"><b>${esc(M.A.ent.alias)} ${i + 1}</b><span onclick="SimA.rp(${i})" style="color:#C62828;cursor:pointer">מחק</span></div><div style="padding:0 12px 8px">${ent_fields(S, M.A.ent, p, st.sign, `SimA.pv.bind(null,${i})`)}</div></div>`).join('');
+    const hdr = (t) => `<div style="background:#EEEEEE;padding:8px 16px;font-weight:600;font-size:14px;color:#424242;margin-top:6px">${t}</div>`;
+    /* חזרה (repeat) כמו ב-Survey123: תת-טופס של הרשומה הנוכחית + סרגל דפדוף "1 מתוך N" עם + ומחיקה */
+    const repeat = (title, arr, idx, kind, ent, up, onchFn) => {
+      const n = arr.length, i = Math.min(idx, Math.max(0, n - 1));
+      const btn = (t, on, dis, c) => `<span onclick="${dis ? '' : on}" style="width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:18px;color:${dis ? '#BDBDBD' : c || '#424242'};cursor:${dis ? 'default' : 'pointer'}">${t}</span>`;
+      const bar = `<div dir="ltr" style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-top:1px solid #E0E0E0;background:#FAFAFA">${btn('🗑', `SimA.del('${kind}')`, !n, '#C62828')}<span style="display:inline-flex;align-items:center;gap:6px">${btn('‹', `SimA.pg('${kind}',-1)`, i <= 0)}<span style="font-size:14px;min-width:70px;text-align:center">${n ? (i + 1) + ' מתוך ' + n : '0 מתוך 0'}</span>${btn('›', `SimA.pg('${kind}',1)`, i >= n - 1)}</span><span onclick="SimA.add('${kind}')" title="הוסף" style="width:36px;height:36px;border-radius:50%;background:${GREEN};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer">+</span></div>`;
+      const body = n ? `<div style="padding:0 16px 8px">${mFields(S, ent, arr[i], up, `${onchFn}.bind(null,${i})`)}</div>` : `<div style="padding:14px 16px;color:#757575">אין רשומות. לחץ + להוספה.</div>`;
+      return hdr(title) + `<div style="margin:0 8px 8px;border:1px solid #E0E0E0;border-radius:8px;overflow:hidden;background:#fff">${body}${bar}</div>`;
+    };
+    const rep = repeat(esc(M.A.ent.alias), st.parts, st.pi, 'parts', M.A.ent, st.sign, 'SimA.pv');
     const nOld = st.editId && M.B ? st.db.B.filter((v) => v.ParentGlobalID === st.editId).length : 0;
-    const vis = M.B && st.variant === 'sign' ? `<div style="background:#EEEEEE;padding:8px 16px;font-weight:600;font-size:14px;color:#424242">${st.editId ? 'ביקור חדש' : 'ביקור ראשון'} · ${esc(M.B.ent.alias)}</div>${st.editId ? `<div style="padding:6px 16px;color:#757575;font-size:12px">קיימים ${nOld} ביקורים קודמים (לא מוצגים לעריכה)</div>` : ''}<div style="padding:0 16px 8px">${ent_fields(S, M.B.ent, st.visit, st.sign, 'SimA.vv')}</div>` : '';
+    const vis = M.B && st.variant === 'sign' ? (st.editId ? `<div style="padding:6px 16px;color:#757575;font-size:12px">קיימים ${nOld} ביקורים קודמים (לא מוצגים לעריכה; כאן מוסיפים ביקורים חדשים)</div>` : '') + repeat(esc(M.B.ent.alias), st.visits, st.vi, 'visits', M.B.ent, st.sign, 'SimA.vv') : '';
     const bottom = `<div dir="ltr" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-top:1px solid #E0E0E0;background:#fff"><span style="color:#757575;font-size:12px">${st.editId ? 'עריכה' : 'שלט חדש'}</span><span onclick="SimA.dlg(true)" title="שליחה" style="width:48px;height:48px;border-radius:50%;background:${GREEN};color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.3)">✓</span></div>`;
     const dlg = st.dlg ? `<div dir="rtl" style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end"><div style="background:#fff;width:100%;border-radius:14px 14px 0 0;padding:6px 0"><div onclick="SimA.send()" style="padding:14px 18px;cursor:pointer">שלח עכשיו</div><div onclick="SimA.outbox()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בתיבה יוצאת</div><div onclick="SimA.draft()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בטיוטות</div><div onclick="SimA.dlg(false)" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE;color:#757575">המשך מילוי</div></div></div>` : '';
-    const rep = `<div style="background:#EEEEEE;padding:8px 16px;font-weight:600;font-size:14px;color:#424242;margin-top:6px">${esc(M.A.ent.alias)}</div>${partsHtml}<div style="padding:8px 16px"><span onclick="SimA.ap()" style="color:${GREEN};cursor:pointer;font-weight:600">＋ הוסף ${esc(M.A.ent.alias)}</span></div>`;
     return sPhone(loc + mFields(S, M.main, st.sign, {}, 'SimA.sv') + rep + vis, { title: esc(title), back: true, bottom, overlay: dlg });
   }
   const ent_fields = (S, ent, vals, up, onch) => mFields(S, ent, vals, up, onch);
@@ -252,8 +260,10 @@ ${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', '
   const rr = () => { if (window.A && A.refresh) A.refresh(); };
   window.SimA = {
     tab(k) { st.tab = k; rr(); }, variant(v) { st.variant = v; st.modal = null; rr(); }, auto(c) { st.auto = c; rr(); },
-    sv(n, v) { st.sign[n] = v; rr(); }, pv(i, n, v) { st.parts[i][n] = v; rr(); }, vv(n, v) { st.visit[n] = v; rr(); },
-    ap() { st.parts.push({}); rr(); }, rp(i) { st.parts.splice(i, 1); rr(); },
+    sv(n, v) { st.sign[n] = v; rr(); }, pv(i, n, v) { st.parts[i][n] = v; rr(); }, vv(i, n, v) { st.visits[i][n] = v; rr(); },
+    add(k) { const a = k === 'parts' ? st.parts : st.visits; a.push({}); if (k === 'parts') st.pi = a.length - 1; else st.vi = a.length - 1; rr(); },
+    del(k) { const a = k === 'parts' ? st.parts : st.visits; const i = k === 'parts' ? st.pi : st.vi; a.splice(i, 1); if (k === 'parts') st.pi = Math.max(0, st.pi - 1); else st.vi = Math.max(0, st.vi - 1); rr(); },
+    pg(k, d) { if (k === 'parts') st.pi = Math.max(0, Math.min(st.parts.length - 1, st.pi + d)); else st.vi = Math.max(0, Math.min(st.visits.length - 1, st.vi + d)); rr(); },
     send() {
       const S = st.S, M = model(S); ensure(S);
       let s; st.dlg = false;
@@ -267,22 +277,22 @@ ${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', '
         s = Object.assign({}, st.sign, { GlobalID: uid() }); st.db.main.push(s);
         st.parts.forEach((p) => st.db.A.push(Object.assign({}, p, { GlobalID: uid(), ParentGlobalID: s.GlobalID })));
       }
-      if (M.B && st.variant === 'sign' && Object.keys(st.visit).length) addVisit(S, M, s, s, Object.assign({}, st.visit));
-      st.sign = {}; st.parts = []; st.visit = {}; st.editId = null; st.sent += 1; st.sel = st.db.main.indexOf(s);
+      if (M.B && st.variant === 'sign') st.visits.forEach((v) => { if (Object.keys(v).length) addVisit(S, M, s, s, Object.assign({}, v)); });
+      st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.editId = null; st.sent += 1; st.sel = st.db.main.indexOf(s);
       if (st.tab === 'flow') st.step = FLOWS[st.flow].length - 1; else st.tab = 'fm';
       rr();
     },
     dlg(v) { st.dlg = v; rr(); },
-    outbox() { st.dlg = false; st.outbox += 1; st.sign = {}; st.parts = []; st.visit = {}; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
-    draft() { st.dlg = false; st.drafts += 1; st.sign = {}; st.parts = []; st.visit = {}; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
-    flowSet(f) { st.flow = f; st.step = 0; st.editId = null; st.sign = {}; st.parts = []; st.visit = {}; rr(); },
+    outbox() { st.dlg = false; st.outbox += 1; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
+    draft() { st.dlg = false; st.drafts += 1; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
+    flowSet(f) { st.flow = f; st.step = 0; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; rr(); },
     step(n) { st.step = n; rr(); }, inboxSet(c) { st.inbox = c; rr(); },
     pick(i) { st.sel = i; st.step = 1; rr(); }, sel0(i) { st.sel = i; rr(); },
     startEdit() {
       const sg = st.db.main[st.sel]; if (!sg) return;
-      st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visit = {}; st.step = 3; rr();
+      st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visits = []; st.pi = 0; st.vi = 0; st.step = 3; rr();
     },
-    startNew() { st.editId = null; st.sign = {}; st.parts = []; st.visit = {}; st.step = 1; rr(); },
+    startNew() { st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.step = 1; rr(); },
     seed() { seed(st.S); st.sel = null; rr(); }, sel(i) { st.sel = i; st.modal = null; rr(); },
     addv() { st.modal = { v: {}, part: '' }; rr(); }, mv(n, v) { st.modal.v[n] = v; rr(); }, mp(id) { st.modal.part = id; rr(); }, cancel() { st.modal = null; rr(); },
     savev() {
