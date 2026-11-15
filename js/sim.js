@@ -4,7 +4,7 @@
   'use strict';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const uid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); })).toUpperCase();
-  const st = { online: true, loc: null, pendingGeo: false, tab: 'flow', flow: 'edit', step: 0, inbox: true, drafts: 0, outbox: 0, dlg: false, sent: 0, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visits: [], pi: 0, vi: 0, db: null, sel: null, modal: null, S: null };
+  const st = { online: true, loc: null, pendingGeo: false, tab: 'flow', flow: 'edit', step: 0, inbox: true, col: {}, drafts: 0, outbox: 0, dlg: false, sent: 0, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visits: [], pi: 0, vi: 0, db: null, sel: null, modal: null, S: null };
 
   /* ---------- מבנה הסכמה ---------- */
   function model(S) {
@@ -100,72 +100,104 @@
     st.pendingGeo = !st.online;
   }
 
-  /* ---------- מסכי אפליקציית Survey123 לנייד (קירוב לפי תיעוד Esri) ---------- */
-  const GREEN = '#2E7D32';
+  /* ---------- מסכי אפליקציית Survey123 (מכויל לפי צילומי מסך אמיתיים מהאפליקציה) ---------- */
+  const GREEN = '#2E7D32', BODY = '#EAF2E9', BAND = '#D3E2D1', BLUE = '#1F5FA8', LINE = '#ADB5AB';
+  const svg = (p, c, s) => `<svg width="${s || 24}" height="${s || 24}" viewBox="0 0 24 24" fill="none" stroke="${c || '#fff'}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none">${p}</svg>`;
+  const IC = {
+    menu: svg('<path d="M3 6h18M3 12h18M3 18h18"/>'),
+    gps: (c) => svg('<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>', c || '#fff'),
+    cal: svg('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', '#2F6FB5', 22),
+    inbox: svg('<path d="M3 13l2.5-8h13L21 13v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/><path d="M12 3v6M9 6.5L12 9l3-2.5"/>', '#fff', 32),
+    send: svg('<path d="M3 11l18-8-7 18-3-8z"/><path d="M11 13L21 3"/>', '#fff', 30),
+    pen: svg('<path d="M4 20l1-4 11-11 3 3L8 19z"/>', '#fff', 28),
+    folder: svg('<path d="M3 6h6l2 2h10v11H3z"/>', '#6B766A', 30),
+    camera: svg('<path d="M3 8h4l2-3h6l2 3h4v12H3z"/><circle cx="12" cy="13" r="3.5"/>', '#6B766A', 30),
+    trash: (c) => svg('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>', c, 24),
+    plus: svg('<path d="M12 5v14M5 12h14"/>', '#444', 22)
+  };
   function sPhone(inner, o) {
     o = o || {};
+    const nav = o.close ? '✕' : o.back ? '›' : '';
     return `<div style="position:relative;width:390px;max-width:100%;border:8px solid #0F172A;border-radius:30px;background:#fff;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18);font-family:Roboto,'Segoe UI',Tahoma,sans-serif">
 <div dir="ltr" style="background:${GREEN};color:#fff;font-size:11px;display:flex;justify-content:space-between;padding:4px 14px"><span>9:41</span><span>▂▄▆ 100%</span></div>
-<div dir="rtl" style="background:${GREEN};color:#fff;display:flex;align-items:center;gap:10px;padding:10px 12px"><span style="font-size:18px">${o.back ? '→' : '☰'}</span><b style="flex:1">${o.title || ''}</b>${o.right || ''}</div>
-<div dir="rtl" style="max-height:540px;overflow:auto;text-align:right;color:#212121">${inner}</div>${o.bottom || ''}${o.overlay || ''}</div>`;
+<div dir="rtl" style="background:${GREEN};color:#fff;display:flex;align-items:center;gap:14px;padding:12px 14px"><span style="font-size:${o.close ? 20 : 28}px;width:22px;text-align:center;line-height:1">${nav}</span><b style="flex:1;font-size:21px;font-weight:500">${o.title || ''}</b>${IC.gps()}${IC.menu}</div>
+<div dir="rtl" style="max-height:560px;overflow:auto;text-align:right;color:#212121;background:${o.bg || '#fff'}">${inner}</div>${o.bottom || ''}${o.overlay || ''}</div>`;
   }
-  const badge = (n, c) => n ? `<span style="background:${c};color:#fff;border-radius:50%;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px">${n}</span>` : '';
+  /* כפתור "פיל" של מסך הכניסה: עיגול צבעוני מימין, כותרת, מונה וחץ משמאל */
+  const pill = (bg, icon, t, cnt, onc) => `<div ${onc ? `onclick="${onc}"` : ''} dir="rtl" style="display:flex;align-items:center;gap:14px;background:#fff;border-radius:40px;box-shadow:0 1px 6px rgba(0,0,0,.2);padding:6px 8px 6px 18px;margin:0 10px 10px;cursor:${onc ? 'pointer' : 'default'}"><span style="width:56px;height:56px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-size:38px;line-height:1">${icon}</span><b style="flex:1;font-size:22px">${t}</b>${cnt != null ? `<span style="font-size:17px;font-weight:600;color:#333;margin-left:6px">${cnt}</span>` : ''}<span style="color:#777;font-size:26px">‹</span></div>`;
   function s123Home(S, M) {
-    const row = (icon, t, right, onc) => `<div ${onc ? `onclick="${onc}"` : ''} style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #EEEEEE;cursor:${onc ? 'pointer' : 'default'}"><span style="width:28px;text-align:center;font-size:18px;color:${GREEN}">${icon}</span><span style="flex:1;font-size:16px">${t}</span>${right || ''}<span style="color:#9E9E9E">‹</span></div>`;
-    const inbox = st.inbox ? row('⬇', 'Inbox', badge(st.db ? st.db.main.length : 0, '#757575'), "SimA.step(2)") : '';
-    const inner = `<div style="padding:18px 16px 8px;text-align:center"><div style="font-size:19px;font-weight:600">${esc(S.meta.title || 'סקר שילוט')}</div></div>
-<div style="padding:8px 16px 16px"><button onclick="SimA.startNew()" style="width:100%;border:0;border-radius:6px;background:${GREEN};color:#fff;font-size:18px;padding:16px;cursor:pointer">איסוף</button></div>
-${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', 'תיבה יוצאת', badge(st.outbox, '#2E7D32'))}${row('✓', 'נשלחו', '')}`;
-    return sPhone(inner, { title: 'Survey123', right: '<span>⋮</span>' });
+    const dt = new Date(), fd = (x) => `${x.getDate()}.${x.getMonth() + 1}.${x.getFullYear()}`, ft = (x) => `${x.getHours()}:${String(x.getMinutes()).padStart(2, '0')}`;
+    const card = `<div dir="rtl" style="display:flex;gap:12px;padding:14px 12px;align-items:flex-start"><div style="flex:none;width:130px;height:72px;border-radius:6px;background:linear-gradient(135deg,#6FA86B,#2E5E2A);display:flex;align-items:center;justify-content:center;font-size:40px">🌲</div><div style="flex:1;line-height:1.35"><div style="font-weight:700;font-size:19px;margin-bottom:4px">${esc(S.meta.title || 'סקר שילוט')}</div><div style="font-size:14px;color:#444">בעלים: ${esc(S.meta.owner || '—')}</div><div style="font-size:14px;color:#444">נוצר: ${fd(dt)} ${ft(dt)}</div><div style="font-size:14px;color:#444">תאריך שינוי: ${fd(dt)} ${ft(dt)}</div></div></div>`;
+    const pills = pill('#3B78B5', '+', 'איסוף', null, 'SimA.startNew()')
+      + (st.inbox ? pill('#12B5EC', IC.inbox, 'דואר נכנס', st.db ? st.db.main.length : 0, 'SimA.step(2)') : '')
+      + (st.drafts ? pill('#F28E2B', IC.pen, 'טיוטות', st.drafts) : '')
+      + (st.outbox ? pill('#2E7D32', IC.send, 'דואר יוצא', st.outbox) : '')
+      + pill('#7F7F7F', IC.send, 'נשלח', st.sent);
+    return sPhone(`<div style="min-height:540px;display:flex;flex-direction:column;background:#F2F2F2">${card}<div style="margin-top:auto;padding-top:20px">${pills}</div></div>`, { title: esc(S.meta.title || 'סקר שילוט'), back: true, bg: '#F2F2F2' });
   }
   function s123Inbox(S, M) {
     const sg = st.sel != null ? st.db.main[st.sel] : null;
-    if (!st.inbox) return sPhone(`<div style="padding:24px 16px;color:#757575;text-align:center">התיקייה Inbox אינה זמינה בסקר זה.<br><small>הפעלה: הגדרות הסקר › Inbox (מופעל).</small></div>`, { title: 'Inbox', back: true });
-    const card = sg ? `<div onclick="SimA.startEdit()" style="margin:10px 12px;border:1px solid #E0E0E0;border-radius:8px;padding:12px;cursor:pointer;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12)"><div style="font-weight:600">${esc(sg.SignID || 'שלט')}</div><div style="color:#757575;font-size:13px">${esc(sg.SignModel || '')}</div><div style="margin-top:4px">${chipHtml(sg.SignStatus)}</div></div>` : '<div style="padding:16px;color:#757575">אין רשומות</div>';
-    const inner = `<div style="padding:8px 12px;color:#757575;font-size:12px">מסונן לפי q:globalId · רשומה אחת</div>${card}<div style="padding:4px 16px;color:#757575;font-size:12px">בקישור עם update=true הרשימה מתרעננת לפני הפתיחה. רשומה יחידה נפתחת אוטומטית.</div>`;
-    return sPhone(inner, { title: 'Inbox', back: true, right: '<span title="רענון">⟳</span>' });
+    if (!st.inbox) return sPhone(`<div style="padding:24px 16px;color:#757575;text-align:center">התיקייה דואר נכנס אינה זמינה בסקר זה.<br><small>הפעלה: הגדרות הסקר › Inbox (מופעל).</small></div>`, { title: 'דואר נכנס', back: true });
+    const card = sg ? `<div onclick="SimA.startEdit()" style="margin:10px 12px;border-radius:8px;padding:12px;cursor:pointer;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2)"><div style="font-weight:700;font-size:17px">${esc(sg.SignID || 'שלט')}</div><div style="color:#757575;font-size:13px">${esc(sg.SignModel || '')}</div><div style="margin-top:4px">${chipHtml(sg.SignStatus)}</div></div>` : '<div style="padding:16px;color:#757575">אין רשומות</div>';
+    const inner = `<div style="min-height:540px;background:#F2F2F2"><div style="padding:8px 12px;color:#757575;font-size:12px">מסונן לפי q:globalId · רשומה אחת</div>${card}<div style="padding:4px 16px;color:#757575;font-size:12px">בקישור עם update=true הרשימה מתרעננת לפני הפתיחה. רשומה יחידה נפתחת אוטומטית.</div></div>`;
+    return sPhone(inner, { title: 'דואר נכנס', back: true, bg: '#F2F2F2' });
   }
+  /* פס קבוצה מתקפל (begin group עם appearance=collapsible): כותרת מודגשת + משולש משמאל לטקסט */
+  const band = (t, key) => `<div onclick="SimA.grp('${key}')" dir="rtl" style="background:${BAND};padding:13px 16px;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:14px"><span>${t}</span><span style="font-size:13px;color:#444">${st.col[key] ? '◂' : '▾'}</span></div>`;
   function mControl(S, ent, f, vals, up, onch) {
     const d = dom(S, f), v = vals[f.name] == null ? '' : vals[f.name], ro = readonly(f);
-    const lab = `<div style="font-size:15px;margin:14px 0 2px">${esc(f.alias || f.name)}</div>`;
-    const line = 'width:100%;border:0;border-bottom:1px solid #9E9E9E;border-radius:0;padding:6px 0;font:inherit;background:transparent;box-sizing:border-box;outline:none';
+    const lab = `<div style="font-size:16px;margin:16px 0 5px;color:#222">${esc(f.alias || f.name)}</div>`;
+    const box = `position:relative;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid ${LINE};border-radius:3px;min-height:42px;padding:0 10px;box-sizing:border-box`;
+    const clr = (has) => has && !ro ? `<span onclick="${onch}('${f.name}','')" style="position:relative;z-index:2;color:#5F6B5C;font-size:17px;cursor:pointer;line-height:1">⊗</span>` : '';
+    const val = (t, ph) => `<span style="flex:1;color:${t ? BLUE : '#9AA39A'};min-height:20px">${t ? esc(t) : esc(ph || '')}</span>`;
+    const inpS = `flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;color:${BLUE};padding:10px 0`;
     let inp;
-    if (ro) inp = `<div style="color:#757575;border-bottom:1px dotted #BDBDBD;padding:6px 0">${v ? esc(v) : f.calc ? (st.loc ? (st.online ? '—' : 'תחושב בשרת אחרי סנכרון') : 'יחושב לאחר בחירת מיקום') : '—'}</div>`;
+    if (ro) inp = `<div style="${box};background:#F4F6F3;color:${v ? BLUE : '#7A837A'}">${v ? esc(v) : f.calc ? (st.loc ? (st.online ? '—' : 'תחושב בשרת אחרי סנכרון') : 'יחושב לאחר בחירת מיקום') : '—'}</div>`;
     else if (d) {
       const pf = parentField(S, ent, f); const pv = pf ? vals[pf.name] : null;
       const opts = d.values.filter((x) => !pf || !x.parent || x.parent === pv);
-      if (pf && !pv) inp = `<div style="color:#9E9E9E";border-bottom:1px solid #BDBDBD;padding:6px 0">יש לבחור קודם: ${esc(pf.alias)}</div>`;
-      else if (opts.length <= 5) inp = opts.map((o) => `<div data-v="${esc(o.label)}" onclick="${onch}('${f.name}',this.dataset.v)" style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer"><span style="width:18px;height:18px;border-radius:50%;border:2px solid ${o.label === v ? GREEN : '#757575'};display:inline-flex;align-items:center;justify-content:center">${o.label === v ? `<span style="width:9px;height:9px;border-radius:50%;background:${GREEN}"></span>` : ''}</span>${esc(o.label)}</div>`).join('');
-      else inp = `<select style="${line}" onchange="${onch}('${f.name}',this.value)"><option value="">בחר…</option>${opts.map((o) => `<option ${o.label === v ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
-    } else if (f.type === 'DATE') inp = `<input type="date" style="${line}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">`;
-    else if (['SHORT', 'LONG', 'FLOAT', 'DOUBLE'].includes(f.type)) inp = `<input type="number" inputmode="numeric" style="${line}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">`;
-    else if (Number(f.length) >= 500) inp = `<textarea rows="2" style="${line}" onchange="${onch}('${f.name}',this.value)">${esc(v)}</textarea>`;
-    else inp = `<input type="text" style="${line}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">`;
+      if (pf && !pv) inp = `<div style="${box};color:#8A938A;background:#F4F6F3">יש לבחור קודם: ${esc(pf.alias)}</div>`;
+      else if (f.appearance === 'radio') inp = opts.map((o) => `<div data-v="${esc(o.label)}" onclick="${onch}('${f.name}',this.dataset.v)" style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer"><span style="width:18px;height:18px;border-radius:50%;border:2px solid ${o.label === v ? GREEN : '#757575'};display:inline-flex;align-items:center;justify-content:center">${o.label === v ? `<span style="width:9px;height:9px;border-radius:50%;background:${GREEN}"></span>` : ''}</span>${esc(o.label)}</div>`).join('');
+      else inp = `<div style="${box}">${val(v, '')}${clr(v)}<span style="color:#555;font-size:15px">⌄</span><select style="position:absolute;inset:0;width:100%;opacity:0;cursor:pointer" onchange="${onch}('${f.name}',this.value)"><option value=""></option>${opts.map((o) => `<option ${o.label === v ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select></div>`;
+    } else if (f.type === 'DATE') {
+      const dd = v ? new Date(v) : null, t = dd && !isNaN(dd) ? dd.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+      inp = `<div style="${box}">${IC.cal}${val(t, 'תאריך')}${clr(v)}<input type="date" value="${esc(v)}" style="position:absolute;inset:0;width:100%;opacity:0;cursor:pointer" onchange="${onch}('${f.name}',this.value)"></div>`;
+    } else if (['SHORT', 'LONG', 'FLOAT', 'DOUBLE'].includes(f.type)) inp = `<div style="${box}"><input type="number" inputmode="numeric" style="${inpS}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">${clr(v)}</div>`;
+    else if (Number(f.length) >= 500) inp = `<div style="${box}"><textarea rows="3" style="${inpS}" onchange="${onch}('${f.name}',this.value)">${esc(v)}</textarea></div>`;
+    else inp = `<div style="${box}"><input type="text" style="${inpS}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">${clr(v)}</div>`;
     return lab + inp;
   }
-  function mFields(S, ent, vals, up, onch) {
-    const groups = {}; ent.fields.forEach((f) => { if (isShown(f, vals, up)) (groups[f.category || 'כללי'] = groups[f.category || 'כללי'] || []).push(f); });
-    return Object.keys(groups).map((g) => `<div style="background:#EEEEEE;padding:8px 16px;font-weight:600;font-size:14px;color:#424242">${esc(g)}</div><div style="padding:0 16px 8px">${groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`).join('');
+  const attach = (ent) => ent.attachments ? `<div style="font-size:16px;margin:18px 0 4px">תמונה/ות</div><div style="display:flex;gap:30px;justify-content:center;padding:8px 0">${IC.folder}${IC.camera}</div>` : '';
+  function mFields(S, ent, vals, up, onch, flat) {
+    const vis = ent.fields.filter((f) => isShown(f, vals, up));
+    if (flat) return `<div style="padding:0 10px 4px">${vis.map((f) => mControl(S, ent, f, vals, up, onch)).join('')}${attach(ent)}</div>`;
+    const groups = {}; vis.forEach((f) => (groups[f.category || 'כללי'] = groups[f.category || 'כללי'] || []).push(f));
+    return Object.keys(groups).map((g) => { const k = ent.name + '|' + g; return band(esc(g), k) + (st.col[k] ? '' : `<div style="padding:0 14px 8px">${groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`); }).join('') + `<div style="padding:0 14px">${attach(ent)}</div>`;
   }
+  const dms = (v, p, n) => { const a = Math.abs(v), d = Math.floor(a), m = Math.floor((a - d) * 60); return d + '°' + m + "'" + (v >= 0 ? p : n); };
   function s123Phone(S, M, title) {
-    const pin = st.loc ? `<div style="position:absolute;left:${st.loc.x * 100}%;top:${st.loc.y * 100}%;transform:translate(-50%,-100%);font-size:26px;line-height:1">📍</div>` : '';
-    const zlab = (n, st2) => `<span style="position:absolute;${st2};font-size:10px;color:#2E7D32;opacity:.8">יער דוגמה ${n}</span>`;
-    const loc = st.editId ? '' : `<div style="padding:12px 16px;border-bottom:1px solid #EEEEEE"><div style="font-size:15px">מיקום השלט <span style="color:#757575;font-size:12px">(לחץ על המפה להצבת הנקודה)</span></div><div onclick="SimA.pinAt(event,this)" style="position:relative;height:180px;margin-top:6px;border-radius:8px;overflow:hidden;background:#C8E6C9;border:1px solid #A5D6A7;cursor:crosshair"><div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed #81C784"></div><div style="position:absolute;top:50%;left:0;right:0;border-top:1px dashed #81C784"></div>${zlab(1, 'right:6px;top:4px')}${zlab(2, 'left:6px;top:4px')}${zlab(3, 'right:6px;bottom:4px')}${zlab(4, 'left:6px;bottom:4px')}${pin}</div><div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center"><span style="color:${st.loc ? '#1B5E20' : '#757575'};font-size:13px">${st.loc ? '⌖ נקודה נבחרה · דיוק ±4 מ׳' : 'לא נבחר מיקום'}</span><span onclick="SimA.gps()" style="color:${GREEN};cursor:pointer;font-weight:600;font-size:13px">⌖ קלוט GPS</span></div></div>`;
-    const hdr = (t) => `<div style="background:#EEEEEE;padding:8px 16px;font-weight:600;font-size:14px;color:#424242;margin-top:6px">${t}</div>`;
-    /* חזרה (repeat) כמו ב-Survey123: תת-טופס של הרשומה הנוכחית + סרגל דפדוף "1 מתוך N" עם + ומחיקה */
+    /* שאלת מיקום (geopoint): שורת קואורדינטות + דיוק, כפתור ⌖, מפה קטנה עם סיכה כחולה ועיגולי רשומות קיימות */
+    const L = st.loc, lat = L ? 31.80 + (0.5 - L.y) * 0.04 : 0, lon = L ? 34.90 + (L.x - 0.5) * 0.04 : 0;
+    const dots = ((st.db && st.db.main) || []).slice(0, 10).map((s, i) => `<span style="position:absolute;left:${(i * 37 + 11) % 88 + 5}%;top:${(i * 53 + 7) % 68 + 12}%;width:16px;height:16px;border-radius:50%;background:${statusColor(s.SignStatus)};border:2px solid #fff;opacity:.85;transform:translate(-50%,-50%);pointer-events:none"></span>`).join('');
+    const pin = L ? `<span style="position:absolute;left:${L.x * 100}%;top:${L.y * 100}%;width:46px;height:46px;border-radius:50%;background:rgba(47,127,193,.22);border:1px solid rgba(47,127,193,.6);transform:translate(-50%,-50%);pointer-events:none"></span><svg width="26" height="34" viewBox="0 0 26 34" style="position:absolute;left:${L.x * 100}%;top:${L.y * 100}%;transform:translate(-50%,-100%);pointer-events:none"><path d="M13 33C13 33 2 20 2 12a11 11 0 0122 0c0 8-11 21-11 21z" fill="#2F7FC1" stroke="#fff" stroke-width="2"/><circle cx="13" cy="12" r="4" fill="#fff"/></svg>` : '';
+    const zlab = (n, p) => `<span style="position:absolute;${p};font-size:10px;color:#4F7A4B;opacity:.85;pointer-events:none">יער דוגמה ${n}</span>`;
+    const map = `<div onclick="SimA.pinAt(event,this)" style="position:relative;height:130px;overflow:hidden;background:#E6EDDA;cursor:crosshair"><svg width="100%" height="100%" viewBox="0 0 100 60" preserveAspectRatio="none" style="position:absolute;inset:0;pointer-events:none"><path d="M0 44C25 34 48 58 100 22" stroke="#fff" stroke-width="2.2" fill="none"/><path d="M0 14C30 20 55 6 100 12" stroke="#C9D6B8" stroke-width="1" fill="none"/><path d="M0 52C35 46 60 54 100 46" stroke="#C9D6B8" stroke-width="1" fill="none"/><path d="M50 0V60M0 30H100" stroke="#9FBE97" stroke-width=".5" stroke-dasharray="2 2"/></svg>${zlab(1, 'right:6px;top:4px')}${zlab(2, 'left:6px;top:4px')}${zlab(3, 'right:6px;bottom:14px')}${zlab(4, 'left:6px;bottom:14px')}${dots}${pin}<span style="position:absolute;left:6px;bottom:2px;font-size:9px;color:#555;pointer-events:none">50 מ׳</span><span style="position:absolute;right:6px;bottom:2px;font-size:9px;color:#777;pointer-events:none">Esri</span></div>`;
+    const coord = L ? `<span dir="ltr" style="flex:1;font-size:13px;color:${BLUE};text-align:right">${dms(lat, 'N', 'S')} ${dms(lon, 'E', 'W')} ± 4.0 m</span>` : `<span style="flex:1;font-size:13px;color:#8A938A">לחץ על המפה להצבת הנקודה, או על ⌖ לקליטת GPS</span>`;
+    const loc = st.editId ? '' : `<div style="padding:0 14px"><div style="font-size:16px;margin:16px 0 5px">מיקום השלט</div><div style="background:#fff;border:1px solid ${LINE};border-radius:3px;overflow:hidden"><div dir="rtl" style="display:flex;align-items:center;gap:10px;padding:6px 10px"><span onclick="SimA.gps()" style="cursor:pointer;display:flex">${IC.gps('#2F6FB5')}</span>${coord}</div>${map}</div></div>`;
+    /* חזרה (repeat): פס כותרת מתקפל, תת-טופס של הרשומה הנוכחית, ופס דפדוף: + משמאל, "1 מתוך N" באמצע, פח מימין */
     const repeat = (title, arr, idx, kind, ent, up, onchFn) => {
-      const n = arr.length, i = Math.min(idx, Math.max(0, n - 1));
-      const btn = (t, on, dis, c) => `<span onclick="${dis ? '' : on}" style="width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:18px;color:${dis ? '#BDBDBD' : c || '#424242'};cursor:${dis ? 'default' : 'pointer'}">${t}</span>`;
-      const bar = `<div dir="ltr" style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-top:1px solid #E0E0E0;background:#FAFAFA">${btn('🗑', `SimA.del('${kind}')`, !n, '#C62828')}<span style="display:inline-flex;align-items:center;gap:6px">${btn('‹', `SimA.pg('${kind}',-1)`, i <= 0)}<span style="font-size:14px;min-width:70px;text-align:center">${n ? (i + 1) + ' מתוך ' + n : '0 מתוך 0'}</span>${btn('›', `SimA.pg('${kind}',1)`, i >= n - 1)}</span><span onclick="SimA.add('${kind}')" title="הוסף" style="width:36px;height:36px;border-radius:50%;background:${GREEN};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer">+</span></div>`;
-      const body = n ? `<div style="padding:0 16px 8px">${mFields(S, ent, arr[i], up, `${onchFn}.bind(null,${i})`)}</div>` : `<div style="padding:14px 16px;color:#757575">אין רשומות. לחץ + להוספה.</div>`;
-      return hdr(title) + `<div style="margin:0 8px 8px;border:1px solid #E0E0E0;border-radius:8px;overflow:hidden;background:#fff">${body}${bar}</div>`;
+      const n = arr.length, i = Math.min(idx, Math.max(0, n - 1)), key = 'rep|' + kind;
+      const arrow = (t, on, dis) => `<span onclick="${dis ? '' : on}" style="font-size:22px;padding:0 6px;color:${dis ? '#BDBDBD' : '#444'};cursor:${dis ? 'default' : 'pointer'}">${t}</span>`;
+      const bar = `<div dir="ltr" style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 6px;border:1px solid ${LINE};border-radius:26px;background:#F4F8F3;padding:4px 8px"><span onclick="SimA.add('${kind}')" title="הוסף" style="width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid ${LINE};display:flex;align-items:center;justify-content:center;cursor:pointer">${IC.plus}</span><span style="display:flex;align-items:center;font-size:15px">${n > 1 ? arrow('‹', `SimA.pg('${kind}',-1)`, i <= 0) : ''}<span style="min-width:70px;text-align:center">${n ? (i + 1) + ' מתוך ' + n : '0 מתוך 0'}</span>${n > 1 ? arrow('›', `SimA.pg('${kind}',1)`, i >= n - 1) : ''}</span><span onclick="${n ? `SimA.del('${kind}')` : ''}" title="מחק" style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:${n ? 'pointer' : 'default'}">${IC.trash(n ? '#555' : '#BDBDBD')}</span></div>`;
+      const body = n ? mFields(S, ent, arr[i], up, `${onchFn}.bind(null,${i})`, true) : `<div style="padding:14px 10px;color:#757575">אין רשומות. לחץ + להוספה.</div>`;
+      return band(title, key) + (st.col[key] ? '' : `<div style="margin:0 8px;border:1px solid ${LINE};border-radius:4px;background:#DCE8DA;padding:0 4px 4px">${body}${bar}</div>`);
     };
     const rep = repeat(esc(M.A.ent.alias), st.parts, st.pi, 'parts', M.A.ent, st.sign, 'SimA.pv');
     const nOld = st.editId && M.B ? st.db.B.filter((v) => v.ParentGlobalID === st.editId).length : 0;
-    const vis = M.B && st.variant === 'sign' ? (st.editId ? `<div style="padding:6px 16px;color:#757575;font-size:12px">קיימים ${nOld} ביקורים קודמים (לא מוצגים לעריכה; כאן מוסיפים ביקורים חדשים)</div>` : '') + repeat(esc(M.B.ent.alias), st.visits, st.vi, 'visits', M.B.ent, st.sign, 'SimA.vv') : '';
-    const bottom = `<div dir="ltr" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-top:1px solid #E0E0E0;background:#fff"><span style="color:#757575;font-size:12px">${st.editId ? 'עריכה' : 'שלט חדש'}</span><span onclick="SimA.dlg(true)" title="שליחה" style="width:48px;height:48px;border-radius:50%;background:${GREEN};color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.3)">✓</span></div>`;
-    const dlg = st.dlg ? `<div dir="rtl" style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end"><div style="background:#fff;width:100%;border-radius:14px 14px 0 0;padding:6px 0"><div onclick="SimA.send()" style="padding:14px 18px;cursor:pointer">שלח עכשיו</div><div onclick="SimA.outbox()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בתיבה יוצאת</div><div onclick="SimA.draft()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בטיוטות</div><div onclick="SimA.dlg(false)" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE;color:#757575">המשך מילוי</div></div></div>` : '';
-    return sPhone(loc + mFields(S, M.main, st.sign, {}, 'SimA.sv') + rep + vis, { title: esc(title), back: true, bottom, overlay: dlg });
+    const vis = M.B && st.variant === 'sign' ? (st.editId ? `<div style="padding:6px 16px;color:#5F6B5C;font-size:12px">קיימים ${nOld} ביקורים קודמים (לא מוצגים לעריכה; כאן מוסיפים ביקורים חדשים)</div>` : '') + repeat(esc(M.B.ent.alias), st.visits, st.vi, 'visits', M.B.ent, st.sign, 'SimA.vv') : '';
+    const bottom = `<div dir="ltr" style="display:flex;justify-content:space-between;align-items:center;padding:6px 16px;border-top:1px solid #D0D5CE;background:#fff;box-shadow:0 -2px 6px rgba(0,0,0,.08)"><span onclick="SimA.dlg(true)" title="שליחה" style="font-size:30px;color:#444;cursor:pointer;padding:0 8px;line-height:1.3">✓</span><span style="color:#8A938A;font-size:12px">${st.editId ? 'עריכת רשומה' : 'רשומה חדשה'}</span></div>`;
+    const dlg = st.dlg ? `<div dir="rtl" style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end"><div style="background:#fff;width:100%;border-radius:14px 14px 0 0;padding:6px 0"><div onclick="SimA.send()" style="padding:14px 18px;cursor:pointer">שלח עכשיו</div><div onclick="SimA.outbox()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בדואר יוצא</div><div onclick="SimA.draft()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בטיוטות</div><div onclick="SimA.dlg(false)" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE;color:#757575">המשך מילוי</div></div></div>` : '';
+    return sPhone(`<div style="padding-bottom:16px">${loc}${mFields(S, M.main, st.sign, {}, 'SimA.sv')}${rep}${vis}</div>`, { title: esc(S.meta.title || title), close: true, bg: BODY, bottom, overlay: dlg });
   }
   const ent_fields = (S, ent, vals, up, onch) => mFields(S, ent, vals, up, onch);
   function s123(S, M) {
@@ -274,6 +306,7 @@ ${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', '
   }
   const rr = () => { if (window.A && A.refresh) A.refresh(); };
   window.SimA = {
+    grp(k) { st.col[k] = !st.col[k]; rr(); },
     tab(k) { st.tab = k; rr(); }, variant(v) { st.variant = v; st.modal = null; rr(); }, auto(c) { st.auto = c; rr(); },
     sv(n, v) { st.sign[n] = v; rr(); }, pv(i, n, v) { st.parts[i][n] = v; rr(); }, vv(i, n, v) { st.visits[i][n] = v; rr(); },
     add(k) { const a = k === 'parts' ? st.parts : st.visits; a.push({}); if (k === 'parts') st.pi = a.length - 1; else st.vi = a.length - 1; rr(); },
