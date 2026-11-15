@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>מעצב סכמת AGOL</title>
+  <title>מעצב פתרונות AGOL</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -148,13 +148,19 @@
     .simroot table { min-width:0; width:auto; } .simroot th { position:static; text-transform:none; letter-spacing:0; font-size:12px; color:inherit; padding:3px 6px; } .simroot td { padding:3px 6px; }
     @media (max-width: 1000px) { .simgrid { grid-template-columns:1fr; } .simphone { position:static; } }
     @media (max-width: 900px) { .layout { flex-direction:column; padding:12px; } nav { width:100%; position:static; max-height:none; } }
+    body.simonly nav, body.simonly .btns { display:none; }
+    body.simonly .layout { display:block; }
+    #fbk { position:fixed; inset-inline-end:16px; bottom:16px; z-index:50; }
+    #fbk > button.fab { background:#1E3A8A; color:#fff; border:0; border-radius:999px; padding:12px 18px; font-weight:700; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.25); }
+    #fbk .pn { position:absolute; bottom:52px; inset-inline-end:0; width:340px; max-width:90vw; background:#fff; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.3); padding:14px; }
+    #fbk textarea { width:100%; min-height:80px; box-sizing:border-box; }
     @media print { header, nav { display:none; } body { background:#fff; } .layout { padding:0; } .card { box-shadow:none; } }
   </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>מעצב סכמת AGOL</h1>
+    <h1>מעצב פתרונות AGOL</h1>
     <small id="subtitle"></small>
   </div>
   <div class="btns">
@@ -164,6 +170,7 @@
     <button id="b-save" class="primary" hidden>💾 שמור לתיקייה</button>
     <button id="b-new">פרויקט חדש…</button>
     <button id="b-import">ייבוא סכמה…</button>
+    <button id="b-share" title="קובץ HTML יחיד עם הסימולטור, לשליחה לשותפים">📤 ייצוא סימולטור לשותפים</button>
     <button id="b-export" class="primary">ייצוא סכמה (schema.js)</button>
     <button id="b-reset" class="danger">איפוס לגרסת הריפו</button>
     <input type="file" id="file-in" accept=".js,.json" hidden>
@@ -179,7 +186,7 @@
 <script>
 /* טוען את קבצי הפרויקטים (לפי manifest) ואחריהם את הקוד — עובד גם בפתיחה ישירה מהדיסק (file://) */
 (function () {
-  var files = (window.PROJECT_FILES || []).concat(['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js']);
+  var files = (window.PROJECT_FILES || []).concat(['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js', 'js/share.js']);
   (function next(i) {
     if (i >= files.length) return;
     var s = document.createElement('script'); s.src = files[i];

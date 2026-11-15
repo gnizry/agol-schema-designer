@@ -7,10 +7,11 @@
   const MODES = ['ידני', 'אוטומטי', 'רשימה', 'מערכת', 'היסטורי'];
   /* אחסון טיוטות: localStorage כשזמין, אחרת זיכרון בלבד (למשל פתיחה מסוימת מהדיסק) */
   const MEM = {};
+  const SIMONLY = !!window.__SIM_ONLY; // קובץ סימולטור משותף: ללא שמירת טיוטות בדפדפן
   const LS = {
-    get(k) { if (k in MEM) return MEM[k]; try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set(k, v) { MEM[k] = v; try { localStorage.setItem(k, v); } catch (e) { /* זיכרון בלבד */ } },
-    del(k) { delete MEM[k]; try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+    get(k) { if (k in MEM) return MEM[k]; if (SIMONLY) return null; try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { MEM[k] = v; if (SIMONLY) return; try { localStorage.setItem(k, v); } catch (e) { /* זיכרון בלבד */ } },
+    del(k) { delete MEM[k]; if (SIMONLY) return; try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
   };
   const FOLDER = {};   // id -> {dir, org, key}  (פרויקטים שנקראו מתיקייה במחשב)
   let DIR = null;      // handle לתיקיית השורש שנבחרה
@@ -25,7 +26,7 @@
   let cur = LS.get('agol-schema-designer:current');
   if (!cur || allKeys().indexOf(cur) < 0) cur = allKeys()[0] || 'new';
   let S = load(cur);
-  let V = { page: 'entity', idx: 0, script: 'arcpy' };
+  let V = { page: SIMONLY ? 'sim' : 'entity', idx: 0, script: 'arcpy' };
   const blank = (key, title) => ({
     meta: { key, project: key, title, version: 1, spatialRef: 2039, spatialRefName: 'Israel TM Grid (ITM)', source: '', rules: { minTextLength: 255, domainCodeEqualsLabel: true } },
     domains: { YesNo: { name: 'YesNo', desc: 'כן / לא', fieldType: 'TEXT', values: [{ code: 'כן', label: 'כן', parent: '' }, { code: 'לא', label: 'לא', parent: '' }] } },
@@ -379,6 +380,7 @@
     });
   }
   if (window.Media) Media.resolver = async (rel) => {
+    if (window.__MEDIA) return window.__MEDIA[rel] || null; // קובץ סימולטור משותף: תמונות מוטמעות
     try {
       const info = FOLDER[cur]; if (!info) return null;
       const parts = rel.split('/'); let d = info.dir;
