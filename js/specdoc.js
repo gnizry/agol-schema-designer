@@ -59,10 +59,11 @@
   }
 
   /* ---------- המודל ---------- */
-  function model(S) {
-    const B = [], date = new Date().toLocaleDateString('he-IL'), m = S.meta || {};
+  function model(S, o) {
+    o = o || {};
+    const cl = !!o.client, B = [], date = new Date().toLocaleDateString('he-IL'), m = S.meta || {};
     B.push({ t: 'title', text: 'מסמך אפיון נתונים', sub: m.title || m.key });
-    B.push({ t: 'kv', rows: [['פרויקט', m.project || m.key], ['גרסת סכמה', 'v' + (m.version || 1)], ['תאריך הפקה', date], ['מערכת קואורדינטות', (m.spatialRef || '') + (m.spatialRefName ? ' · ' + m.spatialRefName : '')], ['מקור', m.source || '']].filter((r) => r[1]) });
+    B.push({ t: 'kv', rows: [['פרויקט', m.project || m.key], ['גרסת סכמה', 'v' + (m.version || 1)], ['תאריך הפקה', date], ['גרסת מסמך', cl ? 'ללקוח (ללא הערות פנימיות)' : 'לצוות (מלאה)'], ['מערכת קואורדינטות', (m.spatialRef || '') + (m.spatialRefName ? ' · ' + m.spatialRefName : '')], ['מקור', m.source || '']].filter((r) => r[1]) });
     B.push({ t: 'pb' });
     B.push({ t: 'h1', text: '1. סקירה' });
     B.push({ t: 'p', text: 'הפתרון בנוי מ-' + S.entities.length + ' ישויות נתונים (שכבות וטבלאות), ' + (S.relationships || []).length + ' קשרים ו-' + Object.keys(S.domains || {}).length + ' דומיינים. הקשרים בין הישויות מבוססים על GlobalID של האב ו-ParentGlobalID בבן.' });
@@ -76,7 +77,7 @@
       B.push({ t: 'h2', text: e.alias + ' (' + e.name + ')' });
       B.push({ t: 'p', text: kind(e.kind) + ' · Attachments: ' + (e.attachments ? 'כן' : 'לא') + ' · Editor Tracking: ' + (e.editorTracking ? 'כן' : 'לא') + (e.description ? '. ' + e.description : '') });
       B.push({ t: 'table', head: ['#', 'נושא', 'שדה', 'כינוי', 'סוג', 'אורך', 'דומיין', 'קלט', 'תצוגה בטופס', 'הערה'], w: [3, 9, 13, 13, 6, 5, 11, 8, 11, 21],
-        rows: e.fields.map((f, i) => [String(i + 1), f.category || '', f.name, f.alias || '', f.type || '', f.length ? String(f.length) : '', f.domain || '', f.mode || '', f.visible || '', [f.open ? '⚠ פתוח' : '', f.required ? 'חובה' : '', f.reqIf ? 'חובה אם: ' + f.reqIf : '', f.note || ''].filter(Boolean).join('. ')]) });
+        rows: e.fields.map((f, i) => [String(i + 1), f.category || '', f.name, f.alias || '', f.type || '', f.length ? String(f.length) : '', f.domain || '', f.mode || '', f.visible || '', [f.open ? (cl ? '⚠ פתוח לאישור' : '⚠ פתוח') : '', f.required ? 'חובה' : '', f.reqIf ? 'חובה אם: ' + f.reqIf : '', cl ? '' : (f.note || '')].filter(Boolean).join('. ')]) });
     });
     const dk = Object.keys(S.domains || {});
     if (dk.length) {
@@ -92,8 +93,8 @@
     S.entities.forEach((e) => e.fields.forEach((f) => { if (f.open) open.push([e.name + '.' + f.name, f.alias || '', f.note || '']); }));
     if (dec.length || open.length) {
       B.push({ t: 'h1', text: '5. נושאים פתוחים' });
-      if (dec.length) { B.push({ t: 'h2', text: 'החלטות' }); B.push({ t: 'table', head: ['#', 'נושא', 'סטטוס', 'הערה'], w: [6, 40, 12, 42], rows: dec.map((d) => [d.id || '', d.title || '', d.status === 'closed' ? 'סגור' : 'פתוח', d.note || '']) }); }
-      if (open.length) { B.push({ t: 'h2', text: 'שדות המסומנים כפתוחים (' + open.length + ')' }); B.push({ t: 'table', head: ['שדה', 'כינוי', 'הערה'], w: [28, 22, 50], rows: open }); }
+      if (dec.length) { B.push({ t: 'h2', text: 'החלטות' }); B.push(cl ? { t: 'table', head: ['#', 'נושא', 'סטטוס'], w: [8, 72, 20], rows: dec.map((d) => [d.id || '', d.title || '', d.status === 'closed' ? 'סגור' : 'פתוח']) } : { t: 'table', head: ['#', 'נושא', 'סטטוס', 'הערה'], w: [6, 40, 12, 42], rows: dec.map((d) => [d.id || '', d.title || '', d.status === 'closed' ? 'סגור' : 'פתוח', d.note || '']) }); }
+      if (open.length) { B.push({ t: 'h2', text: 'שדות המסומנים כפתוחים (' + open.length + ')' }); B.push(cl ? { t: 'table', head: ['שדה', 'כינוי'], w: [50, 50], rows: open.map((r) => [r[0], r[1]]) } : { t: 'table', head: ['שדה', 'כינוי', 'הערה'], w: [28, 22, 50], rows: open }); }
     }
     const dg = S.diagrams || {}, comps = (dg.components && dg.components.nodes) || [], flows = dg.flows || [];
     if (comps.length || flows.length) {
@@ -128,8 +129,8 @@
     }).join('\n');
     return '<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>מסמך אפיון · ' + esc(S.meta.title || S.meta.key) + '</title><style>' + css + '</style></head><body>' + body + '</body></html>';
   }
-  async function pdf(S) {
-    const B = model(S), erd = erdSvg(S), f = document.createElement('iframe');
+  async function pdf(S, o) {
+    const B = model(S, o), erd = erdSvg(S), f = document.createElement('iframe');
     f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     document.body.appendChild(f);
     f.contentDocument.open(); f.contentDocument.write(html(S, B, erd)); f.contentDocument.close();
@@ -143,9 +144,9 @@
     if (window.docx) return Promise.resolve();
     return new Promise((ok, no) => { const s = document.createElement('script'); s.src = 'js/vendor/docx.iife.js'; s.onload = ok; s.onerror = () => no(new Error('לא נטענה ספריית Word (js/vendor/docx.iife.js)')); document.head.appendChild(s); });
   }
-  async function word(S) {
+  async function word(S, o) {
     await loadDocx();
-    const D = window.docx, B = model(S), erd = erdSvg(S), png = await svgPng(erd);
+    const D = window.docx, B = model(S, o), erd = erdSvg(S), png = await svgPng(erd);
     const FONT = { ascii: 'Arial', hAnsi: 'Arial', cs: 'Arial' }, USABLE = 14800;
     const run = (text, o) => new D.TextRun(Object.assign({ text: String(text == null ? '' : text), rightToLeft: true, font: FONT }, o || {}));
     const para = (text, o, po) => new D.Paragraph(Object.assign({ bidirectional: true, alignment: D.AlignmentType.START, spacing: { after: 80 }, children: [run(text, o)] }, po || {}));
@@ -184,7 +185,7 @@
   window.SpecDoc = { model, erdSvg, word, pdf, html };
   const mb = $('b-menu'), mp = $('menu-pop');
   if (mb && mp) { mb.onclick = (e) => { e.stopPropagation(); mp.hidden = !mp.hidden; }; document.addEventListener('click', (e) => { if (!mp.hidden && !mp.contains(e.target)) mp.hidden = true; }); }
-  const act = (id, fn) => { const b = $(id); if (b) b.onclick = async () => { b.disabled = true; try { await fn(window.__designer.S); } catch (e) { toast('שגיאת ייצוא: ' + e.message); } finally { b.disabled = false; const p = $('menu-pop'); if (p) p.hidden = true; } }; };
-  act('b-doc-word', async (S) => { const blob = await word(S); download('spec-' + slug(S.meta.key) + '-v' + (S.meta.version || 1) + '.docx', blob); toast('מסמך Word הורד'); });
-  act('b-doc-pdf', async (S) => { await pdf(S); toast('בחלון ההדפסה בחר "שמירה כ-PDF"'); });
+  const act = (id, fn) => { const b = $(id); if (b) b.onclick = async () => { b.disabled = true; try { await fn(window.__designer.S, { client: !!($('doc-client') && $('doc-client').checked) }); } catch (e) { toast('שגיאת ייצוא: ' + e.message); } finally { b.disabled = false; const p = $('menu-pop'); if (p) p.hidden = true; } }; };
+  act('b-doc-word', async (S, o) => { const blob = await word(S, o); download('spec-' + slug(S.meta.key) + '-v' + (S.meta.version || 1) + (o.client ? '-client' : '') + '.docx', blob); toast('מסמך Word הורד'); });
+  act('b-doc-pdf', async (S, o) => { await pdf(S, o); toast('בחלון ההדפסה בחר "שמירה כ-PDF"'); });
 })();
