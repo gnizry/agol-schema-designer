@@ -129,14 +129,14 @@
   function domainsPage() {
     const cards = Object.keys(S.domains).map((k) => {
       const d = S.domains[k];
-      const text = d.values.map((v) => v.ext ? `${v.code} | ${v.label} | ${v.parent || ''} | ${v.ext}` : v.parent ? `${v.code} | ${v.label} | ${v.parent}` : (v.code === v.label ? v.code : `${v.code} | ${v.label}`)).join('\n');
+      const text = d.values.map((v) => v.img ? `${v.code} | ${v.label} | ${v.parent || ''} | ${v.ext || ''} | ${v.img}` : v.ext ? `${v.code} | ${v.label} | ${v.parent || ''} | ${v.ext}` : v.parent ? `${v.code} | ${v.label} | ${v.parent}` : (v.code === v.label ? v.code : `${v.code} | ${v.label}`)).join('\n');
       const users = [];
       S.entities.forEach((e) => e.fields.forEach((f) => { if (f.domain === k) users.push(e.name + '.' + f.name); }));
       return `<div class="card">
         <div class="row"><div style="flex:1"><label>${esc(d.name)}</label><input type="text" value="${esc(d.desc)}" onchange="A.d('${k}','desc',this.value)"></div>
           <div style="width:90px"><label>סוג קוד</label><select onchange="A.d('${k}','fieldType',this.value)"><option ${d.fieldType === 'TEXT' ? 'selected' : ''}>TEXT</option><option ${d.fieldType === 'SHORT' ? 'selected' : ''}>SHORT</option><option ${d.fieldType === 'LONG' ? 'selected' : ''}>LONG</option></select></div>
           <button class="danger mini" onclick="A.dd('${k}')">מחק</button></div>
-        <label style="margin-top:8px">ערכים (${d.values.length}) — שורה לערך: <b>קוד | תווית | הורה | מפתח חיצוני</b> (כל מה שאחרי הקוד אופציונלי; מפתח חיצוני = קוד טכני לממשקים, בדרך כלל מועתק לשדה מחושב)</label>
+        <label style="margin-top:8px">ערכים (${d.values.length}) — שורה לערך: <b>קוד | תווית | הורה | מפתח חיצוני | תמונה</b> (כל מה שאחרי הקוד אופציונלי; תמונה = נתיב יחסי לתיקיית הארגון, למשל media/models/P3.1.png; מפתח חיצוני = קוד טכני לממשקים, בדרך כלל מועתק לשדה מחושב)</label>
         <textarea class="mono" rows="${Math.min(14, d.values.length + 1)}" onchange="A.dv('${k}',this.value)">${esc(text)}</textarea>
         <p class="hint">בשימוש: ${users.length ? esc(users.join(', ')) : 'לא בשימוש'}</p></div>`;
     }).join('');
@@ -230,7 +230,7 @@
     dv(k, text) {
       S.domains[k].values = text.split('\n').map((l) => l.trim()).filter(Boolean).map((l) => {
         const p = l.split('|').map((x) => x.trim());
-        return { code: p[0], label: p[1] || p[0], parent: p[2] || '', ext: p[3] || '' };
+        const o = { code: p[0], label: p[1] || p[0], parent: p[2] || '', ext: p[3] || '' }; if (p[4]) o.img = p[4]; return o;
       });
       commit();
     },
@@ -325,7 +325,7 @@
     return found;
   }
   async function openFolder(handle) {
-    DIR = handle;
+    DIR = handle; if (window.Media) Media.reset();
     Object.keys(FOLDER).forEach((id) => { delete window.SCHEMAS[id]; delete FOLDER[id]; });
     const found = await scanDir(handle);
     let bad = 0;
@@ -378,6 +378,14 @@
       b.onclick = async () => { try { if ((await h.requestPermission({ mode: 'readwrite' })) === 'granted') await openFolder(h); else toast('לא ניתנה הרשאה'); } catch (e) { toast('שגיאה: ' + e.message); } };
     });
   }
+  if (window.Media) Media.resolver = async (rel) => {
+    try {
+      const info = FOLDER[cur]; if (!info) return null;
+      const parts = rel.split('/'); let d = info.dir;
+      for (const q of parts.slice(0, -1)) d = await d.getDirectoryHandle(q);
+      return URL.createObjectURL(await (await d.getFileHandle(parts[parts.length - 1])).getFile());
+    } catch (e) { return null; }
+  };
   window.__designer = { openFolder, saveFolder, FOLDER, get cur() { return cur; }, get S() { return S; } }; // לבדיקות
 
   fillProjects();

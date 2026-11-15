@@ -16,6 +16,22 @@
   const readonly = (f) => f.mode === 'אוטומטי' || /קריאה בלבד/.test(f.visible || '');
   /* readonly בעריכה בלבד: pulldata("@property",'mode')='edit' (Survey123 בלבד) */
   const lockEdit = (f) => !!(f.readonlyOnEdit && st.editId);
+  /* תמונות לערכי רשימה (v.img = נתיב יחסי לתיקיית הארגון, למשל media/models/P3.1.png). נטענות מתיקיית הפרויקט הפתוחה */
+  const Media = {
+    cache: {}, resolver: null, onLoad: null,
+    key(rel) { return ((window.__designer && window.__designer.cur) || '') + '|' + rel; },
+    reset() { Object.keys(this.cache).forEach((k) => { if (typeof this.cache[k] === 'string') try { URL.revokeObjectURL(this.cache[k]); } catch (e) { /* */ } }); this.cache = {}; },
+    get(rel) {
+      if (!rel) return null;
+      const k = this.key(rel), c = this.cache[k];
+      if (typeof c === 'string') return c;
+      if (c !== undefined || !this.resolver) return null;
+      this.cache[k] = 0; // בטעינה
+      this.resolver(rel).then((u) => { this.cache[k] = u || false; if (u && this.onLoad) this.onLoad(); }).catch(() => { this.cache[k] = false; });
+      return null;
+    },
+  };
+  window.Media = Media;
   function dom(S, f) { return f.domain && S.domains[f.domain] ? S.domains[f.domain] : null; }
   function parentField(S, ent, f) {
     const d = dom(S, f); if (!d || !d.values.some((v) => v.parent)) return null;
@@ -206,6 +222,12 @@
       const pf = parentField(S, ent, f); const pv = pf ? vals[pf.name] : null;
       const opts = d.values.filter((x) => !pf || !x.parent || x.parent === pv);
       if (pf && !pv) inp = `<div style="${box};color:#8A938A;background:#F4F6F3">יש לבחור קודם: ${esc(pf.alias)}</div>`;
+      else if (opts.some((o) => o.img)) {
+        const th = (o) => { const u = Media.get(o.img); return u ? `<img src="${u}" alt="" style="width:76px;height:56px;object-fit:contain;background:#fff;border:1px solid ${LINE};border-radius:3px;flex:none">` : `<span style="width:76px;height:56px;flex:none;background:#F4F6F3;border:1px dashed #B8C0B6;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#8A938A;text-align:center">${o.img ? 'תמונה' : 'ללא תמונה'}</span>`; };
+        const sel = opts.find((o) => o.label === v);
+        inp = opts.map((o) => `<div data-v="${esc(o.label)}" onclick="${onch}('${f.name}',this.dataset.v)" style="display:flex;align-items:center;gap:10px;padding:6px 4px;cursor:pointer;border-bottom:1px solid #E6EAE4;background:${o.label === v ? '#EEF5EC' : 'transparent'}"><span style="width:18px;height:18px;flex:none;border-radius:50%;border:2px solid ${o.label === v ? GREEN : '#757575'};display:inline-flex;align-items:center;justify-content:center">${o.label === v ? `<span style="width:9px;height:9px;border-radius:50%;background:${GREEN}"></span>` : ''}</span>${th(o)}<span style="flex:1;font-size:14px">${esc(o.label)}</span></div>`).join('');
+        if (sel && sel.img) { const u = Media.get(sel.img); inp += `<div style="margin-top:12px;border:1px solid ${LINE};border-radius:3px;padding:8px;background:#fff"><div style="font-size:13px;color:#4F6B4C;margin-bottom:6px">נבחר: <b>${esc(sel.label)}</b>. ודא שזה הסיווג הנכון לשלט שבשטח</div>${u ? `<img src="${u}" alt="" style="width:100%;max-height:300px;object-fit:contain;display:block">` : '<div style="height:120px;display:flex;align-items:center;justify-content:center;background:#F4F6F3;color:#8A938A;font-size:13px;text-align:center">התמונה נטענת מתיקיית הפרויקט הפתוחה ב-Chrome או Edge</div>'}</div>`; }
+      }
       else if (f.appearance === 'radio') inp = opts.map((o) => `<div data-v="${esc(o.label)}" onclick="${onch}('${f.name}',this.dataset.v)" style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer"><span style="width:18px;height:18px;border-radius:50%;border:2px solid ${o.label === v ? GREEN : '#757575'};display:inline-flex;align-items:center;justify-content:center">${o.label === v ? `<span style="width:9px;height:9px;border-radius:50%;background:${GREEN}"></span>` : ''}</span>${esc(o.label)}</div>`).join('');
       else inp = `<div style="${box}">${val(v, opts.length ? '' : 'הרשימה טרם נמסרה')}${clr(v)}<span style="color:#555;font-size:15px">⌄</span><select style="position:absolute;inset:0;width:100%;opacity:0;cursor:pointer" onchange="${onch}('${f.name}',this.value)"><option value=""></option>${opts.map((o) => `<option ${o.label === v ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select></div>`;
     } else if (f.type === 'DATE') {
@@ -361,6 +383,7 @@
     A.refresh(); st.rk = key;
     if (same && dom0) { document.querySelectorAll('[data-sb]').forEach((e, i) => { e.scrollTop = sb[i] || 0; }); window.scrollTo(0, wy); }
   };
+  Media.onLoad = () => { try { rr(); } catch (e) { /* */ } };
   window.SimA = {
     grp(k) { st.col[k] = !st.col[k]; rr(); },
     tab(k) { st.tab = k; rr(); }, variant(v) { st.variant = v; st.modal = null; rr(); }, auto(c) { st.auto = c; rr(); },
