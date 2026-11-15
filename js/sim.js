@@ -4,7 +4,7 @@
   'use strict';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const uid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); })).toUpperCase();
-  const st = { tab: 'flow', flow: 'edit', step: 0, inbox: true, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visit: {}, db: null, sel: null, modal: null, S: null };
+  const st = { tab: 'flow', flow: 'edit', step: 0, inbox: true, drafts: 0, sent: 0, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visit: {}, db: null, sel: null, modal: null, S: null };
 
   /* ---------- מבנה הסכמה ---------- */
   function model(S) {
@@ -92,7 +92,8 @@
     const partsHtml = st.parts.map((p, i) => `<div style="border:1px dashed #94A3B8;border-radius:8px;padding:0 8px 8px;margin:8px 0;background:#fff"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(M.A.ent.alias)} #${i + 1}</b><button class="mini" onclick="SimA.rp(${i})">מחק</button></div>${formFields(S, M.A.ent, p, st.sign, `SimA.pv.bind(null,${i})`)}</div>`).join('');
     const nOld = st.editId && M.B ? st.db.B.filter((v) => v.ParentGlobalID === st.editId).length : 0;
     const vis = M.B && st.variant === 'sign' ? `<div style="border:1px solid #E2E8F0;border-radius:10px;padding:0 8px 8px;margin:10px 0"><b>${st.editId ? 'ביקור חדש' : 'ביקור ראשון'} · ${esc(M.B.ent.alias)}</b>${st.editId ? `<div style="color:#64748B;font-size:12px">קיימים ${nOld} ביקורים קודמים (לא מוצגים לעריכה)</div>` : ''}${formFields(S, M.B.ent, st.visit, st.sign, 'SimA.vv')}</div>` : '';
-    return phone(title, f1 + `<div style="font-weight:700;color:#1E3A8A;margin-top:12px">${esc(M.A.ent.alias)} — Repeat</div>${partsHtml}<button class="primary" onclick="SimA.ap()">+ הוסף ${esc(M.A.ent.alias)}</button>${vis}<div style="margin-top:14px"><button class="primary" style="width:100%;padding:10px" onclick="SimA.send()">${st.editId ? 'שמור שינויים' : 'שלח'}</button></div>`);
+    const loc = st.editId ? '' : `<div style="background:#ECFDF5;border:1px solid #86EFAC;border-radius:10px;padding:8px 12px;margin:10px 0"><b>מיקום השלט</b><div style="color:#166534">נקלט GPS · דיוק ±4 מ׳</div><button class="mini">תקן במפה</button></div>`;
+    return phone(title, loc + f1 + `<div style="font-weight:700;color:#1E3A8A;margin-top:12px">${esc(M.A.ent.alias)} — Repeat</div>${partsHtml}<button class="primary" onclick="SimA.ap()">+ הוסף ${esc(M.A.ent.alias)}</button>${vis}<div style="margin-top:14px"><button class="primary" style="width:100%;padding:10px" onclick="SimA.send()">${st.editId ? 'שמור שינויים' : 'שלח'}</button></div>`);
   }
   function s123(S, M) {
     return `<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">${s123Phone(S, M, 'Survey123 · ' + esc(M.main.alias))}<div style="flex:1;min-width:260px"><h3 style="margin-top:0">מה אתה בודק כאן</h3><ul style="line-height:1.9"><li>אילו שדות הסוקר רואה ובאיזה סדר; שדות אוטומטיים מוצגים אפורים.</li><li>תנאי תצוגה: מוצגים לפי <code>rel</code> בשדה (לדוגמה סיכון בטיחותי רק כש"לא תקין").</li><li>סינון דגם לפי משפחה (תת-דגם מסונן לפי הבחירה הקודמת).</li><li>כמה שדות וכמה Repeat צריך למלא כדי לתעד שלט אחד.</li></ul><p style="color:#64748B">שליחה יוצרת רשומות בטבלאות הסימולציה, ואפשר לראות אותן בלשונית Field Maps ובלשונית נתונים.</p></div></div>`;
@@ -102,7 +103,7 @@
   const ITEM = '<SURVEY_ITEM_ID>';
   const FLOWS = {
     edit: ['Field Maps: בחירת שלט', 'Field Maps: פופאפ וקישור', 'Survey123: Inbox', 'Survey123: טופס עריכה', 'חזרה ל-Field Maps'],
-    new: ['Field Maps: הוספת שלט', 'Survey123: טופס חדש', 'חזרה ל-Field Maps'],
+    new: ['Field Maps: הוספת שלט', 'Survey123: מסך הסקר (איסוף)', 'Survey123: טופס חדש', 'חזרה ל-Field Maps'],
   };
   function dots(onc) {
     return st.db.main.map((s, i) => { const x = 40 + (i * 83) % 280, y = 40 + (i * 61) % 180; return `<div onclick="${onc}(${i})" style="position:absolute;left:${x}px;top:${y}px;width:22px;height:22px;border-radius:50%;background:${statusColor(s.SignStatus)};border:3px solid ${st.sel === i ? '#0F172A' : '#fff'};box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer"></div>`; }).join('');
@@ -128,8 +129,13 @@
       else if (cur === 3) { screen = s123Phone(S, M, 'Survey123 · עריכת שלט'); note = 'הרשומה והרכיבים הקיימים נטענו. הוספת ביקור חדש מעדכנת את מצב השלט אחרי שמירה.'; }
       else { screen = resultPhone(M); note = 'חזרה אוטומטית ל-Field Maps (callback). הצבע בנקודה משקף את המצב המעודכן.'; }
     } else {
-      if (cur === 0) { screen = phone('Field Maps · מפה', mapBox(dots('SimA.sel0')) + `<button class="primary" style="width:100%;margin-top:8px;padding:10px" onclick="SimA.startNew()">+ שלט חדש ב-Survey123</button>`); note = 'הקשה 1: כפתור/קישור "שלט חדש" (action=collect).'; }
-      else if (cur === 1) { screen = s123Phone(S, M, 'Survey123 · שלט חדש'); note = 'המיקום נקלט בטופס (GPS) ואפשר לתקנו במפה. מצב ושדות אחרים לפי תנאי התצוגה.'; }
+      if (cur === 0) { screen = phone('Field Maps · מפה', mapBox(dots('SimA.sel0')) + `<button class="primary" style="width:100%;margin-top:8px;padding:10px" onclick="SimA.step(1)">+ שלט חדש ב-Survey123</button>`); note = 'הקשה 1: כפתור/קישור "שלט חדש" בפופאפ או ב-Field Maps (action=collect) פותח את Survey123.'; }
+      else if (cur === 1) {
+        const tile = (t, n, c) => `<div style="flex:1;min-width:120px;border:1px solid #E2E8F0;border-radius:10px;padding:10px;text-align:center;background:#F8FAFC"><div style="font-size:22px;font-weight:700;color:${c || '#1E3A8A'}">${n}</div><div style="color:#64748B;font-size:12px">${t}</div></div>`;
+        screen = phone('Survey123', `<div style="text-align:center;padding:14px 4px"><div style="font-size:18px;font-weight:700;color:#1E3A8A">${esc(S.meta.title || 'סקר שילוט')}</div><div style="color:#64748B;font-size:12px;margin-bottom:14px">סקר שילוט · גרסת טופס</div><button class="primary" style="width:100%;padding:16px;font-size:18px;border-radius:12px" onclick="SimA.startNew()">＋ איסוף</button></div><div style="display:flex;gap:8px;flex-wrap:wrap">${tile('Inbox', st.inbox ? st.db.main.length : 'כבוי', st.inbox ? '' : '#991B1B')}${tile('טיוטות', st.drafts)}${tile('שולחן יוצא', 0)}${tile('נשלחו', st.sent)}</div><div style="color:#64748B;font-size:12px;margin-top:10px">הסקר נפתח ישירות ממסך זה; אפשר גם לחזור אליו מתפריט האפליקציה.</div>`);
+        note = 'מסך הסקר ב-Survey123: כפתור איסוף פותח טופס ריק. התיקיות מראות טיוטות, שולחן יוצא, נשלחו וInbox.';
+      }
+      else if (cur === 2) { screen = s123Phone(S, M, 'Survey123 · שלט חדש'); note = 'המיקום נקלט בטופס (GPS) ואפשר לתקנו במפה. מצב ושדות אחרים לפי תנאי התצוגה.'; }
       else { screen = resultPhone(M); note = 'השלט החדש הוא נקודה חדשה בשכבה; חזרה ל-Field Maps.'; }
     }
     const back = cur > 0 ? `<button onclick="SimA.step(${cur - 1})">‹ חזרה</button>` : '';
@@ -214,7 +220,7 @@
         st.parts.forEach((p) => st.db.A.push(Object.assign({}, p, { GlobalID: uid(), ParentGlobalID: s.GlobalID })));
       }
       if (M.B && st.variant === 'sign' && Object.keys(st.visit).length) addVisit(S, M, s, s, Object.assign({}, st.visit));
-      st.sign = {}; st.parts = []; st.visit = {}; st.editId = null; st.sel = st.db.main.indexOf(s);
+      st.sign = {}; st.parts = []; st.visit = {}; st.editId = null; st.sent += 1; st.sel = st.db.main.indexOf(s);
       if (st.tab === 'flow') st.step = FLOWS[st.flow].length - 1; else st.tab = 'fm';
       rr();
     },
@@ -225,7 +231,7 @@
       const sg = st.db.main[st.sel]; if (!sg) return;
       st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visit = {}; st.step = 3; rr();
     },
-    startNew() { st.editId = null; st.sign = {}; st.parts = []; st.visit = {}; st.step = 1; rr(); },
+    startNew() { st.editId = null; st.sign = {}; st.parts = []; st.visit = {}; st.step = 2; rr(); },
     seed() { seed(st.S); st.sel = null; rr(); }, sel(i) { st.sel = i; st.modal = null; rr(); },
     addv() { st.modal = { v: {}, part: '' }; rr(); }, mv(n, v) { st.modal.v[n] = v; rr(); }, mp(id) { st.modal.part = id; rr(); }, cancel() { st.modal = null; rr(); },
     savev() {
