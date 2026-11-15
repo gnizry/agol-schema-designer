@@ -4,7 +4,7 @@
   'use strict';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const uid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); })).toUpperCase();
-  const st = { tab: 'flow', flow: 'edit', step: 0, inbox: true, drafts: 0, sent: 0, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visit: {}, db: null, sel: null, modal: null, S: null };
+  const st = { tab: 'flow', flow: 'edit', step: 0, inbox: true, drafts: 0, outbox: 0, dlg: false, sent: 0, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visit: {}, db: null, sel: null, modal: null, S: null };
 
   /* ---------- מבנה הסכמה ---------- */
   function model(S) {
@@ -87,14 +87,65 @@
   }
 
   /* ---------- Survey123 ---------- */
-  function s123Phone(S, M, title) {
-    const f1 = formFields(S, M.main, st.sign, {}, 'SimA.sv');
-    const partsHtml = st.parts.map((p, i) => `<div style="border:1px dashed #94A3B8;border-radius:8px;padding:0 8px 8px;margin:8px 0;background:#fff"><div style="display:flex;justify-content:space-between;align-items:center"><b>${esc(M.A.ent.alias)} #${i + 1}</b><button class="mini" onclick="SimA.rp(${i})">מחק</button></div>${formFields(S, M.A.ent, p, st.sign, `SimA.pv.bind(null,${i})`)}</div>`).join('');
-    const nOld = st.editId && M.B ? st.db.B.filter((v) => v.ParentGlobalID === st.editId).length : 0;
-    const vis = M.B && st.variant === 'sign' ? `<div style="border:1px solid #E2E8F0;border-radius:10px;padding:0 8px 8px;margin:10px 0"><b>${st.editId ? 'ביקור חדש' : 'ביקור ראשון'} · ${esc(M.B.ent.alias)}</b>${st.editId ? `<div style="color:#64748B;font-size:12px">קיימים ${nOld} ביקורים קודמים (לא מוצגים לעריכה)</div>` : ''}${formFields(S, M.B.ent, st.visit, st.sign, 'SimA.vv')}</div>` : '';
-    const loc = st.editId ? '' : `<div style="background:#ECFDF5;border:1px solid #86EFAC;border-radius:10px;padding:8px 12px;margin:10px 0"><b>מיקום השלט</b><div style="color:#166534">נקלט GPS · דיוק ±4 מ׳</div><button class="mini">תקן במפה</button></div>`;
-    return phone(title, loc + f1 + `<div style="font-weight:700;color:#1E3A8A;margin-top:12px">${esc(M.A.ent.alias)} — Repeat</div>${partsHtml}<button class="primary" onclick="SimA.ap()">+ הוסף ${esc(M.A.ent.alias)}</button>${vis}<div style="margin-top:14px"><button class="primary" style="width:100%;padding:10px" onclick="SimA.send()">${st.editId ? 'שמור שינויים' : 'שלח'}</button></div>`);
+
+  /* ---------- מסכי אפליקציית Survey123 לנייד (קירוב לפי תיעוד Esri) ---------- */
+  const GREEN = '#2E7D32';
+  function sPhone(inner, o) {
+    o = o || {};
+    return `<div style="position:relative;width:390px;max-width:100%;border:8px solid #0F172A;border-radius:30px;background:#fff;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18);font-family:Roboto,'Segoe UI',Tahoma,sans-serif">
+<div dir="ltr" style="background:${GREEN};color:#fff;font-size:11px;display:flex;justify-content:space-between;padding:4px 14px"><span>9:41</span><span>▂▄▆ 100%</span></div>
+<div dir="rtl" style="background:${GREEN};color:#fff;display:flex;align-items:center;gap:10px;padding:10px 12px"><span style="font-size:18px">${o.back ? '→' : '☰'}</span><b style="flex:1">${o.title || ''}</b>${o.right || ''}</div>
+<div dir="rtl" style="max-height:540px;overflow:auto;text-align:right;color:#212121">${inner}</div>${o.bottom || ''}${o.overlay || ''}</div>`;
   }
+  const badge = (n, c) => n ? `<span style="background:${c};color:#fff;border-radius:50%;min-width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px">${n}</span>` : '';
+  function s123Home(S, M) {
+    const row = (icon, t, right, onc) => `<div ${onc ? `onclick="${onc}"` : ''} style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #EEEEEE;cursor:${onc ? 'pointer' : 'default'}"><span style="width:28px;text-align:center;font-size:18px;color:${GREEN}">${icon}</span><span style="flex:1;font-size:16px">${t}</span>${right || ''}<span style="color:#9E9E9E">‹</span></div>`;
+    const inbox = st.inbox ? row('⬇', 'Inbox', badge(st.db ? st.db.main.length : 0, '#757575'), "SimA.step(2)") : '';
+    const inner = `<div style="padding:18px 16px 8px;text-align:center"><div style="font-size:19px;font-weight:600">${esc(S.meta.title || 'סקר שילוט')}</div></div>
+<div style="padding:8px 16px 16px"><button onclick="SimA.startNew()" style="width:100%;border:0;border-radius:6px;background:${GREEN};color:#fff;font-size:18px;padding:16px;cursor:pointer">איסוף</button></div>
+${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', 'תיבה יוצאת', badge(st.outbox, '#2E7D32'))}${row('✓', 'נשלחו', '')}`;
+    return sPhone(inner, { title: 'Survey123', right: '<span>⋮</span>' });
+  }
+  function s123Inbox(S, M) {
+    const sg = st.sel != null ? st.db.main[st.sel] : null;
+    if (!st.inbox) return sPhone(`<div style="padding:24px 16px;color:#757575;text-align:center">התיקייה Inbox אינה זמינה בסקר זה.<br><small>הפעלה: הגדרות הסקר › Inbox (מופעל).</small></div>`, { title: 'Inbox', back: true });
+    const card = sg ? `<div onclick="SimA.startEdit()" style="margin:10px 12px;border:1px solid #E0E0E0;border-radius:8px;padding:12px;cursor:pointer;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12)"><div style="font-weight:600">${esc(sg.SignID || 'שלט')}</div><div style="color:#757575;font-size:13px">${esc(sg.SignModel || '')}</div><div style="margin-top:4px">${chipHtml(sg.SignStatus)}</div></div>` : '<div style="padding:16px;color:#757575">אין רשומות</div>';
+    const inner = `<div style="padding:8px 12px;color:#757575;font-size:12px">מסונן לפי q:globalId · רשומה אחת</div>${card}<div style="padding:4px 16px;color:#757575;font-size:12px">בקישור עם update=true הרשימה מתרעננת לפני הפתיחה. רשומה יחידה נפתחת אוטומטית.</div>`;
+    return sPhone(inner, { title: 'Inbox', back: true, right: '<span title="רענון">⟳</span>' });
+  }
+  function mControl(S, ent, f, vals, up, onch) {
+    const d = dom(S, f), v = vals[f.name] == null ? '' : vals[f.name], ro = readonly(f);
+    const lab = `<div style="font-size:15px;margin:14px 0 2px">${esc(f.alias || f.name)}</div>`;
+    const line = 'width:100%;border:0;border-bottom:1px solid #9E9E9E;border-radius:0;padding:6px 0;font:inherit;background:transparent;box-sizing:border-box;outline:none';
+    let inp;
+    if (ro) inp = `<div style="color:#757575;border-bottom:1px dotted #BDBDBD;padding:6px 0">${v ? esc(v) : '—'}</div>`;
+    else if (d) {
+      const pf = parentField(S, ent, f); const pv = pf ? vals[pf.name] : null;
+      const opts = d.values.filter((x) => !pf || !x.parent || x.parent === pv);
+      if (pf && !pv) inp = `<div style="color:#9E9E9E;border-bottom:1px solid #BDBDBD;padding:6px 0">יש לבחור קודם: ${esc(pf.alias)}</div>`;
+      else if (opts.length <= 5) inp = opts.map((o) => `<div data-v="${esc(o.label)}" onclick="${onch}('${f.name}',this.dataset.v)" style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer"><span style="width:18px;height:18px;border-radius:50%;border:2px solid ${o.label === v ? GREEN : '#757575'};display:inline-flex;align-items:center;justify-content:center">${o.label === v ? `<span style="width:9px;height:9px;border-radius:50%;background:${GREEN}"></span>` : ''}</span>${esc(o.label)}</div>`).join('');
+      else inp = `<select style="${line}" onchange="${onch}('${f.name}',this.value)"><option value="">בחר…</option>${opts.map((o) => `<option ${o.label === v ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
+    } else if (f.type === 'DATE') inp = `<input type="date" style="${line}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">`;
+    else if (['SHORT', 'LONG', 'FLOAT', 'DOUBLE'].includes(f.type)) inp = `<input type="number" inputmode="numeric" style="${line}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">`;
+    else if (Number(f.length) >= 500) inp = `<textarea rows="2" style="${line}" onchange="${onch}('${f.name}',this.value)">${esc(v)}</textarea>`;
+    else inp = `<input type="text" style="${line}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">`;
+    return lab + inp;
+  }
+  function mFields(S, ent, vals, up, onch) {
+    const groups = {}; ent.fields.forEach((f) => { if (isShown(f, vals, up)) (groups[f.category || 'כללי'] = groups[f.category || 'כללי'] || []).push(f); });
+    return Object.keys(groups).map((g) => `<div style="background:#EEEEEE;padding:8px 16px;font-weight:600;font-size:14px;color:#424242">${esc(g)}</div><div style="padding:0 16px 8px">${groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`).join('');
+  }
+  function s123Phone(S, M, title) {
+    const loc = st.editId ? '' : `<div style="padding:12px 16px;border-bottom:1px solid #EEEEEE"><div style="font-size:15px">מיקום השלט</div><div style="margin-top:6px;background:#E8F5E9;border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center"><span style="color:#1B5E20">⌖ נקלט GPS · דיוק ±4 מ׳</span><span style="color:${GREEN}">מפה</span></div></div>`;
+    const partsHtml = st.parts.map((p, i) => `<div style="margin:8px 12px;border:1px solid #E0E0E0;border-radius:8px;overflow:hidden"><div style="display:flex;justify-content:space-between;align-items:center;background:#F5F5F5;padding:6px 12px"><b>${esc(M.A.ent.alias)} ${i + 1}</b><span onclick="SimA.rp(${i})" style="color:#C62828;cursor:pointer">מחק</span></div><div style="padding:0 12px 8px">${ent_fields(S, M.A.ent, p, st.sign, `SimA.pv.bind(null,${i})`)}</div></div>`).join('');
+    const nOld = st.editId && M.B ? st.db.B.filter((v) => v.ParentGlobalID === st.editId).length : 0;
+    const vis = M.B && st.variant === 'sign' ? `<div style="background:#EEEEEE;padding:8px 16px;font-weight:600;font-size:14px;color:#424242">${st.editId ? 'ביקור חדש' : 'ביקור ראשון'} · ${esc(M.B.ent.alias)}</div>${st.editId ? `<div style="padding:6px 16px;color:#757575;font-size:12px">קיימים ${nOld} ביקורים קודמים (לא מוצגים לעריכה)</div>` : ''}<div style="padding:0 16px 8px">${ent_fields(S, M.B.ent, st.visit, st.sign, 'SimA.vv')}</div>` : '';
+    const bottom = `<div dir="ltr" style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-top:1px solid #E0E0E0;background:#fff"><span style="color:#757575;font-size:12px">${st.editId ? 'עריכה' : 'שלט חדש'}</span><span onclick="SimA.dlg(true)" title="שליחה" style="width:48px;height:48px;border-radius:50%;background:${GREEN};color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,.3)">✓</span></div>`;
+    const dlg = st.dlg ? `<div dir="rtl" style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end"><div style="background:#fff;width:100%;border-radius:14px 14px 0 0;padding:6px 0"><div onclick="SimA.send()" style="padding:14px 18px;cursor:pointer">שלח עכשיו</div><div onclick="SimA.outbox()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בתיבה יוצאת</div><div onclick="SimA.draft()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בטיוטות</div><div onclick="SimA.dlg(false)" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE;color:#757575">המשך מילוי</div></div></div>` : '';
+    const rep = `<div style="background:#EEEEEE;padding:8px 16px;font-weight:600;font-size:14px;color:#424242;margin-top:6px">${esc(M.A.ent.alias)}</div>${partsHtml}<div style="padding:8px 16px"><span onclick="SimA.ap()" style="color:${GREEN};cursor:pointer;font-weight:600">＋ הוסף ${esc(M.A.ent.alias)}</span></div>`;
+    return sPhone(loc + mFields(S, M.main, st.sign, {}, 'SimA.sv') + rep + vis, { title: esc(title), back: true, bottom, overlay: dlg });
+  }
+  const ent_fields = (S, ent, vals, up, onch) => mFields(S, ent, vals, up, onch);
   function s123(S, M) {
     return `<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">${s123Phone(S, M, 'Survey123 · ' + esc(M.main.alias))}<div style="flex:1;min-width:260px"><h3 style="margin-top:0">מה אתה בודק כאן</h3><ul style="line-height:1.9"><li>אילו שדות הסוקר רואה ובאיזה סדר; שדות אוטומטיים מוצגים אפורים.</li><li>תנאי תצוגה: מוצגים לפי <code>rel</code> בשדה (לדוגמה סיכון בטיחותי רק כש"לא תקין").</li><li>סינון דגם לפי משפחה (תת-דגם מסונן לפי הבחירה הקודמת).</li><li>כמה שדות וכמה Repeat צריך למלא כדי לתעד שלט אחד.</li></ul><p style="color:#64748B">שליחה יוצרת רשומות בטבלאות הסימולציה, ואפשר לראות אותן בלשונית Field Maps ובלשונית נתונים.</p></div></div>`;
   }
@@ -122,17 +173,15 @@
       if (cur === 0) { screen = phone('Field Maps · מפה', mapBox(dots('SimA.pick')) + `<div style="padding:8px;color:#64748B">${sg ? 'נבחר: ' + esc(sg.SignID || '') : 'הקש על שלט במפה'}</div>`); note = 'הקשה 1: בחירת השלט במפה.'; }
       else if (cur === 1 && sg) { screen = phone('Field Maps · פופאפ', `<div style="font-weight:700;color:#1E3A8A;font-size:16px">${esc(sg.SignID || '')}</div><div>${chipHtml(sg.SignStatus)}</div><div style="margin:8px 0;color:#64748B">${esc(sg.SignModel || '')}</div><a style="display:block;background:#1E3A8A;color:#fff;text-align:center;border-radius:8px;padding:10px;cursor:pointer" onclick="SimA.step(2)">ערוך ב-Survey123 ›</a>`); note = 'הקשה 2: קישור בפופאפ (ביטוי Arcade). הקישור פותח את Survey123 ישירות על הרשומה.'; }
       else if (cur === 2) {
-        screen = st.inbox ? phone('Survey123 · Inbox', `<div style="color:#64748B;font-size:12px;margin:6px 0">מסונן לפי q:globalId · עודכן (update=true)</div><div style="border:1px solid #1E3A8A;border-radius:8px;padding:10px;background:#EFF6FF"><b>${esc(sg ? sg.SignID || 'שלט' : '')}</b><div style="color:#64748B">${esc(sg ? sg.SignModel || '' : '')}</div></div><div style="color:#64748B;margin-top:10px;font-size:12px">רשומה יחידה → נפתחת אוטומטית לעריכה</div><button class="primary" style="width:100%;margin-top:10px" onclick="SimA.startEdit()">נפתח לעריכה ›</button>`)
-          : phone('Survey123 · Inbox', `<div style="background:#FEF2F2;color:#991B1B;border-radius:8px;padding:12px;margin-top:8px"><b>הרשומה לא נמצאה</b><div>Inbox כבוי בטופס, ולכן אין רשומות לעריכה. יש להפעיל Inbox ב-Survey123 (Collaborate › Inbox).</div></div>`);
+        screen = s123Inbox(S, M);
         note = st.inbox ? 'ללא הקשות נוספות: רשומה אחת מסוננת נפתחת בעצמה.' : 'כשInbox כבוי הקישור לא מצליח לפתוח את הרשומה לעריכה.';
       }
       else if (cur === 3) { screen = s123Phone(S, M, 'Survey123 · עריכת שלט'); note = 'הרשומה והרכיבים הקיימים נטענו. הוספת ביקור חדש מעדכנת את מצב השלט אחרי שמירה.'; }
       else { screen = resultPhone(M); note = 'חזרה אוטומטית ל-Field Maps (callback). הצבע בנקודה משקף את המצב המעודכן.'; }
     } else {
       if (cur === 0) {
-        const tile = (t, n, c) => `<div style="flex:1;min-width:120px;border:1px solid #E2E8F0;border-radius:10px;padding:10px;text-align:center;background:#F8FAFC"><div style="font-size:22px;font-weight:700;color:${c || '#1E3A8A'}">${n}</div><div style="color:#64748B;font-size:12px">${t}</div></div>`;
-        screen = phone('Survey123', `<div style="text-align:center;padding:14px 4px"><div style="font-size:18px;font-weight:700;color:#1E3A8A">${esc(S.meta.title || 'סקר שילוט')}</div><div style="color:#64748B;font-size:12px;margin-bottom:14px">סקר שילוט · גרסת טופס</div><button class="primary" style="width:100%;padding:16px;font-size:18px;border-radius:12px" onclick="SimA.startNew()">＋ איסוף</button></div><div style="display:flex;gap:8px;flex-wrap:wrap">${tile('Inbox', st.inbox ? st.db.main.length : 'כבוי', st.inbox ? '' : '#991B1B')}${tile('טיוטות', st.drafts)}${tile('שולחן יוצא', 0)}${tile('נשלחו', st.sent)}</div><div style="color:#64748B;font-size:12px;margin-top:10px">הסקר נפתח ישירות ממסך זה; אפשר גם לחזור אליו מתפריט האפליקציה.</div>`);
-        note = 'המשתמש פותח בעצמו את Survey123 ובוחר את הסקר: אין דרך להציב כפתור פתיחה על מפת Field Maps. כפתור איסוף פותח טופס ריק.';
+        screen = s123Home(S, M);
+        note = 'המשתמש פותח בעצמו את Survey123 ובוחר את הסקר: אין דרך להציב כפתור פתיחה על מפת Field Maps. מסך הסקר: כפתור איסוף ותיקיות.';
       }
       else if (cur === 1) { screen = s123Phone(S, M, 'Survey123 · שלט חדש'); note = 'המיקום נקלט בטופס (GPS) ואפשר לתקנו במפה. מצב ושדות אחרים לפי תנאי התצוגה.'; }
       else { screen = resultPhone(M); note = 'השלט נשמר ב-Survey123. כדי לראות אותו במפה, המשתמש עובר ל-Field Maps ידנית (אין callback במסלול זה).'; }
@@ -207,7 +256,7 @@
     ap() { st.parts.push({}); rr(); }, rp(i) { st.parts.splice(i, 1); rr(); },
     send() {
       const S = st.S, M = model(S); ensure(S);
-      let s;
+      let s; st.dlg = false;
       if (st.editId) {
         s = st.db.main.find((x) => x.GlobalID === st.editId);
         Object.keys(st.sign).forEach((k) => { if (k !== 'GlobalID') s[k] = st.sign[k]; });
@@ -223,6 +272,9 @@
       if (st.tab === 'flow') st.step = FLOWS[st.flow].length - 1; else st.tab = 'fm';
       rr();
     },
+    dlg(v) { st.dlg = v; rr(); },
+    outbox() { st.dlg = false; st.outbox += 1; st.sign = {}; st.parts = []; st.visit = {}; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
+    draft() { st.dlg = false; st.drafts += 1; st.sign = {}; st.parts = []; st.visit = {}; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
     flowSet(f) { st.flow = f; st.step = 0; st.editId = null; st.sign = {}; st.parts = []; st.visit = {}; rr(); },
     step(n) { st.step = n; rr(); }, inboxSet(c) { st.inbox = c; rr(); },
     pick(i) { st.sel = i; st.step = 1; rr(); }, sel0(i) { st.sel = i; rr(); },
