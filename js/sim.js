@@ -95,7 +95,7 @@
       if (M.B) for (let k = 0; k < i; k++) { const v = sample(S, M.B.ent, i + k, s); v.GlobalID = uid(); v.ParentGlobalID = s.GlobalID; st.db.B.push(v); }
     }
   }
-  const ensure = (S) => { if (!st.db) st.db = { main: [], A: [], B: [] }; };
+  const ensure = (S) => { if (!st.db) seed(S); };
 
   /* ---------- שמירה (סימולציה של מה שקורה בשרת) ---------- */
   function applyAuto(S, M, signRec, visit) {
@@ -281,6 +281,7 @@
   const FLOWS = {
     edit: ['Field Maps: בחירת שלט', 'Field Maps: פופאפ וקישור', 'Survey123: Inbox', 'Survey123: טופס עריכה', 'חזרה ל-Field Maps'],
     new: ['Survey123: מסך הסקר (איסוף)', 'Survey123: טופס חדש', 'בדיקה ב-Field Maps'],
+    visitfm: ['Field Maps: בחירת שלט', 'Field Maps: פופאפ וסוג ביקור', 'Field Maps: טופס ביקור', 'תוצאה במפה'],
   };
   function dots(onc) {
     return st.db.main.map((s, i) => { const x = s.__loc ? 10 + s.__loc.x * 300 : 40 + (i * 83) % 280, y = s.__loc ? 10 + s.__loc.y * 210 : 40 + (i * 61) % 180; return `<div onclick="${onc}(${i})" style="position:absolute;left:${x}px;top:${y}px;width:22px;height:22px;border-radius:50%;background:${statusColor(s.SignStatus)};border:3px solid ${st.sel === i ? '#0F172A' : '#fff'};box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer"></div>`; }).join('');
@@ -288,14 +289,15 @@
   const mapBox = (inner) => `<div style="position:relative;height:260px;background:linear-gradient(135deg,#DCFCE7,#BBF7D0);border-radius:8px;overflow:hidden">${inner}</div>`;
   function flowTab(S, M) {
     ensure(S);
-    const steps = FLOWS[st.flow], cur = Math.min(st.step, steps.length - 1);
+    const kind = st.flow === 'visit' ? (st.vch === 's123' ? 'edit' : 'visitfm') : st.flow;
+    const steps = FLOWS[kind], cur = Math.min(st.step, steps.length - 1);
     const sg = st.sel != null ? st.db.main[st.sel] : null;
     const gid = sg ? sg.GlobalID : '<GlobalID>';
     const urlE = `arcgis-survey123://?itemID=${ITEM}&action=edit&q:globalId=${gid}&folder=inbox&update=true&callback=https://fieldmaps.arcgis.app`;
     const urlN = `arcgis-survey123://?itemID=${ITEM}&action=collect&callback=https://fieldmaps.arcgis.app`;
     const chips = steps.map((l, i) => `<span style="padding:5px 10px;border-radius:14px;font-size:12px;border:1px solid ${i === cur ? '#1E3A8A' : '#CBD5E1'};background:${i === cur ? '#1E3A8A' : i < cur ? '#DBEAFE' : '#fff'};color:${i === cur ? '#fff' : '#0F172A'}">${i + 1}. ${esc(l)}</span>`).join('<span style="color:#94A3B8">›</span>');
     let screen = '', note = '';
-    if (st.flow === 'edit') {
+    if (kind === 'edit') {
       if (cur === 0) { screen = phone('Field Maps · מפה', mapBox(dots('SimA.pick')) + `<div style="padding:8px;color:#64748B">${sg ? 'נבחר: ' + esc(sg.SignID || '') : 'הקש על שלט במפה'}</div>`); note = 'הקשה 1: בחירת השלט במפה.'; }
       else if (cur === 1 && sg) { screen = phone('Field Maps · פופאפ', `<div style="font-weight:700;color:#1E3A8A;font-size:16px">${esc(sg.SignID || '')}</div><div>${chipHtml(sg.SignStatus)}</div><div style="margin:8px 0;color:#64748B">${esc(sg.SignModel || '')}</div><a style="display:block;background:#1E3A8A;color:#fff;text-align:center;border-radius:8px;padding:10px;cursor:pointer" onclick="SimA.step(2)">ערוך ב-Survey123 ›</a>`); note = 'הקשה 2: קישור בפופאפ (ביטוי Arcade). הקישור פותח את Survey123 ישירות על הרשומה.'; }
       else if (cur === 2) {
@@ -304,6 +306,21 @@
       }
       else if (cur === 3) { screen = s123Phone(S, M, 'Survey123 · עריכת שלט'); note = 'הרשומה והרכיבים הקיימים נטענו. הוספת ביקור חדש מעדכנת את מצב השלט אחרי שמירה.'; }
       else { screen = resultPhone(M); note = 'חזרה אוטומטית ל-Field Maps (callback). הצבע בנקודה משקף את המצב המעודכן.'; }
+    } else if (kind === 'visitfm') {
+      const vt = M.B ? (M.B.ent.fields.find((f) => f.name === 'VisitType') && dom(S, M.B.ent.fields.find((f) => f.name === 'VisitType'))) : null;
+      const types = vt ? vt.values.map((v) => v.label) : [];
+      if (cur === 0) { screen = phone('Field Maps · מפה', mapBox(dots('SimA.pick')) + `<div style="padding:8px;color:#64748B">${sg ? 'נבחר: ' + esc(sg.SignID || '') : 'הקש על שלט במפה'}</div>`); note = 'הקשה 1: בחירת השלט במפה. הפופאפ נפתח.'; }
+      else if (cur === 1 && sg) {
+        const img = (M.main.fields.some((f) => f.name === 'SignModel') && dom(S, M.main.fields.find((f) => f.name === 'SignModel')) || { values: [] }).values.find((v) => v.label === sg.SignModel);
+        const u = img && img.img ? Media.get(img.img) : null;
+        screen = phone('Field Maps · פופאפ', `<div style="font-weight:700;color:#1E3A8A;font-size:16px">${esc(sg.SignID || '')}</div><div>${chipHtml(sg.SignStatus)}</div><div style="margin:8px 0;color:#64748B">${esc(sg.SignModel || '')}</div>${u ? `<img src="${u}" alt="" style="width:100%;max-height:150px;object-fit:contain;border:1px solid #E2E8F0;border-radius:6px;margin-bottom:8px">` : ''}<div style="font-weight:700;margin:10px 0 6px">הוסף ביקור</div><div style="display:flex;gap:6px">${types.map((t) => `<button class="primary" style="flex:1;padding:10px 4px" onclick="SimA.vtype('${esc(t)}')">${esc(t)}</button>`).join('')}</div><div style="color:#64748B;font-size:12px;margin-top:8px">הכפתורים נבנים ב-Arcade בפופאפ. כל כפתור פותח את טופס הביקור ב-Field Maps עם סוג הביקור מלא מראש.</div>`);
+        note = 'הקשה 2: בחירת סוג הביקור. הטופס נפתח עם סוג הביקור, הממפה והתאריך כבר מלאים.';
+      }
+      else if (cur === 2 && sg && M.B) {
+        screen = phone('Field Maps · ביקור חדש (' + esc(st.vform.VisitType || '') + ')', formFields(S, M.B.ent, st.vform, sg, 'SimA.fv') + `<div style="display:flex;gap:8px;margin-top:10px"><button class="primary" style="flex:1;padding:10px" onclick="SimA.vsave()">שמור</button><button style="flex:1" onclick="SimA.step(1)">ביטול</button></div>`);
+        note = 'טופס ביקור מוגדר בשכבת הטבלה ב-Field Maps. אותם שדות ותנאי תצוגה כמו ב-Survey123, ללא Inbox וללא מעבר בין אפליקציות.';
+      }
+      else { screen = resultPhone(M); note = 'הביקור נשמר כשורה חדשה, ומצב השלט הנוכחי התעדכן אוטומטית מהביקור (אם האפשרות מסומנת למעלה). הפופאפ מציג את הביקור בהיסטוריה.'; }
     } else {
       if (cur === 0) {
         screen = s123Home(S, M);
@@ -315,13 +332,15 @@
     const back = cur > 0 ? `<button onclick="SimA.step(${cur - 1})">‹ חזרה</button>` : '';
     const chk = (ok, t) => `<li style="color:${ok ? '#166534' : '#991B1B'}">${ok ? '✓' : '✗'} ${t}</li>`;
     const arcade = `var params = {\n  itemID: '${ITEM}',\n  action: 'edit',\n  'q:globalId': StandardizeGuid($feature.GlobalID, 'digits-hyphen'),\n  folder: 'inbox',\n  update: 'true',\n  callback: 'https://fieldmaps.arcgis.app'\n};\nreturn 'arcgis-survey123://?' + UrlEncode(params);`;
-    const side = `<div style="flex:1;min-width:280px"><div style="margin-bottom:10px"><b>${note}</b></div>${back}
-      ${st.flow === 'edit' ? `<h4>קישור (עריכה)</h4><pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;background:#0F172A;color:#E2E8F0;padding:8px;border-radius:6px;font-size:11px">${esc(urlE)}</pre>` : `<h4>הדרכה למשתמש בשטח</h4><ol style="line-height:1.8"><li>פתח את אפליקציית Survey123 (לא Field Maps).</li><li>בחר את הסקר "${esc(S.meta.title || 'סקר שילוט')}".</li><li>לחץ "איסוף", אשר מיקום GPS ומלא את הטופס.</li><li>שלח. לצפייה בשלט במפה עבור ל-Field Maps.</li></ol><p style="color:#64748B;font-size:12px">קיצור דרך אפשרי: קישור פתיחה (<code dir="ltr">${esc(urlN)}</code>) כקיצור על מסך הבית, כ-QR או בהודעת הדרכה. לא כפתור במפה.</p>`}
-      ${st.flow === 'edit' ? `<details><summary>ביטוי Arcade לקישור בפופאפ / Task</summary><pre dir="ltr" style="background:#F1F5F9;padding:8px;font-size:11px;overflow:auto">${esc(arcade)}</pre></details>` : ''}
+    const urlV = `https://fieldmaps.arcgis.app/?referenceContext=addRelatedFeature&itemID=<FM_MAP_ITEM_ID>&featureSourceURL=<SIGNS_LAYER_URL>&featureID=${gid}&relationshipID=<REL_ID_VISITS>&featureAttributes=${encodeURIComponent(JSON.stringify({ VisitType: st.vform && st.vform.VisitType || 'מעקב' }))}&callback=<ENCODED_RETURN_URL>`;
+    const vside = kind === 'visitfm' ? `<h4>קישור (deep link) לכפתור</h4><pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;background:#0F172A;color:#E2E8F0;padding:8px;border-radius:6px;font-size:11px">${esc(urlV)}</pre><p style="font-size:13px">addRelatedFeature פותח טופס בטבלה הקשורה, ו-featureAttributes ממלא שדות מראש (למשל VisitType). בניגוד לכך, ב-Survey123 קישור עריכה אינו יכול למלא שדה בשורת Repeat, ולכן סוג הביקור נבחר בתוך הטופס.</p>` : '';
+    const side = `<div style="flex:1;min-width:280px"><div style="margin-bottom:10px"><b>${note}</b></div>${back}${vside}
+      ${kind === 'edit' ? `<h4>קישור (עריכה)</h4><pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;background:#0F172A;color:#E2E8F0;padding:8px;border-radius:6px;font-size:11px">${esc(urlE)}</pre>` : kind === 'visitfm' ? '' : `<h4>הדרכה למשתמש בשטח</h4><ol style="line-height:1.8"><li>פתח את אפליקציית Survey123 (לא Field Maps).</li><li>בחר את הסקר "${esc(S.meta.title || 'סקר שילוט')}".</li><li>לחץ "איסוף", אשר מיקום GPS ומלא את הטופס.</li><li>שלח. לצפייה בשלט במפה עבור ל-Field Maps.</li></ol><p style="color:#64748B;font-size:12px">קיצור דרך אפשרי: קישור פתיחה (<code dir="ltr">${esc(urlN)}</code>) כקיצור על מסך הבית, כ-QR או בהודעת הדרכה. לא כפתור במפה.</p>`}
+      ${kind === 'edit' ? `<details><summary>ביטוי Arcade לקישור בפופאפ / Task</summary><pre dir="ltr" style="background:#F1F5F9;padding:8px;font-size:11px;overflow:auto">${esc(arcade)}</pre></details>` : ''}
       ${(() => { const cf = geoFields(M); if (!cf.length || st.flow !== 'new') return ''; const pend = st.db.main.filter((x) => x.__pending).length; const oth = calcFields(M).filter((f) => !/@layer/.test(f.calc)); return `<h4>חישוב כתובת יערנית מהמיקום</h4><ul style="line-height:1.7;font-size:12px">${cf.map((f) => `<li>${esc(f.alias)}: ${f.calc ? `<code dir="ltr" style="font-size:10px">${esc(f.calc)}</code>` : '<i style="color:#92400E">כלל טרם הוגדר, ערך הדמיה בלבד</i>'}</li>`).join('')}</ul><p style="color:#92400E;font-size:12px">pulldata("@layer") עובד רק ברשת. ללא קליטה השדות נשארים ריקים עד סנכרון ועיבוד בשרת. הערכים בסימולטור הם ערכי דמה.</p><button ${pend ? '' : 'disabled'} onclick="SimA.sync()">סנכרון והשלמה בשרת (${pend} ממתינים)</button>${oth.length ? `<h4>שדות מחושבים נוספים</h4><ul style="line-height:1.7;font-size:12px">${oth.map((f) => `<li>${esc(f.alias)}: <code dir="ltr" style="font-size:10px">${esc(f.calc)}</code></li>`).join('')}</ul>` : ''}`; })()}
-      <h4>הגדרות נדרשות</h4><ul style="line-height:1.8"><li><label><input type="checkbox" ${st.inbox ? 'checked' : ''} onchange="SimA.inboxSet(this.checked)"> Inbox מופעל בטופס</label></li>${chk(st.flow === 'new' || true, 'הטופס פורסם מעל השכבה/הטבלאות (Repeat לרכיבים, לביקורים)')}${chk(true, 'המשתמש מחובר לאותו Portal ב-Field Maps וב-Survey123')}${chk(true, 'update=true מרענן את ה-Inbox לפני הפתיחה')}</ul>
+      ${kind === 'visitfm' ? '' : `<h4>הגדרות נדרשות</h4><ul style="line-height:1.8"><li><label><input type="checkbox" ${st.inbox ? 'checked' : ''} onchange="SimA.inboxSet(this.checked)"> Inbox מופעל בטופס</label></li>${chk(st.flow === 'new' || true, 'הטופס פורסם מעל השכבה/הטבלאות (Repeat לרכיבים, לביקורים)')}${chk(true, 'המשתמש מחובר לאותו Portal ב-Field Maps וב-Survey123')}${chk(true, 'update=true מרענן את ה-Inbox לפני הפתיחה')}</ul>`}
       <p style="color:#64748B;font-size:12px">הערה: פרמטרי הקישור לפי דוגמאות קהילת Esri; לאמת מול התיעוד הרשמי ובגרסת האפליקציה בשטח.</p></div>`;
-    return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center"><button class="${st.flow === 'edit' ? 'primary' : ''}" onclick="SimA.flowSet('edit')">עריכת שלט קיים</button><button class="${st.flow === 'new' ? 'primary' : ''}" onclick="SimA.flowSet('new')">הוספת שלט חדש</button><button onclick="SimA.seed()">טען נתוני דוגמה</button></div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px">${chips}</div><div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">${screen}${side}</div>`;
+    return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center"><button class="${kind === 'edit' ? 'primary' : ''}" onclick="SimA.flowSet('edit')">עריכת שלט קיים</button><button class="${st.flow === 'new' ? 'primary' : ''}" onclick="SimA.flowSet('new')">הוספת שלט חדש</button><button class="${st.flow === 'visit' ? 'primary' : ''}" onclick="SimA.flowSet('visit')">ביקור: מעקב / פיקוח / טיפול</button>${st.flow === 'visit' ? `<span style="margin-inline-start:8px">ערוץ: <select onchange="SimA.vch(this.value)"><option value="fm" ${st.vch !== 's123' ? 'selected' : ''}>Field Maps (מומלץ)</option><option value="s123" ${st.vch === 's123' ? 'selected' : ''}>Survey123 (תבנית נוכחית)</option></select></span>` : ''}<button onclick="SimA.seed()">טען נתוני דוגמה</button></div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px">${chips}</div><div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">${screen}${side}</div>`;
   }
   function chipHtml(t) { return t ? `<span style="background:${statusColor(t)};color:#fff;border-radius:10px;padding:2px 10px;font-size:12px">${esc(t)}</span>` : ''; }
   function resultPhone(M) {
@@ -385,6 +404,10 @@
   };
   Media.onLoad = () => { try { rr(); } catch (e) { /* */ } };
   window.SimA = {
+    vch(c) { st.vch = c; st.step = 0; st.sel = null; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; rr(); },
+    vtype(t) { const M = model(st.S); st.vform = newRow(M.B.ent); st.vform.VisitType = t; derive(M.B.ent, st.vform, st.db.main[st.sel]); st.step = 2; rr(); },
+    fv(n, v) { const M = model(st.S); st.vform[n] = v; derive(M.B.ent, st.vform, st.db.main[st.sel]); rr(); },
+    vsave() { const M = model(st.S), sg = st.db.main[st.sel]; addVisit(st.S, M, sg, sg, st.vform); st.vform = null; st.step = 3; rr(); },
     grp(k) { st.col[k] = !st.col[k]; rr(); },
     tab(k) { st.tab = k; rr(); }, variant(v) { st.variant = v; st.modal = null; rr(); }, auto(c) { st.auto = c; rr(); },
     sv(n, v) { st.sign[n] = v; allDerive(); rr(); }, pv(i, n, v) { st.parts[i][n] = v; allDerive(); rr(); }, vv(i, n, v) { st.visits[i][n] = v; allDerive(); rr(); },
