@@ -178,6 +178,7 @@
     <div class="menu"><button id="b-menu">📤 ייצוא ושיתוף ▾</button>
       <div id="menu-pop" hidden>
         <button id="b-publish" title="כותב את הסכמה והתמונות לתיקיית האתר; אחרי Push השותפים רואים קישור קבוע ומעודכן">🌐 פרסם סימולטור לשותפים</button>
+        <button id="b-agol" title="יוצר Hosted Feature Layer חדש בארגון ArcGIS Online לפי הסכמה (עם תצוגה מקדימה)">☁ פרסם ל-AGOL…</button>
         <button id="b-doc-word">📄 מסמך אפיון (Word)</button>
         <button id="b-doc-pdf">📕 מסמך אפיון (PDF)</button>
         <label style="display:flex;gap:6px;align-items:center;padding:4px 10px;font-size:12px;color:#475569;cursor:pointer"><input type="checkbox" id="doc-client"> גרסת לקוח: ללא הערות פנימיות</label>
@@ -202,7 +203,7 @@
   var sim = (new URLSearchParams(location.search).get('sim') || '').replace(/[^A-Za-z0-9_\-]/g, '');
   var files = sim ? ['share/' + sim + '/schema.js'] : (window.PROJECT_FILES || []);
   if (sim) { window.__SIM_ONLY = true; window.__MEDIA_BASE = 'share/' + sim + '/'; }
-  files = files.concat(['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js', 'js/share.js', 'js/specdoc.js']);
+  files = files.concat(['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js', 'js/share.js', 'js/specdoc.js', 'js/publish.js']);
   (function next(i) {
     if (i >= files.length) return;
     var s = document.createElement('script'); s.src = files[i];
