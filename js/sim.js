@@ -311,16 +311,14 @@
       const types = vt ? vt.values.map((v) => v.label) : [];
       if (cur === 0) { screen = phone('Field Maps · מפה', mapBox(dots('SimA.pick')) + `<div style="padding:8px;color:#64748B">${sg ? 'נבחר: ' + esc(sg.SignID || '') : 'הקש על שלט במפה'}</div>`); note = 'הקשה 1: בחירת השלט במפה. הפופאפ נפתח.'; }
       else if (cur === 1 && sg) {
-        const img = (M.main.fields.some((f) => f.name === 'SignModel') && dom(S, M.main.fields.find((f) => f.name === 'SignModel')) || { values: [] }).values.find((v) => v.label === sg.SignModel);
-        const u = img && img.img ? Media.get(img.img) : null;
-        screen = phone('Field Maps · פופאפ', `<div style="font-weight:700;color:#1E3A8A;font-size:16px">${esc(sg.SignID || '')}</div><div>${chipHtml(sg.SignStatus)}</div><div style="margin:8px 0;color:#64748B">${esc(sg.SignModel || '')}</div>${u ? `<img src="${u}" alt="" style="width:100%;max-height:150px;object-fit:contain;border:1px solid #E2E8F0;border-radius:6px;margin-bottom:8px">` : ''}<div style="font-weight:700;margin:10px 0 6px">הוסף ביקור</div><div style="display:flex;gap:6px">${types.map((t) => `<button class="primary" style="flex:1;padding:10px 4px" onclick="SimA.vtype('${esc(t)}')">${esc(t)}</button>`).join('')}</div><div style="color:#64748B;font-size:12px;margin-top:8px">הכפתורים נבנים ב-Arcade בפופאפ. כל כפתור פותח את טופס הביקור ב-Field Maps עם סוג הביקור מלא מראש.</div>`);
-        note = 'הקשה 2: בחירת סוג הביקור. הטופס נפתח עם סוג הביקור, הממפה והתאריך כבר מלאים.';
+        screen = phone('Field Maps · פופאפ', `<div style="position:relative">${signPopup(S, M, sg)}${editModal(S, M)}</div>`);
+        note = 'הקשה 2: כפתור סוג ביקור לשלט כולו, או כפתור סוג על רכיב מסוים. הטופס נפתח עם סוג הביקור, הרכיב (אם נבחר), הממפה והתאריך כבר מלאים.';
       }
       else if (cur === 2 && sg && M.B) {
         screen = phone('Field Maps · ביקור חדש (' + esc(st.vform.VisitType || '') + ')', formFields(S, M.B.ent, st.vform, sg, 'SimA.fv') + `<div style="display:flex;gap:8px;margin-top:10px"><button class="primary" style="flex:1;padding:10px" onclick="SimA.vsave()">שמור</button><button style="flex:1" onclick="SimA.step(1)">ביטול</button></div>`);
         note = 'טופס ביקור מוגדר בשכבת הטבלה ב-Field Maps. אותם שדות ותנאי תצוגה כמו ב-Survey123, ללא Inbox וללא מעבר בין אפליקציות.';
       }
-      else { screen = resultPhone(M); note = 'הביקור נשמר כשורה חדשה, ומצב השלט הנוכחי התעדכן אוטומטית מהביקור (אם האפשרות מסומנת למעלה). הפופאפ מציג את הביקור בהיסטוריה.'; }
+      else { screen = phone('Field Maps · פופאפ', `<div style="position:relative">${signPopup(S, M, st.db.main[st.sel])}${editModal(S, M)}</div>`); note = 'הביקור נשמר כשורה חדשה, ומצב השלט הנוכחי התעדכן אוטומטית מהביקור (אם האפשרות מסומנת למעלה). הפופאפ מציג את הביקור בהיסטוריה.'; }
     } else {
       if (cur === 0) {
         screen = s123Home(S, M);
@@ -329,10 +327,10 @@
       else if (cur === 1) { screen = s123Phone(S, M, 'Survey123 · שלט חדש'); note = 'המיקום נקלט בטופס (GPS) ואפשר לתקנו במפה. מצב ושדות אחרים לפי תנאי התצוגה.'; }
       else { screen = resultPhone(M); note = 'השלט נשמר ב-Survey123. כדי לראות אותו במפה, המשתמש עובר ל-Field Maps ידנית (אין callback במסלול זה).'; }
     }
-    const back = cur > 0 ? `<button onclick="SimA.step(${cur - 1})">‹ חזרה</button>` : '';
+    const back = cur > 0 ? `<button onclick="SimA.step(${kind === 'visitfm' && cur === 3 ? 1 : cur - 1})">‹ חזרה</button>` : '';
     const chk = (ok, t) => `<li style="color:${ok ? '#166534' : '#991B1B'}">${ok ? '✓' : '✗'} ${t}</li>`;
     const arcade = `var params = {\n  itemID: '${ITEM}',\n  action: 'edit',\n  'q:globalId': StandardizeGuid($feature.GlobalID, 'digits-hyphen'),\n  folder: 'inbox',\n  update: 'true',\n  callback: 'https://fieldmaps.arcgis.app'\n};\nreturn 'arcgis-survey123://?' + UrlEncode(params);`;
-    const urlV = `https://fieldmaps.arcgis.app/?referenceContext=addRelatedFeature&itemID=<FM_MAP_ITEM_ID>&featureSourceURL=<SIGNS_LAYER_URL>&featureID=${gid}&relationshipID=<REL_ID_VISITS>&featureAttributes=${encodeURIComponent(JSON.stringify({ VisitType: st.vform && st.vform.VisitType || 'מעקב' }))}&callback=<ENCODED_RETURN_URL>`;
+    const urlV = `https://fieldmaps.arcgis.app/?referenceContext=addRelatedFeature&itemID=<FM_MAP_ITEM_ID>&featureSourceURL=<SIGNS_LAYER_URL>&featureID=${gid}&relationshipID=<REL_ID_VISITS>&featureAttributes=${encodeURIComponent(JSON.stringify(Object.assign({ VisitType: st.vform && st.vform.VisitType || 'מעקב' }, st.vform && st.vform.RelatedPartGlobalID ? { RelatedPartGlobalID: st.vform.RelatedPartGlobalID } : {})))}&callback=<ENCODED_RETURN_URL>`;
     const vside = kind === 'visitfm' ? `<h4>קישור (deep link) לכפתור</h4><pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;background:#0F172A;color:#E2E8F0;padding:8px;border-radius:6px;font-size:11px">${esc(urlV)}</pre><p style="font-size:13px">addRelatedFeature פותח טופס בטבלה הקשורה, ו-featureAttributes ממלא שדות מראש (למשל VisitType). בניגוד לכך, ב-Survey123 קישור עריכה אינו יכול למלא שדה בשורת Repeat, ולכן סוג הביקור נבחר בתוך הטופס.</p>` : '';
     const side = `<div style="flex:1;min-width:280px"><div style="margin-bottom:10px"><b>${note}</b></div>${back}${vside}
       ${kind === 'edit' ? `<h4>קישור (עריכה)</h4><pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;background:#0F172A;color:#E2E8F0;padding:8px;border-radius:6px;font-size:11px">${esc(urlE)}</pre>` : kind === 'visitfm' ? '' : `<h4>הדרכה למשתמש בשטח</h4><ol style="line-height:1.8"><li>פתח את אפליקציית Survey123 (לא Field Maps).</li><li>בחר את הסקר "${esc(S.meta.title || 'סקר שילוט')}".</li><li>לחץ "איסוף", אשר מיקום GPS ומלא את הטופס.</li><li>שלח. לצפייה בשלט במפה עבור ל-Field Maps.</li></ol><p style="color:#64748B;font-size:12px">קיצור דרך אפשרי: קישור פתיחה (<code dir="ltr">${esc(urlN)}</code>) כקיצור על מסך הבית, כ-QR או בהודעת הדרכה. לא כפתור במפה.</p>`}
@@ -351,19 +349,47 @@
   /* ---------- Field Maps ---------- */
   const statusColor = (s) => ({ 'תקין': '#a7c636', 'לא תקין': '#ed5151', 'מתוכנן': '#149ece', 'לפירוק': '#fc921f' }[s] || '#64748B');
   function visitsOf(M, sg) { if (!M.B) return []; if (st.variant === 'sign') return st.db.B.filter((v) => v.ParentGlobalID === sg.GlobalID); const ids = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => p.GlobalID); return st.db.B.filter((v) => ids.includes(v.ParentGlobalID)); }
+
+  /* ---------- פופאפ שלט עשיר (כמו בפופאפ ה-Arcade) ---------- */
+  const VCOL = (t) => ({ 'מעקב': '#149ece', 'פיקוח': '#fc921f', 'טיפול': '#a7c636' }[t] || '#64748B');
+  const pchip = (t, c) => `<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:700;color:${c};border:1px solid ${c};background:#fff;white-space:nowrap">${esc(t)}</span>`;
+  function modelImg(S, M, sg) { const f = M.main.fields.find((x) => x.name === 'SignModel'), d = f && dom(S, f), v = d && d.values.find((x) => x.label === sg.SignModel); return v && v.img ? Media.get(v.img) : null; }
+  function acc(title, n, body, accent, open) { return `<details ${open ? 'open' : ''} style="margin-top:10px;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;background:#fff"><summary style="cursor:pointer;padding:11px 13px;background:#F8FAFC;border-right:5px solid ${accent};font-weight:700;font-size:14px;color:#0F172A">${title}${n >= 0 ? ` <span style="color:#64748B;font-weight:400">(${n})</span>` : ''}</summary><div style="padding:10px 13px;border-top:1px solid #E2E8F0">${body}</div></details>`; }
+  function signPopup(S, M, sg) {
+    const parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID), vs = visitsOf(M, sg), vrev = vs.slice().reverse();
+    const vtf = M.B && M.B.ent.fields.find((f) => f.name === 'VisitType'), vd = vtf && dom(S, vtf), types = vd ? vd.values.map((v) => v.label) : [];
+    const stf = M.main.fields.find((f) => f.name === 'SignStatus'), sd = stf && dom(S, stf), states = sd ? sd.values.map((v) => v.label) : ['תקין', 'לא תקין', 'מתוכנן', 'לפירוק'];
+    const al = (ent, n) => { const f = ent.fields.find((x) => x.name === n); return f ? f.alias : n; };
+    const u = modelImg(S, M, sg), last = vrev[0];
+    const bar = `<div style="display:flex;gap:5px;margin-top:10px">${states.map((x) => { const on = x === sg.SignStatus; return `<div style="flex:1;text-align:center;padding:5px 2px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid ${on ? statusColor(x) : '#E2E8F0'};background:${on ? statusColor(x) : '#fff'};color:${on ? '#fff' : '#94A3B8'}">${esc(x)}</div>`; }).join('')}</div>`;
+    const hz = sg.SafetyHazard && /סכנה/.test(sg.SafetyHazard) && !/^לא/.test(sg.SafetyHazard) ? `<div style="margin-top:8px;background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:700">${esc(sg.SafetyHazard)}${sg.FaultNotes ? ': ' + esc(sg.FaultNotes) : ''}</div>` : (sg.FaultNotes && sg.SignStatus === 'לא תקין' ? `<div style="margin-top:8px;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;border-radius:8px;padding:7px 10px;font-size:13px">${esc(sg.FaultNotes)}</div>` : '');
+    const vbtn = (t, gid, small) => `<button onclick="SimA.vstart('${esc(t)}','${gid || ''}')" style="cursor:pointer;flex:1;border:0;border-radius:${small ? 7 : 10}px;padding:${small ? '5px 2px' : '10px 4px'};background:${VCOL(t)};color:#fff;font-weight:700;font-size:${small ? 12 : 14}px">${esc(t)}</button>`;
+    const actions = M.B ? `<div style="margin-top:12px;font-size:12px;color:#64748B">הוסף ביקור לשלט</div><div style="display:flex;gap:6px;margin-top:4px">${types.map((t) => vbtn(t, '')).join('')}</div><button onclick="SimA.editSign()" style="margin-top:6px;width:100%;cursor:pointer;border:1px solid #1E3A8A;color:#1E3A8A;background:#fff;border-radius:10px;padding:8px;font-weight:700">עריכת פרטי שלט</button>` : '';
+    const pk = ['SignContentText', 'LocationDescription', 'RoadName', 'RoadColor', 'PlacementDate', 'MappingDate', 'MapperName', 'NewSignageTheory'], gk = ['DistrictName', 'RegionName', 'GushName', 'ForestName', 'ResponsibleUnit'];
+    const grid = (ks) => { const r = ks.filter((k) => sg[k]).map((k) => `<div><div style="font-size:11px;color:#64748B">${esc(al(M.main, k))}</div><div style="font-size:13px">${esc(sg[k])}</div></div>`).join(''); return r ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">${r}</div>` : '<small style="color:#64748B">אין נתונים</small>'; };
+    const pm = ['WingNumber', 'Direction', 'Level', 'PictogramCode', 'SupplierName'];
+    const partsHtml = M.A ? (parts.map((p) => {
+      const lv = vs.filter((x) => x.RelatedPartGlobalID === p.GlobalID).pop(), state = lv && lv.PartStatusAtVisit || 'לא דווח';
+      const meta = pm.filter((k) => p[k]).map((k) => `${esc(al(M.A.ent, k))}: ${esc(p[k])}`).join(' · ');
+      return `<div style="padding:9px 0;border-bottom:1px solid #E2E8F0"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:14px">${esc(p.ComponentType || 'רכיב')}</b>${pchip(state, statusColor(state))}</div>${meta ? `<div style="font-size:12px;color:#64748B;margin-top:2px">${meta}</div>` : ''}${lv ? `<div style="font-size:11px;color:#94A3B8">דווח ${esc(lv.VisitDate || '')}</div>` : ''}${M.B ? `<div style="display:flex;gap:4px;margin-top:6px;align-items:center"><span style="font-size:11px;color:#64748B">ביקור על רכיב:</span>${types.map((t) => vbtn(t, p.GlobalID, true)).join('')}</div>` : ''}</div>`;
+    }).join('') || '<small style="color:#64748B">אין רכיבים</small>') : '';
+    const partName = (id) => { const p = st.db.A.find((x) => x.GlobalID === id); return p ? p.ComponentType : ''; };
+    const visHtml = vrev.map((v) => `<div style="border-right:3px solid ${VCOL(v.VisitType)};padding:4px 11px;margin-bottom:11px"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><span style="font-size:12px;color:#64748B">${esc(v.VisitDate || '')}</span><span>${pchip(v.VisitType || 'ביקור', VCOL(v.VisitType))} ${v.StatusAtVisit ? pchip(v.StatusAtVisit, statusColor(v.StatusAtVisit)) : ''}</span></div>${v.RelatedPartGlobalID ? `<div style="font-size:13px;margin-top:3px"><b>${esc(partName(v.RelatedPartGlobalID))}</b>: ${esc(v.PartStatusAtVisit || 'לא דווח')}</div>` : ''}${v.VisitSummary ? `<div style="font-size:13px;margin-top:3px">${esc(v.VisitSummary)}</div>` : ''}${v.VisitNotes ? `<div style="font-size:12px;color:#64748B">${esc(v.VisitNotes)}</div>` : ''}${v.VisitorName ? `<div style="font-size:11px;color:#94A3B8">${esc(v.VisitorName)}</div>` : ''}</div>`).join('') || '<small style="color:#64748B">אין ביקורים</small>';
+    return `<div style="padding:4px 2px"><div style="font-size:20px;font-weight:800;color:#1E3A8A">${esc(sg.SignID || 'שלט')}</div><div style="font-size:14px;margin-top:2px">${esc(sg.SignModel || '')}</div><div style="font-size:12px;color:#64748B;margin-top:2px">${last ? 'ביקור אחרון: ' + esc(last.VisitDate || '') + ' (' + esc(last.VisitType || '') + ')' : 'טרם בוצע ביקור'} · ${vs.length} ביקורים</div>${u ? `<img src="${u}" alt="" style="width:100%;max-height:150px;object-fit:contain;border:1px solid #E2E8F0;border-radius:10px;margin-top:8px;background:#fff">` : ''}${bar}${hz}${actions}
+    <div style="margin-top:12px;border:1px solid #E2E8F0;border-radius:12px;padding:12px">${grid(pk)}</div>
+    ${M.A ? acc(esc(M.A.ent.alias), parts.length, partsHtml, '#149ece', true) : ''}${M.B ? acc(esc(M.B.ent.alias), vs.length, visHtml, '#fc921f', true) : ''}${acc('כתובת יערנית ואחראים', -1, grid(gk), '#a7c636', false)}</div>`;
+  }
+  function editModal(S, M) { return st.emod ? `<div style="position:absolute;inset:0;background:#fff;overflow:auto;padding:8px;z-index:5"><b>עריכת פרטי שלט</b>${formFields(S, M.main, st.emod, {}, 'SimA.es')}<div style="display:flex;gap:8px;margin-top:10px"><button class="primary" style="flex:1;padding:10px" onclick="SimA.esave()">שמור</button><button style="flex:1" onclick="SimA.ecancel()">ביטול</button></div></div>` : ''; }
   function fm(S, M) {
     ensure(S);
     const dots = st.db.main.map((s, i) => { const x = 40 + (i * 83) % 280, y = 50 + (i * 61) % 200; return `<div onclick="SimA.sel(${i})" title="${esc(s.SignID || '')}" style="position:absolute;left:${x}px;top:${y}px;width:22px;height:22px;border-radius:50%;background:${statusColor(s.SignStatus)};border:3px solid ${st.sel === i ? '#0F172A' : '#fff'};box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer"></div>`; }).join('');
     let popup = '<div style="color:#64748B;padding:10px">בחר שלט במפה</div>';
     if (st.sel != null && st.db.main[st.sel]) {
-      const sg = st.db.main[st.sel], parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID), vs = visitsOf(M, sg);
-      const shown = M.main.fields.filter((f) => isShown(f, sg, {}) && sg[f.name]).slice(0, 8);
-      popup = `<div style="padding:6px 4px"><div style="font-weight:700;color:#1E3A8A;font-size:16px">${esc(sg.SignID || 'שלט')}</div><div style="margin:6px 0">${shown.map((f) => `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #E2E8F0;padding:3px 0"><span style="color:#64748B">${esc(f.alias)}</span><span>${esc(sg[f.name])}</span></div>`).join('')}</div>
-      <details open><summary style="font-weight:700;cursor:pointer">${esc(M.A.ent.alias)} (${parts.length})</summary>${parts.map((p) => `<div style="padding:3px 0;border-bottom:1px solid #E2E8F0">${esc(p.ComponentType || '')} ${esc((vs.filter((x) => x.RelatedPartGlobalID === p.GlobalID).pop() || {}).PartStatusAtVisit || 'לא דווח')}</div>`).join('') || '<small>אין</small>'}</details>
-      ${M.B ? `<details open><summary style="font-weight:700;cursor:pointer">${esc(M.B.ent.alias)} (${vs.length})</summary>${vs.map((v) => `<div style="padding:3px 0;border-bottom:1px solid #E2E8F0">${esc(v.VisitDate || '')} · ${esc(v.VisitType || '')} · ${esc(v.StatusAtVisit || '')}</div>`).join('') || '<small>אין</small>'}</details><button class="primary" style="margin-top:8px;width:100%" onclick="SimA.addv()">+ הוסף ${esc(M.B.ent.alias)}</button>` : ''}</div>`;
+      popup = signPopup(S, M, st.db.main[st.sel]);
     }
     const modal = st.modal ? `<div style="position:absolute;inset:0;background:#fff;overflow:auto;padding:8px"><b>${esc(M.B.ent.alias)} חדש</b>${st.variant === 'part' ? `<label style="display:block;font-weight:600;margin:10px 0 3px">ברכיב / תשתית</label><select style="width:100%;padding:8px" onchange="SimA.mp(this.value)"><option value="">בחר…</option>${st.db.A.filter((p) => p.ParentGlobalID === st.db.main[st.sel].GlobalID).map((p) => `<option value="${p.GlobalID}" ${st.modal.part === p.GlobalID ? 'selected' : ''}>${esc(p.ComponentType || '')}</option>`).join('')}</select>` : ''}${formFields(S, M.B.ent, st.modal.v, st.db.main[st.sel], 'SimA.mv')}<div style="display:flex;gap:8px;margin-top:10px"><button class="primary" style="flex:1;padding:10px" onclick="SimA.savev()">שמור</button><button style="flex:1" onclick="SimA.cancel()">ביטול</button></div></div>` : '';
-    return `<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">${phone('Field Maps · מפה', `<div style="position:relative;height:300px;background:linear-gradient(135deg,#DCFCE7,#BBF7D0);border-radius:8px;overflow:hidden">${dots}</div><div style="margin-top:8px;border-top:3px solid #1E3A8A;position:relative">${popup}${modal}</div>`)}
+    const emodal = editModal(S, M);
+    return `<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">${phone('Field Maps · מפה', `<div style="position:relative;height:300px;background:linear-gradient(135deg,#DCFCE7,#BBF7D0);border-radius:8px;overflow:hidden">${dots}</div><div style="margin-top:8px;border-top:3px solid #1E3A8A;position:relative">${popup}${modal}${emodal}</div>`)}
     <div style="flex:1;min-width:260px"><button class="primary" onclick="SimA.seed()">טען נתוני דוגמה</button><h3>מה אתה בודק כאן</h3><ul style="line-height:1.9"><li>הפופאפ מציג רשומות קשורות מהטבלאות (בפועל: Arcade).</li><li>הוספת ביקור מהשלט: ${st.variant === 'sign' ? 'מסך אחד, ללא בחירת רכיב.' : 'נדרשת בחירת רכיב לפני הביקור.'}</li><li>עדכון מצב השלט: ${st.auto ? 'אוטומטי מהביקור' : 'ידני (הצבע בעגול לא משתנה)'}.</li></ul></div></div>`;
   }
 
@@ -405,6 +431,8 @@
   Media.onLoad = () => { try { rr(); } catch (e) { /* */ } };
   window.SimA = {
     vch(c) { st.vch = c; st.step = 0; st.sel = null; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; rr(); },
+    vstart(t, gid) { const M = model(st.S), sg = st.db.main[st.sel], v = newRow(M.B.ent); v.VisitType = t; if (gid) v.RelatedPartGlobalID = gid; derive(M.B.ent, v, sg); if (st.tab === 'flow') { st.vform = v; st.step = 2; } else { st.modal = { v, part: gid || '' }; } rr(); },
+    editSign() { st.emod = Object.assign({}, st.db.main[st.sel]); rr(); }, es(n, v) { st.emod[n] = v; derive(model(st.S).main, st.emod, {}); rr(); }, esave() { Object.assign(st.db.main[st.sel], st.emod); st.emod = null; rr(); }, ecancel() { st.emod = null; rr(); },
     vtype(t) { const M = model(st.S); st.vform = newRow(M.B.ent); st.vform.VisitType = t; derive(M.B.ent, st.vform, st.db.main[st.sel]); st.step = 2; rr(); },
     fv(n, v) { const M = model(st.S); st.vform[n] = v; derive(M.B.ent, st.vform, st.db.main[st.sel]); rr(); },
     vsave() { const M = model(st.S), sg = st.db.main[st.sel]; addVisit(st.S, M, sg, sg, st.vform); st.vform = null; st.step = 3; rr(); },
@@ -448,7 +476,7 @@
     },
     startNew() { st.loc = null; st.pendingGeo = false; st.editId = null; st.sign = { SignID: newId() }; st.parts = []; st.visits = [newRow(model(st.S).B ? model(st.S).B.ent : { fields: [] })]; st.pi = 0; st.vi = 0; st.showReq = false; st.step = 1; allDerive(); rr(); },
     seed() { seed(st.S); st.sel = null; rr(); }, sel(i) { st.sel = i; st.modal = null; rr(); },
-    addv() { st.modal = { v: newRow(model(st.S).B.ent), part: '' }; rr(); }, mv(n, v) { st.modal.v[n] = v; derive(model(st.S).B.ent, st.modal.v, st.db.main[st.sel]); rr(); }, mp(id) { st.modal.part = id; rr(); }, cancel() { st.modal = null; rr(); },
+    addv() { st.modal = { v: newRow(model(st.S).B.ent), part: '' }; rr(); }, mv(n, v) { st.modal.v[n] = v; derive(model(st.S).B.ent, st.modal.v, st.db.main[st.sel]); rr(); }, mp(id) { st.modal.part = id; rr(); }, cancel() { st.modal = null; st.emod = null; rr(); },
     savev() {
       const S = st.S, M = model(S), sg = st.db.main[st.sel];
       let parent = sg; if (st.variant === 'part') { parent = st.db.A.find((p) => p.GlobalID === st.modal.part); if (!parent) { alert('בווריאנט ביקור→רכיב חובה לבחור רכיב'); return; } }
