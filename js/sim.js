@@ -14,6 +14,8 @@
   }
   const hidden = (f) => /^מוסתר/.test(f.visible || '') || f.mode === 'מערכת' || f.mode === 'היסטורי' || (f.type === 'GUID' && !f.pickFrom);
   const readonly = (f) => f.mode === 'אוטומטי' || /קריאה בלבד/.test(f.visible || '');
+  /* readonly בעריכה בלבד: pulldata("@property",'mode')='edit' (Survey123 בלבד) */
+  const lockEdit = (f) => !!(f.readonlyOnEdit && st.editId);
   function dom(S, f) { return f.domain && S.domains[f.domain] ? S.domains[f.domain] : null; }
   function parentField(S, ent, f) {
     const d = dom(S, f); if (!d || !d.values.some((v) => v.parent)) return null;
@@ -104,7 +106,7 @@
   const newId = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return 'SGN-' + String(d.getFullYear()).slice(2) + p(d.getMonth() + 1) + p(d.getDate()) + '-' + (1000 + Math.floor(Math.random() * 9000)); };
   /* שדות קודים/נגזרים: ערך שדה מקור (דומיין) → תכונת ext שלו, מחושב בשינוי */
   const today = () => new Date().toISOString().slice(0, 10);
-  const autoVal = (f) => f.autoValue === 'today' ? today() : f.autoValue === 'username' ? 'משתמש מחובר' : '';
+  const autoVal = (f) => f.autoValue === 'today' ? today() : f.autoValue === 'username' ? 'משתמש מחובר' : f.autoValue === 'usernameList' ? ((dom(st.S, f) || { values: [] }).values[0] || {}).label || '' : '';
   const isReq = (f, vals, up) => f.required === true || (f.reqIf ? relOk({ rel: f.reqIf }, vals, up) : false);
   const newRow = (ent) => { const o = {}; ent.fields.forEach((f) => { if (f.autoValue && !f.autoOnCreate) o[f.name] = autoVal(f); }); return o; };
   function derive(ent, vals, up) {
@@ -126,7 +128,7 @@
   function missing() {
     const M = model(st.S), out = [];
     if (!st.editId && !st.loc) out.push('מיקום השלט');
-    const chk = (ent, vals, up, tag) => ent.fields.forEach((f) => { if (isShown(f, vals, up) && !readonly(f) && isReq(f, vals, up) && (vals[f.name] == null || vals[f.name] === '')) out.push(tag + (f.alias || f.name)); });
+    const chk = (ent, vals, up, tag) => ent.fields.forEach((f) => { if (isShown(f, vals, up) && !readonly(f) && !lockEdit(f) && isReq(f, vals, up) && (vals[f.name] == null || vals[f.name] === '')) out.push(tag + (f.alias || f.name)); });
     chk(M.main, st.sign, {}, '');
     st.parts.forEach((p, i) => chk(M.A.ent, p, st.sign, 'רכיב ' + (i + 1) + ': '));
     if (M.B && st.variant === 'sign') st.visits.forEach((v, i) => chk(M.B.ent, v, st.sign, 'ביקור ' + (i + 1) + ': '));
@@ -187,7 +189,7 @@
   const isCol = (k) => st.col[k] === undefined ? /\|כתובת יערנית$/.test(k) : st.col[k];
   const band = (t, key, sum) => `<div onclick="SimA.grp('${key}')" dir="rtl" style="background:${BAND};padding:13px 16px;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:14px"><span>${t}</span><span style="font-size:13px;color:#444">${isCol(key) ? '◂' : '▾'}</span>${sum && isCol(key) ? `<span style="font-weight:400;font-size:13px;color:#4F6B4C;margin-right:auto">${esc(sum)}</span>` : ''}</div>`;
   function mControl(S, ent, f, vals, up, onch) {
-    const d = dom(S, f), v = vals[f.name] == null ? '' : vals[f.name], ro = readonly(f);
+    const d = dom(S, f), v = vals[f.name] == null ? '' : vals[f.name], ro = readonly(f) || lockEdit(f);
     const req = !ro && isReq(f, vals, up), bad = req && st.showReq && (v === '' || v == null);
     const lab = `<div style="font-size:16px;margin:16px 0 5px;color:#222">${esc(f.alias || f.name)}${req ? ' <span style="color:#C62828">*</span>' : ''}</div>`;
     const box = `position:relative;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid ${bad ? '#C62828' : LINE};border-radius:3px;min-height:42px;padding:0 10px;box-sizing:border-box`;
