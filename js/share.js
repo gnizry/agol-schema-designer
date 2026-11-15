@@ -4,7 +4,7 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  function toast(msg) { const t = $('toast'); if (!t) return; t.textContent = msg; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 4000); }
+  function toast(msg) { const t = $('toast'); if (!t) return; t.textContent = msg; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 9000); }
   function download(name, text, mime, bom) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([(bom ? '﻿' : '') + text], { type: (mime || 'text/plain') + ';charset=utf-8' }));
@@ -19,7 +19,7 @@
     const h1 = document.querySelector('header h1'); if (h1) h1.textContent = 'סימולטור חוויית משתמש';
     document.title = 'סימולטור · ' + (meta.title || '');
     const lay = document.querySelector('.layout');
-    if (lay) lay.insertAdjacentHTML('beforebegin', '<div style="background:#EFF6FF;border-bottom:1px solid #BFDBFE;color:#1E3A8A;padding:8px 20px;font-size:13px;line-height:1.6">סימולטור לשיתוף דעות: אפשר ללחוץ, למלא ולשלוח בחופשיות. שום דבר לא נשמר ולא נשלח לשום מקום; רענון הדף מאפס הכול. הערות נרשמות בכפתור "הערות" ומורדות כקובץ להחזרה. סכמה v' + esc(meta.version || '?') + (window.__BUILT ? ' · נוצר ' + esc(window.__BUILT) : '') + '</div>');
+    if (lay) lay.insertAdjacentHTML('beforebegin', '<div style="background:#EFF6FF;border-bottom:1px solid #BFDBFE;color:#1E3A8A;padding:8px 20px;font-size:13px;line-height:1.6">סימולטור לשיתוף דעות: אפשר ללחוץ, למלא ולשלוח בחופשיות. שום דבר לא נשמר ולא נשלח לשום מקום; רענון הדף מאפס הכול. הדף מתעדכן אוטומטית כשהמפתח מפרסם גרסה חדשה. הערות נרשמות בכפתור "הערות" ומורדות כקובץ להחזרה. סכמה v' + esc(meta.version || '?') + (window.__BUILT ? ' · עודכן ' + esc(window.__BUILT) : '') + '</div>');
     const notes = [];
     const box = document.createElement('div'); box.id = 'fbk';
     document.body.appendChild(box);
@@ -45,13 +45,50 @@
   if (window.__SIM_ONLY) { initSimOnly(); return; }
 
   /* ---------- ייצוא ---------- */
-  async function toDataUrl(src) {
+  async function scaled(src) {
     const img = new Image();
     await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = src; });
     const k = Math.min(1, 480 / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
     c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-    return c.toDataURL('image/png');
+    return c;
+  }
+  const toDataUrl = async (src) => (await scaled(src)).toDataURL('image/png');
+  const toBlob = async (src) => { const c = await scaled(src); return new Promise((ok) => c.toBlob(ok, 'image/png')); };
+  function idb(mode, fn) {
+    return new Promise((ok, no) => {
+      const r = indexedDB.open('agol-schema-designer-share', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('h');
+      r.onsuccess = () => { const tx = r.result.transaction('h', mode), q = fn(tx.objectStore('h')); tx.oncomplete = () => ok(q && q.result); tx.onerror = () => no(tx.error); };
+      r.onerror = () => no(r.error);
+    });
+  }
+  const siteUrl = () => (/github\.io$/.test(location.hostname) ? location.origin + location.pathname.replace(/[^/]*$/, '') : 'https://gnizry.github.io/agol-schema-designer/');
+  async function writeFile(dir, path, data) {
+    const parts = path.split('/'); let d = dir;
+    for (const p of parts.slice(0, -1)) d = await d.getDirectoryHandle(p, { create: true });
+    const w = await (await d.getFileHandle(parts[parts.length - 1], { create: true })).createWritable();
+    await w.write(data); await w.close();
+  }
+  /* כותב share/<key>/schema.js ואת תמונות הדגמים (מוקטנות) לתיקיית האתר. השותפים רואים אותן אחרי Push. */
+  async function publishTo(root) {
+    const S = window.__designer.S, key = slug(S.meta.key);
+    try { await root.getFileHandle('index.html'); await root.getDirectoryHandle('js'); } catch (e) { throw new Error('זו לא תיקיית agol-schema-designer (חסרים index.html ו-js)'); }
+    const now = new Date(), built = now.toLocaleDateString('he-IL') + ' ' + now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    await writeFile(root, 'share/' + key + '/schema.js', 'window.SCHEMAS = window.SCHEMAS || {};\nwindow.SCHEMAS[' + JSON.stringify(S.meta.key) + '] = ' + JSON.stringify(S, null, 2) + ';\nwindow.__BUILT = ' + JSON.stringify(built) + ';\n');
+    const rels = new Set(); let n = 0, miss = 0;
+    Object.values(S.domains || {}).forEach((d) => (d.values || []).forEach((v) => { if (v.img) rels.add(v.img); }));
+    for (const rel of rels) {
+      try { const u = Media.resolver ? await Media.resolver(rel) : null; if (!u) { miss++; continue; } await writeFile(root, 'share/' + key + '/' + rel, await toBlob(u)); n++; } catch (e) { miss++; }
+    }
+    return { key, url: siteUrl() + '?sim=' + encodeURIComponent(key), images: n, missing: miss };
+  }
+  async function publish() {
+    if (typeof window.showDirectoryPicker !== 'function') throw new Error('נדרש Chrome או Edge');
+    let h = null; try { h = await idb('readonly', (st) => st.get('root')); } catch (e) { /* */ }
+    if (h && (await h.requestPermission({ mode: 'readwrite' })) !== 'granted') h = null;
+    if (!h) { h = await window.showDirectoryPicker({ mode: 'readwrite' }); try { await idb('readwrite', (st) => st.put(h, 'root')); } catch (e) { /* */ } }
+    return publishTo(h);
   }
   const jsonEmbed = (o) => JSON.stringify(o).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   async function build() {
@@ -78,7 +115,16 @@
     const html = '<!DOCTYPE html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>סימולטור · ' + esc(S.meta.title || S.meta.key) + '</title>\n' + links + '\n<style>\n' + css + '\n</style>\n</head>\n<body>\n' + header + '\n<div class="layout"><nav id="nav"></nav><main id="main"></main></div>\n<div id="toast"></div>\n<script>\nwindow.__SIM_ONLY = true; window.__BUILT = ' + jsonEmbed(built) + '; window.__MEDIA = ' + jsonEmbed(media) + ';\nwindow.SCHEMAS = window.SCHEMAS || {}; window.SCHEMAS[' + jsonEmbed(S.meta.key) + '] = ' + jsonEmbed(S) + ';\n</script>\n' + code + '\n</body>\n</html>\n';
     return { html, name: 'simulator-' + slug(S.meta.key) + '-v' + (S.meta.version || 1) + '.html', images: Object.keys(media).length, missing: miss, kb: Math.round(html.length / 1024) };
   }
-  window.Share = { build };
+  window.Share = { build, publishTo };
+  const bp = $('b-publish');
+  if (bp) bp.onclick = async () => {
+    bp.disabled = true;
+    try {
+      const r = await publish();
+      try { await navigator.clipboard.writeText(r.url); } catch (e) { /* */ }
+      toast('נכתב ל-share/' + r.key + ' (' + r.images + ' תמונות' + (r.missing ? ', ' + r.missing + ' לא נטענו: פתח את תיקיית הפרויקט לפני הפרסום' : '') + '). עכשיו Commit ו-Push ב-GitHub Desktop. הקישור הועתק: ' + r.url);
+    } catch (e) { if (e.name !== 'AbortError') toast('שגיאת פרסום: ' + e.message); } finally { bp.disabled = false; }
+  };
   const b = $('b-share');
   if (b) b.onclick = async () => {
     b.disabled = true;

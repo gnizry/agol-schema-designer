@@ -381,6 +381,7 @@
   }
   if (window.Media) Media.resolver = async (rel) => {
     if (window.__MEDIA) return window.__MEDIA[rel] || null; // קובץ סימולטור משותף: תמונות מוטמעות
+    if (window.__MEDIA_BASE) return window.__MEDIA_BASE + rel.split('/').map(encodeURIComponent).join('/'); // סימולטור מפורסם: תמונות מהאתר
     try {
       const info = FOLDER[cur]; if (!info) return null;
       const parts = rel.split('/'); let d = info.dir;
