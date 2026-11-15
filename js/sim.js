@@ -4,7 +4,7 @@
   'use strict';
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const uid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); })).toUpperCase();
-  const st = { tab: 'flow', flow: 'edit', step: 0, inbox: true, drafts: 0, outbox: 0, dlg: false, sent: 0, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visits: [], pi: 0, vi: 0, db: null, sel: null, modal: null, S: null };
+  const st = { online: true, loc: null, pendingGeo: false, tab: 'flow', flow: 'edit', step: 0, inbox: true, drafts: 0, outbox: 0, dlg: false, sent: 0, editId: null, tab0: 's123', variant: 'sign', auto: true, sign: {}, parts: [], visits: [], pi: 0, vi: 0, db: null, sel: null, modal: null, S: null };
 
   /* ---------- מבנה הסכמה ---------- */
   function model(S) {
@@ -88,6 +88,18 @@
 
   /* ---------- Survey123 ---------- */
 
+
+  /* ---------- מיקום וכתובת יערנית מחושבת (הדמיה של pulldata @layer) ---------- */
+  const calcFields = (M) => M.main.fields.filter((f) => f.calc);
+  const zoneOf = (loc) => (loc.x < 0.5 ? 0 : 1) + (loc.y < 0.5 ? 0 : 2);
+  function zoneVal(f, zi) { return ['SHORT', 'LONG', 'FLOAT', 'DOUBLE'].includes(f.type) ? zi + 1 : (f.alias || f.name) + ' (דוגמה ' + (zi + 1) + ')'; }
+  function applyGeo() {
+    const M = model(st.S); if (!st.loc) return;
+    const zi = zoneOf(st.loc);
+    calcFields(M).forEach((f) => { st.sign[f.name] = st.online ? zoneVal(f, zi) : ''; });
+    st.pendingGeo = !st.online;
+  }
+
   /* ---------- מסכי אפליקציית Survey123 לנייד (קירוב לפי תיעוד Esri) ---------- */
   const GREEN = '#2E7D32';
   function sPhone(inner, o) {
@@ -118,11 +130,11 @@ ${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', '
     const lab = `<div style="font-size:15px;margin:14px 0 2px">${esc(f.alias || f.name)}</div>`;
     const line = 'width:100%;border:0;border-bottom:1px solid #9E9E9E;border-radius:0;padding:6px 0;font:inherit;background:transparent;box-sizing:border-box;outline:none';
     let inp;
-    if (ro) inp = `<div style="color:#757575;border-bottom:1px dotted #BDBDBD;padding:6px 0">${v ? esc(v) : '—'}</div>`;
+    if (ro) inp = `<div style="color:#757575;border-bottom:1px dotted #BDBDBD;padding:6px 0">${v ? esc(v) : f.calc ? (st.loc ? (st.online ? '—' : 'תחושב בשרת אחרי סנכרון') : 'יחושב לאחר בחירת מיקום') : '—'}</div>`;
     else if (d) {
       const pf = parentField(S, ent, f); const pv = pf ? vals[pf.name] : null;
       const opts = d.values.filter((x) => !pf || !x.parent || x.parent === pv);
-      if (pf && !pv) inp = `<div style="color:#9E9E9E;border-bottom:1px solid #BDBDBD;padding:6px 0">יש לבחור קודם: ${esc(pf.alias)}</div>`;
+      if (pf && !pv) inp = `<div style="color:#9E9E9E";border-bottom:1px solid #BDBDBD;padding:6px 0">יש לבחור קודם: ${esc(pf.alias)}</div>`;
       else if (opts.length <= 5) inp = opts.map((o) => `<div data-v="${esc(o.label)}" onclick="${onch}('${f.name}',this.dataset.v)" style="display:flex;align-items:center;gap:10px;padding:8px 0;cursor:pointer"><span style="width:18px;height:18px;border-radius:50%;border:2px solid ${o.label === v ? GREEN : '#757575'};display:inline-flex;align-items:center;justify-content:center">${o.label === v ? `<span style="width:9px;height:9px;border-radius:50%;background:${GREEN}"></span>` : ''}</span>${esc(o.label)}</div>`).join('');
       else inp = `<select style="${line}" onchange="${onch}('${f.name}',this.value)"><option value="">בחר…</option>${opts.map((o) => `<option ${o.label === v ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
     } else if (f.type === 'DATE') inp = `<input type="date" style="${line}" value="${esc(v)}" onchange="${onch}('${f.name}',this.value)">`;
@@ -136,7 +148,9 @@ ${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', '
     return Object.keys(groups).map((g) => `<div style="background:#EEEEEE;padding:8px 16px;font-weight:600;font-size:14px;color:#424242">${esc(g)}</div><div style="padding:0 16px 8px">${groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`).join('');
   }
   function s123Phone(S, M, title) {
-    const loc = st.editId ? '' : `<div style="padding:12px 16px;border-bottom:1px solid #EEEEEE"><div style="font-size:15px">מיקום השלט</div><div style="margin-top:6px;background:#E8F5E9;border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center"><span style="color:#1B5E20">⌖ נקלט GPS · דיוק ±4 מ׳</span><span style="color:${GREEN}">מפה</span></div></div>`;
+    const pin = st.loc ? `<div style="position:absolute;left:${st.loc.x * 100}%;top:${st.loc.y * 100}%;transform:translate(-50%,-100%);font-size:26px;line-height:1">📍</div>` : '';
+    const zlab = (n, st2) => `<span style="position:absolute;${st2};font-size:10px;color:#2E7D32;opacity:.8">יער דוגמה ${n}</span>`;
+    const loc = st.editId ? '' : `<div style="padding:12px 16px;border-bottom:1px solid #EEEEEE"><div style="font-size:15px">מיקום השלט <span style="color:#757575;font-size:12px">(לחץ על המפה להצבת הנקודה)</span></div><div onclick="SimA.pinAt(event,this)" style="position:relative;height:180px;margin-top:6px;border-radius:8px;overflow:hidden;background:#C8E6C9;border:1px solid #A5D6A7;cursor:crosshair"><div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed #81C784"></div><div style="position:absolute;top:50%;left:0;right:0;border-top:1px dashed #81C784"></div>${zlab(1, 'right:6px;top:4px')}${zlab(2, 'left:6px;top:4px')}${zlab(3, 'right:6px;bottom:4px')}${zlab(4, 'left:6px;bottom:4px')}${pin}</div><div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center"><span style="color:${st.loc ? '#1B5E20' : '#757575'};font-size:13px">${st.loc ? '⌖ נקודה נבחרה · דיוק ±4 מ׳' : 'לא נבחר מיקום'}</span><span onclick="SimA.gps()" style="color:${GREEN};cursor:pointer;font-weight:600;font-size:13px">⌖ קלוט GPS</span></div></div>`;
     const hdr = (t) => `<div style="background:#EEEEEE;padding:8px 16px;font-weight:600;font-size:14px;color:#424242;margin-top:6px">${t}</div>`;
     /* חזרה (repeat) כמו ב-Survey123: תת-טופס של הרשומה הנוכחית + סרגל דפדוף "1 מתוך N" עם + ומחיקה */
     const repeat = (title, arr, idx, kind, ent, up, onchFn) => {
@@ -165,7 +179,7 @@ ${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', '
     new: ['Survey123: מסך הסקר (איסוף)', 'Survey123: טופס חדש', 'בדיקה ב-Field Maps'],
   };
   function dots(onc) {
-    return st.db.main.map((s, i) => { const x = 40 + (i * 83) % 280, y = 40 + (i * 61) % 180; return `<div onclick="${onc}(${i})" style="position:absolute;left:${x}px;top:${y}px;width:22px;height:22px;border-radius:50%;background:${statusColor(s.SignStatus)};border:3px solid ${st.sel === i ? '#0F172A' : '#fff'};box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer"></div>`; }).join('');
+    return st.db.main.map((s, i) => { const x = s.__loc ? 10 + s.__loc.x * 300 : 40 + (i * 83) % 280, y = s.__loc ? 10 + s.__loc.y * 210 : 40 + (i * 61) % 180; return `<div onclick="${onc}(${i})" style="position:absolute;left:${x}px;top:${y}px;width:22px;height:22px;border-radius:50%;background:${statusColor(s.SignStatus)};border:3px solid ${st.sel === i ? '#0F172A' : '#fff'};box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer"></div>`; }).join('');
   }
   const mapBox = (inner) => `<div style="position:relative;height:260px;background:linear-gradient(135deg,#DCFCE7,#BBF7D0);border-radius:8px;overflow:hidden">${inner}</div>`;
   function flowTab(S, M) {
@@ -200,6 +214,7 @@ ${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', '
     const side = `<div style="flex:1;min-width:280px"><div style="margin-bottom:10px"><b>${note}</b></div>${back}
       ${st.flow === 'edit' ? `<h4>קישור (עריכה)</h4><pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;background:#0F172A;color:#E2E8F0;padding:8px;border-radius:6px;font-size:11px">${esc(urlE)}</pre>` : `<h4>הדרכה למשתמש בשטח</h4><ol style="line-height:1.8"><li>פתח את אפליקציית Survey123 (לא Field Maps).</li><li>בחר את הסקר "${esc(S.meta.title || 'סקר שילוט')}".</li><li>לחץ "איסוף", אשר מיקום GPS ומלא את הטופס.</li><li>שלח. לצפייה בשלט במפה עבור ל-Field Maps.</li></ol><p style="color:#64748B;font-size:12px">קיצור דרך אפשרי: קישור פתיחה (<code dir="ltr">${esc(urlN)}</code>) כקיצור על מסך הבית, כ-QR או בהודעת הדרכה. לא כפתור במפה.</p>`}
       ${st.flow === 'edit' ? `<details><summary>ביטוי Arcade לקישור בפופאפ / Task</summary><pre dir="ltr" style="background:#F1F5F9;padding:8px;font-size:11px;overflow:auto">${esc(arcade)}</pre></details>` : ''}
+      ${(() => { const cf = calcFields(M); if (!cf.length || st.flow !== 'new') return ''; const pend = st.db.main.filter((x) => x.__pending).length; return `<h4>חישוב כתובת יערנית מהמיקום</h4><ul style="line-height:1.7;font-size:12px">${cf.map((f) => `<li>${esc(f.alias)}: <code dir="ltr" style="font-size:10px">${esc(f.calc)}</code></li>`).join('')}</ul><p style="color:#92400E;font-size:12px">pulldata("@layer") עובד רק ברשת. ללא קליטה השדות נשארים ריקים עד סנכרון ועיבוד בשרת.</p><button ${pend ? '' : 'disabled'} onclick="SimA.sync()">סנכרון והשלמה בשרת (${pend} ממתינים)</button>`; })()}
       <h4>הגדרות נדרשות</h4><ul style="line-height:1.8"><li><label><input type="checkbox" ${st.inbox ? 'checked' : ''} onchange="SimA.inboxSet(this.checked)"> Inbox מופעל בטופס</label></li>${chk(st.flow === 'new' || true, 'הטופס פורסם מעל השכבה/הטבלאות (Repeat לרכיבים, לביקורים)')}${chk(true, 'המשתמש מחובר לאותו Portal ב-Field Maps וב-Survey123')}${chk(true, 'update=true מרענן את ה-Inbox לפני הפתיחה')}</ul>
       <p style="color:#64748B;font-size:12px">הערה: פרמטרי הקישור לפי דוגמאות קהילת Esri; לאמת מול התיעוד הרשמי ובגרסת האפליקציה בשטח.</p></div>`;
     return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center"><button class="${st.flow === 'edit' ? 'primary' : ''}" onclick="SimA.flowSet('edit')">עריכת שלט קיים</button><button class="${st.flow === 'new' ? 'primary' : ''}" onclick="SimA.flowSet('new')">הוספת שלט חדש</button><button onclick="SimA.seed()">טען נתוני דוגמה</button></div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px">${chips}</div><div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">${screen}${side}</div>`;
@@ -255,7 +270,7 @@ ${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', '
     st.S = S; const M = model(S); if (!M.A) return '<p>הסימולטור דורש שכבה עם לפחות טבלה מקושרת אחת.</p>';
     const tab = (k, l) => `<button class="${st.tab === k ? 'primary' : ''}" onclick="SimA.tab('${k}')">${l}</button>`;
     const body = st.tab === 'flow' ? flowTab(S, M) : st.tab === 's123' ? s123(S, M) : st.tab === 'fm' ? fm(S, M) : data(S, M);
-    return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${tab('flow', 'זרימה Field Maps ↔ Survey123')}${tab('s123', 'Survey123')}${tab('fm', 'Field Maps')}${tab('data', 'נתונים והשוואה')}<span style="margin-inline-start:16px">קשר ביקורים: <select onchange="SimA.variant(this.value)"><option value="sign" ${st.variant === 'sign' ? 'selected' : ''}>ביקור → שלט</option><option value="part" ${st.variant === 'part' ? 'selected' : ''}>ביקור → רכיב</option></select></span><label style="margin-inline-start:12px"><input type="checkbox" ${st.auto ? 'checked' : ''} onchange="SimA.auto(this.checked)"> עדכון מצב שלט אוטומטי מהביקור</label></div>${body}`;
+    return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${tab('flow', 'זרימה Field Maps ↔ Survey123')}${tab('s123', 'Survey123')}${tab('fm', 'Field Maps')}${tab('data', 'נתונים והשוואה')}<span style="margin-inline-start:16px">קשר ביקורים: <select onchange="SimA.variant(this.value)"><option value="sign" ${st.variant === 'sign' ? 'selected' : ''}>ביקור → שלט</option><option value="part" ${st.variant === 'part' ? 'selected' : ''}>ביקור → רכיב</option></select></span><label style="margin-inline-start:12px"><input type="checkbox" ${st.online ? 'checked' : ''} onchange="SimA.online(this.checked)"> מחובר לרשת</label><label style="margin-inline-start:12px"><input type="checkbox" ${st.auto ? 'checked' : ''} onchange="SimA.auto(this.checked)"> עדכון מצב שלט אוטומטי מהביקור</label></div>${body}`;
   }
   const rr = () => { if (window.A && A.refresh) A.refresh(); };
   window.SimA = {
@@ -274,25 +289,29 @@ ${inbox}${row('✎', 'טיוטות', badge(st.drafts, '#F57C00'))}${row('⇧', '
         st.db.A = st.db.A.filter((p) => p.ParentGlobalID !== s.GlobalID || keep.includes(p.GlobalID));
         st.parts.forEach((p) => { if (p.GlobalID) Object.assign(st.db.A.find((x) => x.GlobalID === p.GlobalID), p); else st.db.A.push(Object.assign({}, p, { GlobalID: uid(), ParentGlobalID: s.GlobalID })); });
       } else {
-        s = Object.assign({}, st.sign, { GlobalID: uid() }); st.db.main.push(s);
+        s = Object.assign({}, st.sign, { GlobalID: uid() }); if (st.loc) { s.__loc = st.loc; s.__pending = st.pendingGeo; } st.db.main.push(s);
         st.parts.forEach((p) => st.db.A.push(Object.assign({}, p, { GlobalID: uid(), ParentGlobalID: s.GlobalID })));
       }
       if (M.B && st.variant === 'sign') st.visits.forEach((v) => { if (Object.keys(v).length) addVisit(S, M, s, s, Object.assign({}, v)); });
-      st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.editId = null; st.sent += 1; st.sel = st.db.main.indexOf(s);
+      st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.loc = null; st.pendingGeo = false; st.editId = null; st.sent += 1; st.sel = st.db.main.indexOf(s);
       if (st.tab === 'flow') st.step = FLOWS[st.flow].length - 1; else st.tab = 'fm';
       rr();
     },
+    pinAt(e, el) { const r = el.getBoundingClientRect(); st.loc = { x: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y: Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) }; applyGeo(); rr(); },
+    gps() { st.loc = { x: 0.5 + (Math.random() - 0.5) * 0.6, y: 0.5 + (Math.random() - 0.5) * 0.6 }; applyGeo(); rr(); },
+    online(c) { st.online = c; applyGeo(); rr(); },
+    sync() { const M = model(st.S); st.db.main.forEach((sg) => { if (sg.__pending && sg.__loc) { calcFields(M).forEach((f) => { sg[f.name] = zoneVal(f, zoneOf(sg.__loc)); }); sg.__pending = false; } }); rr(); },
     dlg(v) { st.dlg = v; rr(); },
     outbox() { st.dlg = false; st.outbox += 1; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
     draft() { st.dlg = false; st.drafts += 1; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
-    flowSet(f) { st.flow = f; st.step = 0; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; rr(); },
+    flowSet(f) { st.loc = null; st.pendingGeo = false; st.flow = f; st.step = 0; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; rr(); },
     step(n) { st.step = n; rr(); }, inboxSet(c) { st.inbox = c; rr(); },
     pick(i) { st.sel = i; st.step = 1; rr(); }, sel0(i) { st.sel = i; rr(); },
     startEdit() {
       const sg = st.db.main[st.sel]; if (!sg) return;
       st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visits = []; st.pi = 0; st.vi = 0; st.step = 3; rr();
     },
-    startNew() { st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.step = 1; rr(); },
+    startNew() { st.loc = null; st.pendingGeo = false; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.step = 1; rr(); },
     seed() { seed(st.S); st.sel = null; rr(); }, sel(i) { st.sel = i; st.modal = null; rr(); },
     addv() { st.modal = { v: {}, part: '' }; rr(); }, mv(n, v) { st.modal.v[n] = v; rr(); }, mp(id) { st.modal.part = id; rr(); }, cancel() { st.modal = null; rr(); },
     savev() {
