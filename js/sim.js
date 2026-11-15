@@ -74,7 +74,7 @@
     const groups = {}; ent.fields.forEach((f) => { if (isShown(f, vals, up)) (groups[f.category || 'כללי'] = groups[f.category || 'כללי'] || []).push(f); });
     return Object.keys(groups).map((g) => `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:4px 12px 12px;margin:10px 0"><div style="font-weight:700;color:#1E3A8A;margin-top:8px">${esc(g)}</div>${groups[g].map((f) => control(S, ent, f, vals, up, onch)).join('')}</div>`).join('') + fmAttach(ent, vals);
   }
-  const phone = (title, inner) => `<div style="width:390px;max-width:100%;border:8px solid #0F172A;border-radius:26px;background:#fff;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18)"><div style="background:#1E3A8A;color:#fff;padding:10px 14px;font-weight:700">${title}</div><div dir="rtl" style="padding:6px 10px 14px;max-height:640px;overflow:auto;text-align:right">${inner}</div></div>`;
+  const phone = (title, inner) => `<div style="width:390px;max-width:100%;border:8px solid #0F172A;border-radius:26px;background:#fff;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18)"><div style="background:#1E3A8A;color:#fff;padding:10px 14px;font-weight:700">${title}</div><div dir="rtl" style="padding:6px 10px 14px;max-height:min(88vh,1150px);overflow:auto;text-align:right">${inner}</div></div>`;
 
   /* ---------- נתוני דוגמה ---------- */
   function sample(S, ent, i, up) {
@@ -89,8 +89,20 @@
     });
     return o;
   }
+  /* מערך דוגמה מלא מהסכמה (S.demo): שלטים, רכיבים, ביקורים ושורות מצב. ללא S.demo: נתוני דמה גנריים */
+  function seedDemo(S, M, dm) {
+    const rows = (n) => (n && dm[n]) || [];
+    rows(M.main.name).forEach((r) => { const o = Object.assign({}, r); delete o.loc; o.GlobalID = uid(); if (r.loc) { o.__loc = r.loc; geoFields(M).forEach((f) => { o[f.name] = zoneVal(f, zoneOf(r.loc)); }); } derive(M.main, o, {}); st.db.main.push(o); });
+    rows(M.A && M.A.ent.name).forEach((r) => { const o = Object.assign({}, r); delete o.s; o.GlobalID = uid(); o.ParentGlobalID = st.db.main[r.s].GlobalID; derive(M.A.ent, o, st.db.main[r.s]); st.db.A.push(o); });
+    rows(M.B && M.B.ent.name).forEach((r, vi) => {
+      const sg = st.db.main[r.s], o = Object.assign({}, r); delete o.s; derive(M.B.ent, o, sg);
+      o.__ps = rows(M.C && M.C.ent.name).filter((x) => x.v === vi).map((x) => { const q = Object.assign({}, x); delete q.v; delete q.p; q.RelatedPartGlobalID = st.db.A[x.p].GlobalID; return q; });
+      addVisit(S, M, sg, sg, o);
+    });
+  }
   function seed(S) {
     const M = model(S); st.db = { main: [], A: [], B: [], C: [] };
+    if (S.demo) { seedDemo(S, M, S.demo); return; }
     for (let i = 0; i < 4; i++) {
       const s = sample(S, M.main, i * 3); s.GlobalID = uid(); st.db.main.push(s);
       for (let k = 0; k < 2 + (i % 2); k++) { const p = sample(S, M.A.ent, i + k * 2, s); p.GlobalID = uid(); p.ParentGlobalID = s.GlobalID; st.db.A.push(p); }
@@ -104,8 +116,8 @@
   /* ---------- שמירה (סימולציה של מה שקורה בשרת) ---------- */
   function applyAuto(S, M, signRec, visit) {
     if (!st.auto) return;
-    if (visit.StatusAtVisit) signRec.SignStatus = visit.StatusAtVisit;
-    if (visit.SafetyHazardAtVisit) signRec.SafetyHazard = visit.SafetyHazardAtVisit;
+    M.main.fields.filter((f) => f.fromVisit).forEach((f) => { if (visit[f.fromVisit] && (!f.fromVisitWhen || visit[f.fromVisitWhen.f] === f.fromVisitWhen.v)) signRec[f.name] = visit[f.fromVisit]; else if (f.fromVisitWhen && visit[f.fromVisitWhen.f]) signRec[f.name] = ''; });
+    M.main.fields.filter((f) => f.fromVisit && f.rel && !relOk(f, signRec, {})).forEach((f) => { signRec[f.name] = ''; });
   }
   /* ביקור (רמה 2) + שורות מצב רכיב תחתיו (רמה 3, v.__ps) */
   function addVisit(S, M, signRec, parentRec, v) {
@@ -215,7 +227,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     return `<div style="position:relative;width:390px;max-width:100%;border:8px solid #0F172A;border-radius:30px;background:#fff;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18);font-family:Roboto,'Segoe UI',Tahoma,sans-serif">
 <div dir="ltr" style="background:${GREEN};color:#fff;font-size:11px;display:flex;justify-content:space-between;padding:4px 14px"><span>9:41</span><span>▂▄▆ 100%</span></div>
 <div dir="rtl" style="background:${GREEN};color:#fff;display:flex;align-items:center;gap:14px;padding:12px 14px"><span style="font-size:${o.close ? 20 : 28}px;width:22px;text-align:center;line-height:1">${nav}</span><b style="flex:1;font-size:21px;font-weight:500">${o.title || ''}</b>${IC.gps()}${IC.menu}</div>
-<div data-sb="1" dir="rtl" style="max-height:560px;overflow:auto;text-align:right;color:#212121;background:${o.bg || '#fff'}">${inner}</div>${o.bottom || ''}${o.overlay || ''}</div>`;
+<div data-sb="1" dir="rtl" style="max-height:min(86vh,1150px);overflow:auto;text-align:right;color:#212121;background:${o.bg || '#fff'}">${inner}</div>${o.bottom || ''}${o.overlay || ''}</div>`;
   }
   /* כפתור "פיל" של מסך הכניסה: עיגול צבעוני מימין, כותרת, מונה וחץ משמאל */
   const pill = (bg, icon, t, cnt, onc) => `<div ${onc ? `onclick="${onc}"` : ''} dir="rtl" style="display:flex;align-items:center;gap:14px;background:#fff;border-radius:40px;box-shadow:0 1px 6px rgba(0,0,0,.2);padding:6px 8px 6px 18px;margin:0 10px 10px;cursor:${onc ? 'pointer' : 'default'}"><span style="width:56px;height:56px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-size:38px;line-height:1">${icon}</span><b style="flex:1;font-size:22px">${t}</b>${cnt != null ? `<span style="font-size:17px;font-weight:600;color:#333;margin-left:6px">${cnt}</span>` : ''}<span style="color:#777;font-size:26px">‹</span></div>`;
@@ -330,7 +342,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     const pn = (i) => parts[i] ? parts[i].ComponentType : 'רכיב ' + (i + 1);
     return [
       { t: 'א. מעקב שגרתי, הכול תקין', d: 'לא עוברים על הרכיבים. טופס אחד ושמירה אחת, בלי שום תוספת.', visit: { VisitType: 'מעקב', StatusAtVisit: 'תקין', VisitSummary: 'ללא ממצאים' }, ps: [] },
-      { t: 'ב. פיקוח עם רכיב אחד לא תקין', d: 'ביקור אחד, ושורת מצב רק לרכיב עם הממצא.', visit: { VisitType: 'פיקוח', StatusAtVisit: 'לא תקין', SafetyHazardAtVisit: 'לא', VisitSummary: 'נמצא רכיב פגוע' }, ps: [{ part: 0, PartStatusAtVisit: 'לא תקין', PartNotes: 'פגיעה ברכיב' }] },
+      { t: 'ב. פיקוח עם רכיב אחד לא תקין', d: 'ביקור אחד, ושורת מצב רק לרכיב עם הממצא.', visit: { VisitType: 'פיקוח', StatusAtVisit: 'לא תקין', SafetyHazardAtVisit: 'לא סכנה בטיחותית', VisitSummary: 'נמצא רכיב פגוע' }, ps: [{ part: 0, PartStatusAtVisit: 'לא תקין', PartNotes: 'פגיעה ברכיב' }] },
       { t: 'ג. פיקוח מלא: שלושה רכיבים', d: 'ביקור אחד ושורת מצב לכל רכיב שנבדק. ב-Field Maps: + ליד כל רכיב בפופאפ הביקור. ב-Survey123: חזרה בתוך הביקור, שליחה אחת.', visit: { VisitType: 'פיקוח', StatusAtVisit: 'לא תקין', VisitSummary: 'פיקוח על כל הרכיבים' }, ps: [{ part: 0, PartStatusAtVisit: 'תקין' }, { part: 1, PartStatusAtVisit: 'לא תקין', PartNotes: 'פגיעה' }, { part: 2, PartStatusAtVisit: 'חסר' }] },
       { t: 'ד. טיפול והחלפת רכיב', d: 'ביקור טיפול אחד ושורת מצב לרכיב שהוחלף.', visit: { VisitType: 'טיפול', StatusAtVisit: 'תקין', VisitSummary: 'הוחלף רכיב' }, ps: [{ part: 0, PartStatusAtVisit: 'תקין', PartNotes: 'הוחלף' }] },
     ].map((x) => Object.assign(x, { forms: 1 + x.ps.length, ps: x.ps.map((r) => Object.assign({}, r, { partName: pn(r.part) })), usable: !!sg && x.ps.every((r) => parts[r.part]) }));
@@ -497,13 +509,41 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     ${lst(M.main, st.db.main)}${lst(M.A.ent, st.db.A)}${M.B ? lst(M.B.ent, st.db.B) : ''}${M.C ? lst(M.C.ent, st.db.C) : ''}`;
   }
 
+  /* ---------- מבנה מלא: שכבה, טבלאות, קשרים וכל השדות ---------- */
+  function structure(S, M) {
+    ensure(S);
+    const ents = [M.main, M.A && M.A.ent, M.B && M.B.ent, M.C && M.C.ent].filter(Boolean).concat(S.entities.filter((e) => ![M.main, M.A && M.A.ent, M.B && M.B.ent, M.C && M.C.ent].includes(e)));
+    const parentRel = (e) => S.relationships.find((r) => r.destination === e.name);
+    const condTxt = (c, ent) => {
+      if (!c) return '';
+      if (c.all) return c.all.map((x) => condTxt(x, ent)).join(' וגם ');
+      if (c.any) return c.any.map((x) => condTxt(x, ent)).join(' או ');
+      const up = String(c.f)[0] === '^', k = up ? c.f.slice(1) : c.f, fld = (up ? M.main : ent).fields.find((f) => f.name === k), v = Array.isArray(c.v) ? c.v.join(' / ') : c.v;
+      return (up ? 'באב: ' : '') + (fld ? fld.alias : k) + (c.op === 'in' ? ' ∈ ' : c.op === '!=' ? ' ≠ ' : ' = ') + (v === '' ? '(ריק)' : v);
+    };
+    const th = 'border:1px solid #E2E8F0;padding:4px 7px;background:#F1F5F9;font-weight:600;text-align:right;white-space:nowrap', td = 'border:1px solid #E2E8F0;padding:4px 7px;vertical-align:top;text-align:right';
+    const tag = (t, c) => `<span style="display:inline-block;padding:1px 7px;border-radius:9px;font-size:11px;background:${c};color:#fff;margin-inline-end:3px">${esc(t)}</span>`;
+    const MODE = { 'אוטומטי': '#149ece', 'רשימה': '#6161ff', 'ידני': '#64748B', 'מערכת': '#94A3B8', 'היסטורי': '#B45309' };
+    const lvl = (e) => { let n = 0, cur = e; while (parentRel(cur) && n < 5) { cur = S.entities.find((x) => x.name === parentRel(cur).origin); n++; } return n; };
+    const tree = `<div style="display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:6px 0 14px">${[M.main, M.A && M.A.ent, M.B && M.B.ent, M.C && M.C.ent].filter(Boolean).map((e, i) => { const pr = parentRel(e); return `${i ? `<div style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 6px;font-size:11px;color:#64748B"><span>${pr ? esc(pr.type === 'COMPOSITE' ? 'מורכב 1:N' : 'פשוט 1:N') : ''}</span><span style="font-size:18px">←</span></div>` : ''}<div style="border:1.5px solid ${e === M.main ? '#6161ff' : '#CBD5E1'};border-radius:10px;padding:8px 12px;background:#fff;min-width:150px;margin:3px"><div style="font-size:11px;color:#64748B">${e.kind === 'point' ? 'שכבה נקודתית (ITM)' : 'טבלה'} · רמה ${lvl(e) + 1}</div><b>${esc(e.alias)}</b><div dir="ltr" style="font-size:11px;color:#64748B;text-align:right">${esc(e.name)} · ${e.fields.length} שדות</div></div>`; }).join('')}</div>`;
+    const rels = `<table style="border-collapse:collapse;font-size:12px;margin-bottom:10px"><tr><th style="${th}">קשר</th><th style="${th}">מקור ← יעד</th><th style="${th}">מפתחות</th><th style="${th}">סוג</th><th style="${th}">שם בכיוון קדימה / אחורה</th></tr>${S.relationships.map((r) => `<tr><td style="${td}" dir="ltr">${esc(r.name)}</td><td style="${td}">${esc(r.origin)} ← ${esc(r.destination)}</td><td style="${td}" dir="ltr">${esc(r.originKey)} → ${esc(r.destKey)}</td><td style="${td}">${esc(r.type)}</td><td style="${td}">${esc(r.forward || '')} / ${esc(r.backward || '')}</td></tr>`).join('')}</table>`;
+    const dtl = (e) => {
+      const pr = parentRel(e), rows = e.fields.map((f) => {
+        const d = dom(S, f), src = [f.calc && 'חישוב: ' + f.calc, f.derive && 'נגזר מ-' + f.derive.from, f.fromVisit && 'מהביקור האחרון: ' + f.fromVisit + (f.fromVisitWhen ? ' (כש-' + f.fromVisitWhen.f + ' = ' + f.fromVisitWhen.v + ')' : ''), f.autoValue && 'ברירת מחדל: ' + f.autoValue, f.pickFrom && 'בחירה מ-' + f.pickFrom, f.readonlyOnEdit && 'נעול בעריכה'].filter(Boolean).join(' · ');
+        return `<tr><td style="${td}"><b>${esc(f.alias || f.name)}</b><div dir="ltr" style="font-size:11px;color:#64748B;text-align:right">${esc(f.name)}</div></td><td style="${td}" dir="ltr">${esc(f.type)}${f.length ? '(' + esc(f.length) + ')' : ''}</td><td style="${td}">${d ? esc(f.domain) + ' <span style="color:#64748B">(' + d.values.length + ')</span>' : ''}</td><td style="${td}">${tag(f.mode || '', MODE[f.mode] || '#64748B')}</td><td style="${td}">${esc(f.visible || '')}${f.rel ? `<div style="color:#6161ff;font-size:11px">מוצג כש: ${esc(condTxt(f.rel, e))}</div>` : ''}</td><td style="${td}">${f.required ? 'חובה' : ''}${f.reqIf ? `<div style="font-size:11px;color:#B45309">חובה כש: ${esc(condTxt(f.reqIf, e))}</div>` : ''}</td><td style="${td};font-size:11px" dir="auto">${esc(src)}</td><td style="${td};font-size:11px;color:#475569">${esc(f.note || '')}</td></tr>`;
+      }).join('');
+      return `<details ${e === M.main || e === (M.C && M.C.ent) ? 'open' : ''} style="border:1px solid #E2E8F0;border-radius:12px;margin-bottom:10px;background:#fff"><summary style="cursor:pointer;padding:10px 14px;font-weight:700">${esc(e.alias)} <span dir="ltr" style="font-weight:400;color:#64748B">${esc(e.name)}</span> <span style="font-weight:400;color:#64748B">· ${e.kind === 'point' ? 'שכבה' : 'טבלה'} · ${e.fields.length} שדות${e.attachments ? ' · תמונות מצורפות' : ''}${pr ? ' · אב: ' + esc(pr.origin) : ''}</span></summary><div style="padding:0 14px 12px"><div style="font-size:13px;color:#475569;margin-bottom:8px">${esc(e.description || '')}</div><div style="overflow:auto"><table style="border-collapse:collapse;font-size:12px;min-width:0;width:100%"><tr><th style="${th}">שדה</th><th style="${th}">סוג</th><th style="${th}">דומיין</th><th style="${th}">מילוי</th><th style="${th}">תצוגה</th><th style="${th}">חובה</th><th style="${th}">חישוב / מקור</th><th style="${th}">הערה</th></tr>${rows}</table></div></div></details>`;
+    };
+    return `<h3 style="margin-top:0">מבנה הנתונים המלא</h3><p style="color:#64748B;font-size:13px;margin:0">שרשרת שלוש הרמות והטבלאות הנלוות, עם כל השדות. הטבלאות נפתחות ונסגרות.</p>${tree}${rels}${ents.map(dtl).join('')}`;
+  }
+
   /* ---------- שלד ---------- */
   function render(S) {
     st.S = S; const M = model(S); if (!M.A) return '<p>הסימולטור דורש שכבה עם לפחות טבלה מקושרת אחת.</p>';
     const tab = (k, l) => `<button class="${st.tab === k ? 'primary' : ''}" onclick="SimA.tab('${k}')">${l}</button>`;
-    const body = st.tab === 'flow' ? flowTab(S, M) : st.tab === 's123' ? s123(S, M) : st.tab === 'fm' ? fm(S, M) : data(S, M);
+    const body = st.tab === 'flow' ? flowTab(S, M) : st.tab === 's123' ? s123(S, M) : st.tab === 'fm' ? fm(S, M) : st.tab === 'struct' ? structure(S, M) : data(S, M);
     const sets = `<details class="simset"><summary>⚙ הגדרות סימולציה</summary><div class="simsetbody"><label>קשר ביקורים<select onchange="SimA.variant(this.value)"><option value="sign" ${st.variant === 'sign' ? 'selected' : ''}>ביקור → שלט</option><option value="part" ${st.variant === 'part' ? 'selected' : ''}>ביקור → רכיב</option></select></label><label class="inl"><input type="checkbox" ${st.online ? 'checked' : ''} onchange="SimA.online(this.checked)"> מחובר לרשת</label><label class="inl"><input type="checkbox" ${st.auto ? 'checked' : ''} onchange="SimA.auto(this.checked)"> עדכון מצב שלט אוטומטי מהביקור</label><button class="mini" onclick="SimA.seed()">טען מחדש נתוני דוגמה</button></div></details>`;
-    return `<div class="simroot"><div class="simtop"><div class="seg lg">${[['flow', 'זרימה Field Maps ↔ Survey123'], ['s123', 'Survey123'], ['fm', 'Field Maps'], ['data', 'נתונים והשוואה']].map(([k, l]) => `<button class="${st.tab === k ? 'on' : ''}" onclick="SimA.tab('${k}')">${l}</button>`).join('')}</div>${sets}<span class="simver">סכמה v${S.meta.version || '?'}</span></div>${body}</div>`;
+    return `<div class="simroot"><div class="simtop"><div class="seg lg">${[['flow', 'זרימה Field Maps ↔ Survey123'], ['s123', 'Survey123'], ['fm', 'Field Maps'], ['struct', 'מבנה מלא'], ['data', 'נתונים והשוואה']].map(([k, l]) => `<button class="${st.tab === k ? 'on' : ''}" onclick="SimA.tab('${k}')">${l}</button>`).join('')}</div>${sets}<span class="simver">סכמה v${S.meta.version || '?'}</span></div>${body}</div>`;
   }
   const rr = () => {
     if (!(window.A && A.refresh)) return;
