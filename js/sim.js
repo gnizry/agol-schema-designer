@@ -90,13 +90,28 @@
 
 
   /* ---------- מיקום וכתובת יערנית מחושבת (הדמיה של pulldata @layer) ---------- */
+  const GEO = {
+    DistrictName: ['מרחב צפון', 'מרחב מרכז', 'מרחב דרום', 'מרחב ירושלים'], RegionName: [1, 2, 3, 4].map((n) => 'אזור דוגמה ' + n), GushName: [1, 2, 3, 4].map((n) => 'גוש דוגמה ' + n),
+    ForestName: [1, 2, 3, 4].map((n) => 'יער דוגמה ' + n), ForestNumber: [101, 202, 303, 404], ResponsibleUnit: [1, 2, 3, 4].map((n) => 'יחידה אחראית דוגמה ' + n),
+    RoadName: [1, 2, 3, 4].map((n) => 'דרך דוגמה ' + n), RoadColor: ['כחול', 'אדום', 'ירוק', 'שחור']
+  };
   const calcFields = (M) => M.main.fields.filter((f) => f.calc);
+  const geoFields = (M) => M.main.fields.filter((f) => /@layer/.test(f.calc || '') || (GEO[f.name] && f.mode === 'אוטומטי'));
+  const newId = () => { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return 'SGN-' + String(d.getFullYear()).slice(2) + p(d.getMonth() + 1) + p(d.getDate()) + '-' + (1000 + Math.floor(Math.random() * 9000)); };
+  /* שדות קודים/נגזרים: ערך שדה מקור (דומיין) → תכונת ext שלו, מחושב בשינוי */
+  function derive(ent, vals) {
+    ent.fields.forEach((g) => { const pf = dom(st.S, g) && parentField(st.S, ent, g); if (pf && vals[g.name]) { const hit = dom(st.S, g).values.find((x) => x.label === vals[g.name]); if (!hit || (hit.parent && hit.parent !== vals[pf.name])) vals[g.name] = ''; } });
+    ent.fields.filter((f) => f.derive).forEach((f) => {
+      const src = ent.fields.find((g) => g.name === f.derive.from), d = src && dom(st.S, src), hit = d && d.values.find((x) => x.label === vals[src.name]);
+      vals[f.name] = hit ? (hit[f.derive.attr || 'ext'] || '') : '';
+    });
+  }
   const zoneOf = (loc) => (loc.x < 0.5 ? 0 : 1) + (loc.y < 0.5 ? 0 : 2);
-  function zoneVal(f, zi) { return ['SHORT', 'LONG', 'FLOAT', 'DOUBLE'].includes(f.type) ? zi + 1 : (f.alias || f.name) + ' (דוגמה ' + (zi + 1) + ')'; }
+  function zoneVal(f, zi) { const g = GEO[f.name]; return g ? g[zi] : ['SHORT', 'LONG', 'FLOAT', 'DOUBLE'].includes(f.type) ? zi + 1 : (f.alias || f.name) + ' (דוגמה ' + (zi + 1) + ')'; }
   function applyGeo() {
     const M = model(st.S); if (!st.loc) return;
     const zi = zoneOf(st.loc);
-    calcFields(M).forEach((f) => { st.sign[f.name] = st.online ? zoneVal(f, zi) : ''; });
+    geoFields(M).forEach((f) => { st.sign[f.name] = st.online ? zoneVal(f, zi) : ''; });
     st.pendingGeo = !st.online;
   }
 
@@ -121,7 +136,7 @@
     return `<div style="position:relative;width:390px;max-width:100%;border:8px solid #0F172A;border-radius:30px;background:#fff;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18);font-family:Roboto,'Segoe UI',Tahoma,sans-serif">
 <div dir="ltr" style="background:${GREEN};color:#fff;font-size:11px;display:flex;justify-content:space-between;padding:4px 14px"><span>9:41</span><span>▂▄▆ 100%</span></div>
 <div dir="rtl" style="background:${GREEN};color:#fff;display:flex;align-items:center;gap:14px;padding:12px 14px"><span style="font-size:${o.close ? 20 : 28}px;width:22px;text-align:center;line-height:1">${nav}</span><b style="flex:1;font-size:21px;font-weight:500">${o.title || ''}</b>${IC.gps()}${IC.menu}</div>
-<div dir="rtl" style="max-height:560px;overflow:auto;text-align:right;color:#212121;background:${o.bg || '#fff'}">${inner}</div>${o.bottom || ''}${o.overlay || ''}</div>`;
+<div data-sb="1" dir="rtl" style="max-height:560px;overflow:auto;text-align:right;color:#212121;background:${o.bg || '#fff'}">${inner}</div>${o.bottom || ''}${o.overlay || ''}</div>`;
   }
   /* כפתור "פיל" של מסך הכניסה: עיגול צבעוני מימין, כותרת, מונה וחץ משמאל */
   const pill = (bg, icon, t, cnt, onc) => `<div ${onc ? `onclick="${onc}"` : ''} dir="rtl" style="display:flex;align-items:center;gap:14px;background:#fff;border-radius:40px;box-shadow:0 1px 6px rgba(0,0,0,.2);padding:6px 8px 6px 18px;margin:0 10px 10px;cursor:${onc ? 'pointer' : 'default'}"><span style="width:56px;height:56px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-size:38px;line-height:1">${icon}</span><b style="flex:1;font-size:22px">${t}</b>${cnt != null ? `<span style="font-size:17px;font-weight:600;color:#333;margin-left:6px">${cnt}</span>` : ''}<span style="color:#777;font-size:26px">‹</span></div>`;
@@ -152,7 +167,7 @@
     const val = (t, ph) => `<span style="flex:1;color:${t ? BLUE : '#9AA39A'};min-height:20px">${t ? esc(t) : esc(ph || '')}</span>`;
     const inpS = `flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;color:${BLUE};padding:10px 0`;
     let inp;
-    if (ro) inp = `<div style="${box};background:#F4F6F3;color:${v ? BLUE : '#7A837A'}">${v ? esc(v) : f.calc ? (st.loc ? (st.online ? '—' : 'תחושב בשרת אחרי סנכרון') : 'יחושב לאחר בחירת מיקום') : '—'}</div>`;
+    if (ro) inp = `<div style="${box};background:#F4F6F3;color:${v ? BLUE : '#7A837A'}">${v ? esc(v) : f.derive ? 'יחושב לאחר בחירת ' + ((ent.fields.find((g) => g.name === f.derive.from) || {}).alias || f.derive.from) : (f.calc && /@layer/.test(f.calc)) || GEO[f.name] ? (st.loc ? (st.online ? '—' : 'תחושב בשרת אחרי סנכרון') : 'יחושב לאחר בחירת מיקום') : '—'}</div>`;
     else if (d) {
       const pf = parentField(S, ent, f); const pv = pf ? vals[pf.name] : null;
       const opts = d.values.filter((x) => !pf || !x.parent || x.parent === pv);
@@ -188,7 +203,7 @@
     const repeat = (title, arr, idx, kind, ent, up, onchFn) => {
       const n = arr.length, i = Math.min(idx, Math.max(0, n - 1)), key = 'rep|' + kind;
       const arrow = (t, on, dis) => `<span onclick="${dis ? '' : on}" style="font-size:22px;padding:0 6px;color:${dis ? '#BDBDBD' : '#444'};cursor:${dis ? 'default' : 'pointer'}">${t}</span>`;
-      const bar = `<div dir="ltr" style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 6px;border:1px solid ${LINE};border-radius:26px;background:#F4F8F3;padding:4px 8px"><span onclick="SimA.add('${kind}')" title="הוסף" style="width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid ${LINE};display:flex;align-items:center;justify-content:center;cursor:pointer">${IC.plus}</span><span style="display:flex;align-items:center;font-size:15px">${n > 1 ? arrow('‹', `SimA.pg('${kind}',-1)`, i <= 0) : ''}<span style="min-width:70px;text-align:center">${n ? (i + 1) + ' מתוך ' + n : '0 מתוך 0'}</span>${n > 1 ? arrow('›', `SimA.pg('${kind}',1)`, i >= n - 1) : ''}</span><span onclick="${n ? `SimA.del('${kind}')` : ''}" title="מחק" style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:${n ? 'pointer' : 'default'}">${IC.trash(n ? '#555' : '#BDBDBD')}</span></div>`;
+      const bar = `<div dir="ltr" style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 6px;border:1px solid ${LINE};border-radius:26px;background:#F4F8F3;padding:4px 8px"><span onclick="SimA.add('${kind}')" title="הוסף" style="width:38px;height:38px;border-radius:50%;background:#fff;border:1px solid ${LINE};display:flex;align-items:center;justify-content:center;cursor:pointer">${IC.plus}</span><span style="display:flex;align-items:center;font-size:15px">${n > 1 ? arrow('‹', `SimA.pg('${kind}',-1)`, i <= 0) : ''}<span dir="rtl" style="min-width:70px;text-align:center">${n ? (i + 1) + ' מתוך ' + n : '0 מתוך 0'}</span>${n > 1 ? arrow('›', `SimA.pg('${kind}',1)`, i >= n - 1) : ''}</span><span onclick="${n ? `SimA.del('${kind}')` : ''}" title="מחק" style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:${n ? 'pointer' : 'default'}">${IC.trash(n ? '#555' : '#BDBDBD')}</span></div>`;
       const body = n ? mFields(S, ent, arr[i], up, `${onchFn}.bind(null,${i})`, true) : `<div style="padding:14px 10px;color:#757575">אין רשומות. לחץ + להוספה.</div>`;
       return band(title, key) + (st.col[key] ? '' : `<div style="margin:0 8px;border:1px solid ${LINE};border-radius:4px;background:#DCE8DA;padding:0 4px 4px">${body}${bar}</div>`);
     };
@@ -246,7 +261,7 @@
     const side = `<div style="flex:1;min-width:280px"><div style="margin-bottom:10px"><b>${note}</b></div>${back}
       ${st.flow === 'edit' ? `<h4>קישור (עריכה)</h4><pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;background:#0F172A;color:#E2E8F0;padding:8px;border-radius:6px;font-size:11px">${esc(urlE)}</pre>` : `<h4>הדרכה למשתמש בשטח</h4><ol style="line-height:1.8"><li>פתח את אפליקציית Survey123 (לא Field Maps).</li><li>בחר את הסקר "${esc(S.meta.title || 'סקר שילוט')}".</li><li>לחץ "איסוף", אשר מיקום GPS ומלא את הטופס.</li><li>שלח. לצפייה בשלט במפה עבור ל-Field Maps.</li></ol><p style="color:#64748B;font-size:12px">קיצור דרך אפשרי: קישור פתיחה (<code dir="ltr">${esc(urlN)}</code>) כקיצור על מסך הבית, כ-QR או בהודעת הדרכה. לא כפתור במפה.</p>`}
       ${st.flow === 'edit' ? `<details><summary>ביטוי Arcade לקישור בפופאפ / Task</summary><pre dir="ltr" style="background:#F1F5F9;padding:8px;font-size:11px;overflow:auto">${esc(arcade)}</pre></details>` : ''}
-      ${(() => { const cf = calcFields(M); if (!cf.length || st.flow !== 'new') return ''; const pend = st.db.main.filter((x) => x.__pending).length; return `<h4>חישוב כתובת יערנית מהמיקום</h4><ul style="line-height:1.7;font-size:12px">${cf.map((f) => `<li>${esc(f.alias)}: <code dir="ltr" style="font-size:10px">${esc(f.calc)}</code></li>`).join('')}</ul><p style="color:#92400E;font-size:12px">pulldata("@layer") עובד רק ברשת. ללא קליטה השדות נשארים ריקים עד סנכרון ועיבוד בשרת.</p><button ${pend ? '' : 'disabled'} onclick="SimA.sync()">סנכרון והשלמה בשרת (${pend} ממתינים)</button>`; })()}
+      ${(() => { const cf = geoFields(M); if (!cf.length || st.flow !== 'new') return ''; const pend = st.db.main.filter((x) => x.__pending).length; const oth = calcFields(M).filter((f) => !/@layer/.test(f.calc)); return `<h4>חישוב כתובת יערנית מהמיקום</h4><ul style="line-height:1.7;font-size:12px">${cf.map((f) => `<li>${esc(f.alias)}: ${f.calc ? `<code dir="ltr" style="font-size:10px">${esc(f.calc)}</code>` : '<i style="color:#92400E">כלל טרם הוגדר, ערך הדמיה בלבד</i>'}</li>`).join('')}</ul><p style="color:#92400E;font-size:12px">pulldata("@layer") עובד רק ברשת. ללא קליטה השדות נשארים ריקים עד סנכרון ועיבוד בשרת. הערכים בסימולטור הם ערכי דמה.</p><button ${pend ? '' : 'disabled'} onclick="SimA.sync()">סנכרון והשלמה בשרת (${pend} ממתינים)</button>${oth.length ? `<h4>שדות מחושבים נוספים</h4><ul style="line-height:1.7;font-size:12px">${oth.map((f) => `<li>${esc(f.alias)}: <code dir="ltr" style="font-size:10px">${esc(f.calc)}</code></li>`).join('')}</ul>` : ''}`; })()}
       <h4>הגדרות נדרשות</h4><ul style="line-height:1.8"><li><label><input type="checkbox" ${st.inbox ? 'checked' : ''} onchange="SimA.inboxSet(this.checked)"> Inbox מופעל בטופס</label></li>${chk(st.flow === 'new' || true, 'הטופס פורסם מעל השכבה/הטבלאות (Repeat לרכיבים, לביקורים)')}${chk(true, 'המשתמש מחובר לאותו Portal ב-Field Maps וב-Survey123')}${chk(true, 'update=true מרענן את ה-Inbox לפני הפתיחה')}</ul>
       <p style="color:#64748B;font-size:12px">הערה: פרמטרי הקישור לפי דוגמאות קהילת Esri; לאמת מול התיעוד הרשמי ובגרסת האפליקציה בשטח.</p></div>`;
     return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center"><button class="${st.flow === 'edit' ? 'primary' : ''}" onclick="SimA.flowSet('edit')">עריכת שלט קיים</button><button class="${st.flow === 'new' ? 'primary' : ''}" onclick="SimA.flowSet('new')">הוספת שלט חדש</button><button onclick="SimA.seed()">טען נתוני דוגמה</button></div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:14px">${chips}</div><div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">${screen}${side}</div>`;
@@ -304,11 +319,17 @@
     const body = st.tab === 'flow' ? flowTab(S, M) : st.tab === 's123' ? s123(S, M) : st.tab === 'fm' ? fm(S, M) : data(S, M);
     return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">${tab('flow', 'זרימה Field Maps ↔ Survey123')}${tab('s123', 'Survey123')}${tab('fm', 'Field Maps')}${tab('data', 'נתונים והשוואה')}<span style="margin-inline-start:16px">קשר ביקורים: <select onchange="SimA.variant(this.value)"><option value="sign" ${st.variant === 'sign' ? 'selected' : ''}>ביקור → שלט</option><option value="part" ${st.variant === 'part' ? 'selected' : ''}>ביקור → רכיב</option></select></span><label style="margin-inline-start:12px"><input type="checkbox" ${st.online ? 'checked' : ''} onchange="SimA.online(this.checked)"> מחובר לרשת</label><label style="margin-inline-start:12px"><input type="checkbox" ${st.auto ? 'checked' : ''} onchange="SimA.auto(this.checked)"> עדכון מצב שלט אוטומטי מהביקור</label></div>${body}`;
   }
-  const rr = () => { if (window.A && A.refresh) A.refresh(); };
+  const rr = () => {
+    if (!(window.A && A.refresh)) return;
+    const key = [st.tab, st.flow, st.step, st.editId, st.variant].join('|'), same = key === st.rk;
+    const dom0 = typeof document !== 'undefined', sb = dom0 ? [...document.querySelectorAll('[data-sb]')].map((e) => e.scrollTop) : [], wy = dom0 ? window.scrollY : 0;
+    A.refresh(); st.rk = key;
+    if (same && dom0) { document.querySelectorAll('[data-sb]').forEach((e, i) => { e.scrollTop = sb[i] || 0; }); window.scrollTo(0, wy); }
+  };
   window.SimA = {
     grp(k) { st.col[k] = !st.col[k]; rr(); },
     tab(k) { st.tab = k; rr(); }, variant(v) { st.variant = v; st.modal = null; rr(); }, auto(c) { st.auto = c; rr(); },
-    sv(n, v) { st.sign[n] = v; rr(); }, pv(i, n, v) { st.parts[i][n] = v; rr(); }, vv(i, n, v) { st.visits[i][n] = v; rr(); },
+    sv(n, v) { st.sign[n] = v; derive(model(st.S).main, st.sign); rr(); }, pv(i, n, v) { st.parts[i][n] = v; derive(model(st.S).A.ent, st.parts[i]); rr(); }, vv(i, n, v) { st.visits[i][n] = v; derive(model(st.S).B.ent, st.visits[i]); rr(); },
     add(k) { const a = k === 'parts' ? st.parts : st.visits; a.push({}); if (k === 'parts') st.pi = a.length - 1; else st.vi = a.length - 1; rr(); },
     del(k) { const a = k === 'parts' ? st.parts : st.visits; const i = k === 'parts' ? st.pi : st.vi; a.splice(i, 1); if (k === 'parts') st.pi = Math.max(0, st.pi - 1); else st.vi = Math.max(0, st.vi - 1); rr(); },
     pg(k, d) { if (k === 'parts') st.pi = Math.max(0, Math.min(st.parts.length - 1, st.pi + d)); else st.vi = Math.max(0, Math.min(st.visits.length - 1, st.vi + d)); rr(); },
@@ -333,7 +354,7 @@
     pinAt(e, el) { const r = el.getBoundingClientRect(); st.loc = { x: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y: Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) }; applyGeo(); rr(); },
     gps() { st.loc = { x: 0.5 + (Math.random() - 0.5) * 0.6, y: 0.5 + (Math.random() - 0.5) * 0.6 }; applyGeo(); rr(); },
     online(c) { st.online = c; applyGeo(); rr(); },
-    sync() { const M = model(st.S); st.db.main.forEach((sg) => { if (sg.__pending && sg.__loc) { calcFields(M).forEach((f) => { sg[f.name] = zoneVal(f, zoneOf(sg.__loc)); }); sg.__pending = false; } }); rr(); },
+    sync() { const M = model(st.S); st.db.main.forEach((sg) => { if (sg.__pending && sg.__loc) { geoFields(M).forEach((f) => { sg[f.name] = zoneVal(f, zoneOf(sg.__loc)); }); sg.__pending = false; } }); rr(); },
     dlg(v) { st.dlg = v; rr(); },
     outbox() { st.dlg = false; st.outbox += 1; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
     draft() { st.dlg = false; st.drafts += 1; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
@@ -344,7 +365,7 @@
       const sg = st.db.main[st.sel]; if (!sg) return;
       st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visits = []; st.pi = 0; st.vi = 0; st.step = 3; rr();
     },
-    startNew() { st.loc = null; st.pendingGeo = false; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.step = 1; rr(); },
+    startNew() { st.loc = null; st.pendingGeo = false; st.editId = null; st.sign = { SignID: newId() }; st.parts = []; st.visits = []; st.pi = 0; st.vi = 0; st.step = 1; rr(); },
     seed() { seed(st.S); st.sel = null; rr(); }, sel(i) { st.sel = i; st.modal = null; rr(); },
     addv() { st.modal = { v: {}, part: '' }; rr(); }, mv(n, v) { st.modal.v[n] = v; rr(); }, mp(id) { st.modal.part = id; rr(); }, cancel() { st.modal = null; rr(); },
     savev() {
