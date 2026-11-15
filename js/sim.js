@@ -103,7 +103,7 @@
   const ITEM = '<SURVEY_ITEM_ID>';
   const FLOWS = {
     edit: ['Field Maps: בחירת שלט', 'Field Maps: פופאפ וקישור', 'Survey123: Inbox', 'Survey123: טופס עריכה', 'חזרה ל-Field Maps'],
-    new: ['Field Maps: הוספת שלט', 'Survey123: מסך הסקר (איסוף)', 'Survey123: טופס חדש', 'חזרה ל-Field Maps'],
+    new: ['Survey123: מסך הסקר (איסוף)', 'Survey123: טופס חדש', 'בדיקה ב-Field Maps'],
   };
   function dots(onc) {
     return st.db.main.map((s, i) => { const x = 40 + (i * 83) % 280, y = 40 + (i * 61) % 180; return `<div onclick="${onc}(${i})" style="position:absolute;left:${x}px;top:${y}px;width:22px;height:22px;border-radius:50%;background:${statusColor(s.SignStatus)};border:3px solid ${st.sel === i ? '#0F172A' : '#fff'};box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer"></div>`; }).join('');
@@ -129,20 +129,19 @@
       else if (cur === 3) { screen = s123Phone(S, M, 'Survey123 · עריכת שלט'); note = 'הרשומה והרכיבים הקיימים נטענו. הוספת ביקור חדש מעדכנת את מצב השלט אחרי שמירה.'; }
       else { screen = resultPhone(M); note = 'חזרה אוטומטית ל-Field Maps (callback). הצבע בנקודה משקף את המצב המעודכן.'; }
     } else {
-      if (cur === 0) { screen = phone('Field Maps · מפה', mapBox(dots('SimA.sel0')) + `<button class="primary" style="width:100%;margin-top:8px;padding:10px" onclick="SimA.step(1)">+ שלט חדש ב-Survey123</button>`); note = 'הקשה 1: כפתור/קישור "שלט חדש" בפופאפ או ב-Field Maps (action=collect) פותח את Survey123.'; }
-      else if (cur === 1) {
+      if (cur === 0) {
         const tile = (t, n, c) => `<div style="flex:1;min-width:120px;border:1px solid #E2E8F0;border-radius:10px;padding:10px;text-align:center;background:#F8FAFC"><div style="font-size:22px;font-weight:700;color:${c || '#1E3A8A'}">${n}</div><div style="color:#64748B;font-size:12px">${t}</div></div>`;
         screen = phone('Survey123', `<div style="text-align:center;padding:14px 4px"><div style="font-size:18px;font-weight:700;color:#1E3A8A">${esc(S.meta.title || 'סקר שילוט')}</div><div style="color:#64748B;font-size:12px;margin-bottom:14px">סקר שילוט · גרסת טופס</div><button class="primary" style="width:100%;padding:16px;font-size:18px;border-radius:12px" onclick="SimA.startNew()">＋ איסוף</button></div><div style="display:flex;gap:8px;flex-wrap:wrap">${tile('Inbox', st.inbox ? st.db.main.length : 'כבוי', st.inbox ? '' : '#991B1B')}${tile('טיוטות', st.drafts)}${tile('שולחן יוצא', 0)}${tile('נשלחו', st.sent)}</div><div style="color:#64748B;font-size:12px;margin-top:10px">הסקר נפתח ישירות ממסך זה; אפשר גם לחזור אליו מתפריט האפליקציה.</div>`);
-        note = 'מסך הסקר ב-Survey123: כפתור איסוף פותח טופס ריק. התיקיות מראות טיוטות, שולחן יוצא, נשלחו וInbox.';
+        note = 'המשתמש פותח בעצמו את Survey123 ובוחר את הסקר: אין דרך להציב כפתור פתיחה על מפת Field Maps. כפתור איסוף פותח טופס ריק.';
       }
-      else if (cur === 2) { screen = s123Phone(S, M, 'Survey123 · שלט חדש'); note = 'המיקום נקלט בטופס (GPS) ואפשר לתקנו במפה. מצב ושדות אחרים לפי תנאי התצוגה.'; }
-      else { screen = resultPhone(M); note = 'השלט החדש הוא נקודה חדשה בשכבה; חזרה ל-Field Maps.'; }
+      else if (cur === 1) { screen = s123Phone(S, M, 'Survey123 · שלט חדש'); note = 'המיקום נקלט בטופס (GPS) ואפשר לתקנו במפה. מצב ושדות אחרים לפי תנאי התצוגה.'; }
+      else { screen = resultPhone(M); note = 'השלט נשמר ב-Survey123. כדי לראות אותו במפה, המשתמש עובר ל-Field Maps ידנית (אין callback במסלול זה).'; }
     }
     const back = cur > 0 ? `<button onclick="SimA.step(${cur - 1})">‹ חזרה</button>` : '';
     const chk = (ok, t) => `<li style="color:${ok ? '#166534' : '#991B1B'}">${ok ? '✓' : '✗'} ${t}</li>`;
     const arcade = `var params = {\n  itemID: '${ITEM}',\n  action: 'edit',\n  'q:globalId': StandardizeGuid($feature.GlobalID, 'digits-hyphen'),\n  folder: 'inbox',\n  update: 'true',\n  callback: 'https://fieldmaps.arcgis.app'\n};\nreturn 'arcgis-survey123://?' + UrlEncode(params);`;
     const side = `<div style="flex:1;min-width:280px"><div style="margin-bottom:10px"><b>${note}</b></div>${back}
-      <h4>קישור (${st.flow === 'edit' ? 'עריכה' : 'חדש'})</h4><pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;background:#0F172A;color:#E2E8F0;padding:8px;border-radius:6px;font-size:11px">${esc(st.flow === 'edit' ? urlE : urlN)}</pre>
+      ${st.flow === 'edit' ? `<h4>קישור (עריכה)</h4><pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;background:#0F172A;color:#E2E8F0;padding:8px;border-radius:6px;font-size:11px">${esc(urlE)}</pre>` : `<h4>הדרכה למשתמש בשטח</h4><ol style="line-height:1.8"><li>פתח את אפליקציית Survey123 (לא Field Maps).</li><li>בחר את הסקר "${esc(S.meta.title || 'סקר שילוט')}".</li><li>לחץ "איסוף", אשר מיקום GPS ומלא את הטופס.</li><li>שלח. לצפייה בשלט במפה עבור ל-Field Maps.</li></ol><p style="color:#64748B;font-size:12px">קיצור דרך אפשרי: קישור פתיחה (<code dir="ltr">${esc(urlN)}</code>) כקיצור על מסך הבית, כ-QR או בהודעת הדרכה. לא כפתור במפה.</p>`}
       ${st.flow === 'edit' ? `<details><summary>ביטוי Arcade לקישור בפופאפ / Task</summary><pre dir="ltr" style="background:#F1F5F9;padding:8px;font-size:11px;overflow:auto">${esc(arcade)}</pre></details>` : ''}
       <h4>הגדרות נדרשות</h4><ul style="line-height:1.8"><li><label><input type="checkbox" ${st.inbox ? 'checked' : ''} onchange="SimA.inboxSet(this.checked)"> Inbox מופעל בטופס</label></li>${chk(st.flow === 'new' || true, 'הטופס פורסם מעל השכבה/הטבלאות (Repeat לרכיבים, לביקורים)')}${chk(true, 'המשתמש מחובר לאותו Portal ב-Field Maps וב-Survey123')}${chk(true, 'update=true מרענן את ה-Inbox לפני הפתיחה')}</ul>
       <p style="color:#64748B;font-size:12px">הערה: פרמטרי הקישור לפי דוגמאות קהילת Esri; לאמת מול התיעוד הרשמי ובגרסת האפליקציה בשטח.</p></div>`;
@@ -231,7 +230,7 @@
       const sg = st.db.main[st.sel]; if (!sg) return;
       st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visit = {}; st.step = 3; rr();
     },
-    startNew() { st.editId = null; st.sign = {}; st.parts = []; st.visit = {}; st.step = 2; rr(); },
+    startNew() { st.editId = null; st.sign = {}; st.parts = []; st.visit = {}; st.step = 1; rr(); },
     seed() { seed(st.S); st.sel = null; rr(); }, sel(i) { st.sel = i; st.modal = null; rr(); },
     addv() { st.modal = { v: {}, part: '' }; rr(); }, mv(n, v) { st.modal.v[n] = v; rr(); }, mp(id) { st.modal.part = id; rr(); }, cancel() { st.modal = null; rr(); },
     savev() {
