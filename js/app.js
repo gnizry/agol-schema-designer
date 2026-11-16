@@ -7,7 +7,8 @@
   const MODES = ['ידני', 'אוטומטי', 'רשימה', 'מערכת', 'היסטורי'];
   /* אחסון טיוטות: localStorage כשזמין, אחרת זיכרון בלבד (למשל פתיחה מסוימת מהדיסק) */
   const MEM = {};
-  const SIMONLY = !!window.__SIM_ONLY; // קובץ סימולטור משותף: ללא שמירת טיוטות בדפדפן
+  const VIEWONLY = !!window.__VIEW_ONLY; // כל הכלי לצפייה בלבד (?view=<key>)
+  const SIMONLY = !!window.__SIM_ONLY || VIEWONLY; //קובץ סימולטור משותף: ללא שמירת טיוטות בדפדפן
   const LS = {
     get(k) { if (k in MEM) return MEM[k]; if (SIMONLY) return null; try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { MEM[k] = v; if (SIMONLY) return; try { localStorage.setItem(k, v); } catch (e) { /* זיכרון בלבד */ } },
@@ -27,7 +28,7 @@
   let cur = LS.get('agol-schema-designer:current');
   if (!cur || allKeys().indexOf(cur) < 0) cur = allKeys()[0] || 'new';
   let S = load(cur);
-  let V = { page: SIMONLY ? 'sim' : 'entity', idx: 0, script: 'arcpy' };
+  let V = { page: window.__SIM_ONLY ? 'sim' : 'entity', idx: 0, script: 'arcpy' };
   const blank = (key, title) => ({
     meta: { key, project: key, title, version: 1, spatialRef: 2039, spatialRefName: 'Israel TM Grid (ITM)', source: '', rules: { minTextLength: 255, domainCodeEqualsLabel: true } },
     domains: { YesNo: { name: 'YesNo', desc: 'כן / לא', fieldType: 'TEXT', values: [{ code: 'כן', label: 'כן', parent: '' }, { code: 'לא', label: 'לא', parent: '' }] } },
@@ -201,6 +202,10 @@
     const t = V.page === 'entity' ? esc(S.entities[V.idx].alias) + ' — ' + esc(S.entities[V.idx].name) : TITLES[V.page];
     const body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, validate: validatePage, output: outputPage, sim: () => (window.Sim ? Sim.render(S) : ''), 'dg-erd': () => Diagrams.page(S, 'erd'), 'dg-comp': () => Diagrams.page(S, 'comp'), 'dg-flow': () => Diagrams.page(S, 'flow') }[V.page]();
     $('main').innerHTML = `<h2 style="margin:0 0 10px">${t}</h2>` + body;
+    if (VIEWONLY && ['entity', 'domains', 'rels', 'decisions', 'validate'].indexOf(V.page) >= 0) { // מצב צפייה: ללא עריכה
+      $('main').querySelectorAll('input,select,textarea').forEach((el) => { el.disabled = true; });
+      $('main').querySelectorAll('button').forEach((b) => { if (!/A\.(go|refresh|script|copy|dl)\b/.test(b.getAttribute('onclick') || '')) b.disabled = true; });
+    }
     if (window.Diagrams && /^dg-/.test(V.page)) requestAnimationFrame(() => Diagrams.after());
   }
 

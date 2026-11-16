@@ -14,19 +14,24 @@
 
   /* ---------- מצב קובץ משותף: משוב ---------- */
   function initSimOnly() {
-    document.body.classList.add('simonly');
+    const view = !!window.__VIEW_ONLY;
+    document.body.classList.add(view ? 'viewonly' : 'simonly');
     const S = window.__designer && window.__designer.S, meta = (S && S.meta) || {};
-    const h1 = document.querySelector('header h1'); if (h1) h1.textContent = 'סימולטור חוויית משתמש';
-    document.title = 'סימולטור · ' + (meta.title || '');
+    const h1 = document.querySelector('header h1'); if (h1 && !view) h1.textContent = 'סימולטור חוויית משתמש';
+    document.title = (view ? 'צפייה · ' : 'סימולטור · ') + (meta.title || '');
     const lay = document.querySelector('.layout');
-    if (lay) lay.insertAdjacentHTML('beforebegin', '<div style="background:#EFF6FF;border-bottom:1px solid #BFDBFE;color:#1E3A8A;padding:8px 20px;font-size:13px;line-height:1.6">סימולטור לשיתוף דעות: אפשר ללחוץ, למלא ולשלוח בחופשיות. שום דבר לא נשמר ולא נשלח לשום מקום; רענון הדף מאפס הכול. הדף מתעדכן אוטומטית כשהמפתח מפרסם גרסה חדשה. הערות נרשמות בכפתור "הערות" ומורדות כקובץ להחזרה. סכמה v' + esc(meta.version || '?') + (window.__BUILT ? ' · עודכן ' + esc(window.__BUILT) : '') + '</div>');
+    const note = view
+      ? 'מצב צפייה בלבד: אפשר לעיין בכל הסכימה, התרשימים והסימולטור, ולייצא מסמך אפיון (תפריט "ייצוא ושיתוף"). אי אפשר לערוך. הדף מתעדכן אוטומטית כשהמפתח מפרסם גרסה חדשה. הערות נרשמות בכפתור "הערות" ומורדות כקובץ להחזרה.'
+      : 'סימולטור לשיתוף דעות: אפשר ללחוץ, למלא ולשלוח בחופשיות. שום דבר לא נשמר ולא נשלח לשום מקום; רענון הדף מאפס הכול. הדף מתעדכן אוטומטית כשהמפתח מפרסם גרסה חדשה. הערות נרשמות בכפתור "הערות" ומורדות כקובץ להחזרה.';
+    if (lay) lay.insertAdjacentHTML('beforebegin', '<div style="background:#EFF6FF;border-bottom:1px solid #BFDBFE;color:#1E3A8A;padding:8px 20px;font-size:13px;line-height:1.6">' + note + ' סכמה v' + esc(meta.version || '?') + (window.__BUILT ? ' · עודכן ' + esc(window.__BUILT) : '') + '</div>');
     const notes = [];
     const box = document.createElement('div'); box.id = 'fbk';
     document.body.appendChild(box);
     let open = false, who0 = '';
     const ctx = () => {
       const tab = document.querySelector('.simtop .seg.lg button.on'), stp = document.querySelector('.stp.on span');
-      return [tab ? tab.textContent.trim() : '', stp ? stp.textContent.trim() : ''].filter(Boolean).join(' › ');
+      const nv = view && document.querySelector('nav a.on span');
+      return [nv ? nv.textContent.trim() : '', tab ? tab.textContent.trim() : '', stp ? stp.textContent.trim() : ''].filter(Boolean).join(' › ');
     };
     const draw = () => {
       box.innerHTML = (open ? `<div class="pn" dir="rtl"><div style="font-weight:700;margin-bottom:6px">הערה על מה שאתה רואה עכשיו</div><div style="font-size:12px;color:#64748B;margin-bottom:6px">מיקום: ${esc(ctx() || 'כללי')}</div><textarea id="fbk-t" placeholder="מה לא ברור, מה מסורבל, מה חסר?"></textarea><div style="display:flex;gap:6px;margin-top:6px"><button id="fbk-add" class="primary" style="flex:1">הוסף הערה</button></div><div style="margin-top:8px;font-size:12px;color:#475569">${notes.length ? 'נרשמו ' + notes.length + ' הערות' : 'עוד לא נרשמו הערות'}</div><input id="fbk-n" type="text" placeholder="השם שלך (לא חובה)" value="${esc(who0)}" style="width:100%;box-sizing:border-box;margin-top:6px"><button id="fbk-dl" style="width:100%;margin-top:6px" ${notes.length ? '' : 'disabled'}>הורד קובץ משוב</button></div>` : '') + `<button class="fab" id="fbk-b">💬 הערות${notes.length ? ' (' + notes.length + ')' : ''}</button>`;
@@ -42,7 +47,7 @@
     };
     draw();
   }
-  if (window.__SIM_ONLY) { initSimOnly(); return; }
+  if (window.__SIM_ONLY || window.__VIEW_ONLY) { initSimOnly(); return; }
 
   /* ---------- ייצוא ---------- */
   async function scaled(src) {
