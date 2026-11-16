@@ -165,6 +165,19 @@
         B.push({ t: 'table', head: ['#', 'גורם', 'צעד'].concat(hn ? ['הערה'] : []).concat(he ? ['ישויות'] : []), w: [5, 18, 38].concat(hn ? [24] : []).concat(he ? [15] : []), rows: (f.steps || []).map((x, i) => [String(i + 1), lane[x.lane] || x.lane || '', x.text || ''].concat(hn ? [x.note || ''] : []).concat(he ? [(x.ent || []).join(', ')] : [])) });
       });
     }
+    const au = S.automations || [];
+    if (au.length) {
+      B.push({ t: 'h1', text: '7. אוטומציות ואינטגרציות' });
+      au.forEach((a) => {
+        B.push({ t: 'h2', text: a.title });
+        (a.blocks || []).forEach((b) => {
+          if (cl && b.team) return;
+          if (b.t === 'p') B.push({ t: 'p', text: b.text });
+          else if (b.t === 'h3') B.push({ t: 'h2', text: b.text });
+          else if (b.t === 'table') B.push({ t: 'table', head: b.head, w: b.w, rows: b.rows });
+        });
+      });
+    }
     return B;
   }
 
