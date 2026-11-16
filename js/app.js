@@ -19,6 +19,7 @@
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const $ = (id) => document.getElementById(id);
 
+  const DEFAULT_PROJECT = 'kkl/signage'; // הפרויקט שנפתח כברירת מחדל כשנטענת תיקיית הפרויקטים
   window.SCHEMAS = window.SCHEMAS || {};
   const repoKeys = () => Object.keys(window.SCHEMAS);
   function extraKeys() { try { return JSON.parse(LS.get(LIST_KEY) || '[]'); } catch (e) { return []; } }
@@ -341,7 +342,7 @@
     }
     await idb('readwrite', (s) => s.put(handle, 'dir'));
     const ids = Object.keys(FOLDER);
-    if (ids.length) { cur = ids.indexOf(cur) >= 0 ? cur : ids[0]; S = load(cur); V = { page: 'entity', idx: 0, script: 'arcpy' }; }
+    if (ids.length) { cur = ids.indexOf(DEFAULT_PROJECT) >= 0 ? DEFAULT_PROJECT : ids.indexOf(cur) >= 0 ? cur : ids[0]; S = load(cur); V = { page: 'entity', idx: 0, script: 'arcpy' }; }
     $('b-save').hidden = false; $('b-resume').hidden = true;
     fillProjects(); render();
     toast('נטענו ' + ids.length + ' פרויקטים מ-' + handle.name + (bad ? ' (' + bad + ' קבצים לא נקראו)' : ''));
@@ -377,6 +378,7 @@
       if (!h) return;
       const b = $('b-resume'); b.hidden = false; b.textContent = '↻ המשך: ' + h.name;
       b.onclick = async () => { try { if ((await h.requestPermission({ mode: 'readwrite' })) === 'granted') await openFolder(h); else toast('לא ניתנה הרשאה'); } catch (e) { toast('שגיאה: ' + e.message); } };
+      if (!SIMONLY) h.queryPermission({ mode: 'readwrite' }).then((p) => { if (p === 'granted') return openFolder(h); }).catch(() => {}); // הרשאה קיימת: טעינה אוטומטית ללא לחיצה
     });
   }
   if (window.Media) Media.resolver = async (rel) => {
