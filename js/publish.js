@@ -124,7 +124,15 @@
         if (!confirm('ייווצר פריט חדש "' + d.name + '" בארגון ' + (sess.org || sess.portal) + '. להמשיך?')) return;
         $('ag-mk').disabled = true; const lg = $('ag-log'); lg.innerHTML = '';
         const log = (t) => { lg.insertAdjacentHTML('beforeend', '✓ ' + esc(t) + '<br>'); };
-        try { const r = await publish(sess, d, log); lg.insertAdjacentHTML('beforeend', '<b style="color:#166534">הסתיים בהצלחה.</b><br><a target="_blank" rel="noopener" href="' + esc(r.itemPage) + '">פתח את הפריט ב-AGOL</a> · <span dir="ltr">' + esc(r.url) + '</span>'); }
+        try {
+          const r = await publish(sess, d, log);
+          try { /* רישום הכתובות בסכימה (S.deployments) לשימוש במסמך האפיון */
+            const dep = { service: d.name, title: d.title, itemId: r.itemId, itemPage: r.itemPage, serviceUrl: r.url, org: sess.org || sess.portal, publishedAt: new Date().toISOString(), items: d.summary.map((x) => ({ entity: x.name, id: x.id })) };
+            S.deployments = (S.deployments || []).filter((x) => !(x.org === dep.org && x.service === dep.service)).concat([dep]);
+            if (D.save) D.save();
+            log('הכתובות נרשמו בסכימה. לשמירה בקובץ: "שמור לתיקייה", ואז Commit ו-Push');
+          } catch (e2) { log('הפרסום הצליח, אך רישום הכתובות בסכימה נכשל: ' + e2.message); }
+          lg.insertAdjacentHTML('beforeend', '<b style="color:#166534">הסתיים בהצלחה.</b><br><a target="_blank" rel="noopener" href="' + esc(r.itemPage) + '">פתח את הפריט ב-AGOL</a> · <span dir="ltr">' + esc(r.url) + '</span>'); }
         catch (e) { lg.insertAdjacentHTML('beforeend', '<span style="color:#B91C1C">נכשל: ' + esc(e.message) + '</span>' + (e.partial ? '<br>נוצר שירות ריק (פריט ' + esc(e.itemId) + ') שלא הושלם. אפשר למחוק אותו ב-AGOL ולנסות שוב.' : '')); $('ag-mk').disabled = false; }
       };
     };

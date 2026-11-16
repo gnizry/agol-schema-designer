@@ -165,9 +165,21 @@
         B.push({ t: 'table', head: ['#', 'גורם', 'צעד'].concat(hn ? ['הערה'] : []).concat(he ? ['ישויות'] : []), w: [5, 18, 38].concat(hn ? [24] : []).concat(he ? [15] : []), rows: (f.steps || []).map((x, i) => [String(i + 1), lane[x.lane] || x.lane || '', x.text || ''].concat(hn ? [x.note || ''] : []).concat(he ? [(x.ent || []).join(', ')] : [])) });
       });
     }
+    let secNo = 7;
+    const dps = (S.deployments || []).filter((d) => d && d.serviceUrl);
+    if (dps.length && !cl) {
+      B.push({ t: 'h1', text: secNo++ + '. פריטים וכתובות בסביבה' });
+      B.push({ t: 'p', text: 'הכתובות נרשמו אוטומטית בעת הפרסום מהכלי. לקריאות REST (למשל ב-Make) מוסיפים לכתובת השכבה את הסיומת query או applyEdits, ופרמטר f=json.' });
+      dps.forEach((d) => {
+        B.push({ t: 'h2', text: (d.title || d.service || 'שירות') + (d.org ? ' · ' + d.org : '') });
+        B.push({ t: 'kv', rows: [['שם שירות', d.service || ''], ['מזהה פריט', d.itemId || ''], ['דף הפריט', d.itemPage || ''], ['כתובת השירות', d.serviceUrl], ['תאריך פרסום', d.publishedAt ? new Date(d.publishedAt).toLocaleDateString('he-IL') : '']].filter((r) => r[1]) });
+        B.push({ t: 'table', head: ['ישות', 'סוג', 'מזהה', 'כתובת'], w: [20, 10, 8, 62], rows: (d.items || []).map((i) => { const e = S.entities.find((x) => x.name === i.entity) || {}; return [(e.alias ? e.alias + ' (' + i.entity + ')' : i.entity), kind(e.kind), String(i.id), d.serviceUrl + '/' + i.id]; }) });
+      });
+    }
     const au = S.automations || [];
     if (au.length) {
-      B.push({ t: 'h1', text: '7. אוטומציות ואינטגרציות' });
+      B.push({ t: 'h1', text: secNo++ + '. אוטומציות ואינטגרציות' });
+      if (!cl) B.push({ t: 'p', text: dps.length ? 'כתובות ומזהי השכבות והטבלאות: ראה הפרק "פריטים וכתובות בסביבה".' : 'כתובות ומזהי השכבות והטבלאות יופיעו במסמך אחרי פרסום השירות מהכלי.' });
       au.forEach((a) => {
         B.push({ t: 'h2', text: a.title });
         (a.blocks || []).forEach((b) => {

@@ -391,7 +391,7 @@
       return URL.createObjectURL(await (await d.getFileHandle(parts[parts.length - 1])).getFile());
     } catch (e) { return null; }
   };
-  window.__designer = { openFolder, saveFolder, FOLDER, get cur() { return cur; }, get S() { return S; } }; // לבדיקות
+  window.__designer = { openFolder, saveFolder, FOLDER, save, render, get cur() { return cur; }, get S() { return S; } }; // לבדיקות
 
   fillProjects();
   render();
