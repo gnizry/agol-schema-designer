@@ -184,6 +184,7 @@
         <button id="b-doc-word">📄 מסמך אפיון (Word)</button>
         <button id="b-doc-pdf">📕 מסמך אפיון (PDF)</button>
         <label style="display:flex;gap:6px;align-items:center;padding:4px 10px;font-size:12px;color:#475569;cursor:pointer"><input type="checkbox" id="doc-client"> גרסת לקוח: ללא הערות פנימיות</label>
+        <button id="b-xlsform" title="יוצר קובץ XLSForm לטופס Survey123 (טופס אחד לכל הרמות), דוח ממצאים וסקריפט פרסום. לא מפרסם">📋 טופס Survey123 (XLSForm)</button>
         <button id="b-share" title="קובץ HTML יחיד עם הסימולטור, לשימוש בלי אינטרנט">🗂 סימולטור כקובץ HTML בודד</button>
       </div></div>
     <button id="b-export" class="primary">ייצוא סכמה (schema.js)</button>
@@ -208,7 +209,7 @@
   /* ?view=<key>: כל הכלי לצפייה בלבד, מהעותק המפורסם share/<key>/schema.js */
   var view = sim ? '' : (new URLSearchParams(location.search).get('view') || '').replace(/[^A-Za-z0-9_\-]/g, '');
   if (view) { files = ['share/' + view + '/schema.js']; window.__VIEW_ONLY = true; window.__MEDIA_BASE = 'share/' + view + '/'; }
-  files = files.concat(['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js', 'js/share.js', 'js/specdoc.js', 'js/publish.js']);
+  files = files.concat(['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js', 'js/share.js', 'js/specdoc.js', 'js/xlsform.js', 'js/publish.js']);
   (function next(i) {
     if (i >= files.length) return;
     var s = document.createElement('script'); s.src = files[i];
