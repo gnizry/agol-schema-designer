@@ -2175,18 +2175,18 @@ window.SCHEMAS["signage"] = {
       ]
     },
   "agolItems": [
-      { "group": "נתונים", "type": "Hosted Feature Layer + טבלאות", "title": "שילוט (Signs, SignParts, SignVisits)", "role": "מקור האמת. שכבה נקודתית וטבלאות רכיבים וביקורים, מקושרות ב-GlobalID", "status": "planned", "deploy": true },
-      { "group": "נתונים", "type": "Hosted Feature Layer View", "title": "תצוגה לקבלנים (מוצע)", "role": "הגבלת עריכה והסתרת שדות פנימיים לקבלנים. טעון אישור אם נדרש", "status": "open" },
-      { "group": "נתונים", "type": "Feature Layer", "title": "שכבת שילוט קיימת (שטוחה)", "role": "מקור להסבה, כ-8,000 שלטים", "status": "exists" },
-      { "group": "נתונים", "type": "Feature Layer", "title": "שכבות יערות ודרכים", "role": "מקור לכתובת יערנית ושם דרך (pulldata). שם השכבה והשדות טרם נמסרו", "status": "open" },
-      { "group": "אפליקציות שטח", "type": "Survey123 Form", "title": "סקר שילוט", "role": "טופס אחד לכל הרמות, ביקורים ב-mode=edit. נפתח מ-Field Maps", "status": "planned" },
-      { "group": "אפליקציות שטח", "type": "Web Map (Field Maps)", "title": "מפת סקר שילוט", "role": "איתור שלטים, פופאפ Arcade, פתיחת הטופס. יווצר אחרי מפה ידנית לדוגמה", "status": "planned" },
-      { "group": "לוגיקה ואוטומציה", "type": "ArcGIS Notebook", "title": "מחברת הסבה", "role": "הסבת השכבה הקיימת למבנה הרלציוני. דורשת את רשימת השדות הנוכחית", "status": "open" },
-      { "group": "לוגיקה ואוטומציה", "type": "ArcGIS Notebook (מתוזמנת)", "title": "מחברת לילית: ביקור אחרון מול Signs", "role": "תיקון פערים והפקת רשימת חריגים, לפי אפיון תרחישי Make", "status": "planned" },
-      { "group": "לוגיקה ואוטומציה", "type": "Webhook", "title": "Webhooks על Signs ו-SignVisits", "role": "טריגרים ל-Make (Watch Features). עד 10 לשכבה או טבלה", "status": "planned" },
-      { "group": "דוחות", "type": "Dashboard", "title": "דשבורד שילוט", "role": "כמות לפי דגם, לא תקין, לפירוק, כיסוי, סכנה בטיחותית. יוגדר באפיון", "status": "planned" },
-      { "group": "הרשאות", "type": "Groups", "title": "קבוצות: קבלנים, רכזים, הנהלה (מוצע)", "role": "שיתוף השכבה, המפה והטופס לפי תפקיד. טעון אישור", "status": "open" },
-      { "group": "הרשאות", "type": "משתמשים", "title": "קבלנים: Mobile Worker", "role": "כ-10 משתמשים חיצוניים", "status": "exists" }
+      {"id": "legacy", "group": "נתונים", "kind": "ext", "type": "Feature Layer", "title": "שכבת שילוט קיימת (שטוחה)", "role": "מקור להסבה, כ-8,000 שלטים", "status": "exists", "links": [{"to": "nbmig", "label": "מקור להסבה", "status": "open"}]},
+      {"id": "forest", "group": "נתונים", "kind": "ext", "type": "Feature Layer", "title": "שכבות יערות ודרכים", "role": "מקור לכתובת יערנית ושם דרך (pulldata). שם השכבה והשדות טרם נמסרו", "status": "open", "links": [{"to": "form", "label": "pulldata (אונליין)", "status": "open"}]},
+      {"id": "hosted", "group": "נתונים", "kind": "data", "type": "Hosted Feature Layer + טבלאות", "title": "שילוט (Signs, SignParts, SignVisits)", "role": "מקור האמת. שכבה נקודתית וטבלאות רכיבים וביקורים, מקושרות ב-GlobalID", "status": "planned", "deploy": true, "links": [{"to": "view", "label": "מקור לתצוגה", "status": "open"}, {"to": "webhook", "label": "אירועי יצירה ועדכון", "status": "planned"}, {"to": "dash", "label": "נתוני דוחות", "status": "planned"}]},
+      {"id": "view", "group": "נתונים", "kind": "data", "type": "Hosted Feature Layer View", "title": "תצוגה לקבלנים (מוצע)", "role": "הגבלת עריכה והסתרת שדות פנימיים לקבלנים. טעון אישור אם נדרש", "status": "open", "links": [{"to": "webmap", "label": "מקור למפה (אם יאושר)", "status": "open"}]},
+      {"id": "form", "group": "אפליקציות שטח", "kind": "app", "type": "Survey123 Form", "title": "סקר שילוט", "role": "טופס אחד לכל הרמות, ביקורים ב-mode=edit. נפתח מ-Field Maps", "status": "planned", "links": [{"to": "hosted", "label": "כותב (סנכרון)"}]},
+      {"id": "webmap", "group": "אפליקציות שטח", "kind": "app", "type": "Web Map (Field Maps)", "title": "מפת סקר שילוט", "role": "איתור שלטים, פופאפ Arcade, פתיחת הטופס. יווצר אחרי מפה ידנית לדוגמה", "status": "planned", "links": [{"to": "hosted", "label": "מציגה ועורכת", "status": "planned"}, {"to": "form", "label": "פותחת טופס", "status": "planned"}]},
+      {"id": "nbmig", "group": "לוגיקה ואוטומציה", "kind": "logic", "type": "ArcGIS Notebook", "title": "מחברת הסבה", "role": "הסבת השכבה הקיימת למבנה הרלציוני. דורשת את רשימת השדות הנוכחית", "status": "open", "links": [{"to": "hosted", "label": "הסבה", "status": "open"}]},
+      {"id": "nbnight", "group": "לוגיקה ואוטומציה", "kind": "logic", "type": "ArcGIS Notebook (מתוזמנת)", "title": "מחברת לילית: ביקור אחרון מול Signs", "role": "תיקון פערים והפקת רשימת חריגים, לפי אפיון תרחישי Make", "status": "planned", "links": [{"to": "hosted", "label": "בודקת ומתקנת", "status": "planned"}]},
+      {"id": "webhook", "group": "לוגיקה ואוטומציה", "kind": "logic", "type": "Webhook", "title": "Webhooks על Signs ו-SignVisits", "role": "טריגרים ל-Make (Watch Features). עד 10 לשכבה או טבלה", "status": "planned", "links": [{"to": "hosted", "label": "Make מעדכן (A, B)", "status": "planned"}]},
+      {"id": "dash", "group": "דוחות", "kind": "report", "type": "Dashboard", "title": "דשבורד שילוט", "role": "כמות לפי דגם, לא תקין, לפירוק, כיסוי, סכנה בטיחותית. יוגדר באפיון", "status": "planned", "links": []},
+      {"id": "groups", "group": "הרשאות", "kind": "actor", "type": "Groups", "title": "קבוצות: קבלנים, רכזים, הנהלה (מוצע)", "role": "שיתוף השכבה, המפה והטופס לפי תפקיד. טעון אישור", "status": "open", "links": [{"to": "hosted", "label": "משתפת", "status": "open"}, {"to": "webmap", "label": "משתפת", "status": "open"}, {"to": "form", "label": "משתפת", "status": "open"}]},
+      {"id": "mw", "group": "הרשאות", "kind": "actor", "type": "משתמשים", "title": "קבלנים: Mobile Worker", "role": "כ-10 משתמשים חיצוניים", "status": "exists", "links": [{"to": "groups", "label": "חברים בקבוצה", "status": "open"}]}
     ],
     "flows": [
       {

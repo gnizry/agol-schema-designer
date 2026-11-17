@@ -100,6 +100,15 @@
     if (c) return c;
     return { layers: [{ id: 'data', title: 'שכבת נתונים (AGOL)' }], nodes: [{ id: 'svc', layer: 'data', kind: 'data', title: 'Hosted Feature Layer', items: ['@entities'] }], edges: [] };
   }
+  function agolDiagramHtml(S) {
+    const its = D(S).agolItems || []; if (!its.length || !its[0].id) return '';
+    const groups = []; its.forEach((x) => { if (!groups.includes(x.group)) groups.push(x.group); });
+    const dep = (S.deployments || []).some((d) => d && d.serviceUrl);
+    const nodeHtml = (n) => { const stt = n.deploy && dep ? '' : n.status === 'planned' || n.status === 'open' ? n.status : ''; return `<div class="dgn ${esc(n.kind || 'app')} ${stt}" data-id="ag_${esc(n.id)}"><b>${tag(stt)}${esc(n.title)}</b><small>${esc(n.type)}</small></div>`; };
+    const lay = groups.map((g) => `<div class="lay"><div class="lt">${esc(g)}</div><div class="ln">${its.filter((n) => n.group === g).map(nodeHtml).join('')}</div></div>`).join('');
+    const edges = []; its.forEach((n) => (n.links || []).forEach((l) => edges.push({ from: 'ag_' + n.id, to: 'ag_' + l.to, label: l.label || '', cls: l.status === 'planned' || l.status === 'open' ? 'dash' : 'solid' })));
+    return `<h3 style="margin:16px 0 6px">פריטי ArcGIS Online והקשרים ביניהם</h3><div class="dgwrap"><div class="dgroot" data-edges='${esc(JSON.stringify(edges)).replace(/'/g, '&#39;')}' data-mode="bez">${lay}<svg class="dge"></svg></div></div>`;
+  }
   function agolItemsHtml(S) {
     const its = D(S).agolItems || []; if (!its.length) return '';
     const dep = (S.deployments || []).filter((d) => d && d.serviceUrl);
@@ -123,7 +132,7 @@
     const edges = (c.edges || []).map((e) => ({ from: e.from, to: e.to, label: e.label, cls: e.status === 'planned' || e.status === 'open' ? 'dash' : 'solid' }));
     return `<div class="dgbar"><button onclick="DG.mermaid('comp')">העתק Mermaid</button><button onclick="window.print()">הדפס / PDF</button></div>
       <div class="dgwrap"><div class="dgroot" data-edges='${esc(JSON.stringify(edges)).replace(/'/g, '&#39;')}' data-mode="bez">${lay}<svg class="dge"></svg></div></div>
-      <div class="lg"><span><i style="background:#fef3c7"></i>משתמשים</span><span><i style="background:#dbeafe"></i>אפליקציות</span><span><i style="background:#d1fae5"></i>נתונים</span><span><i style="background:#ede9fe"></i>לוגיקה ואוטומציה</span><span><i style="background:#cffafe"></i>דוחות והתראות</span><span><i style="background:var(--s1)"></i>חיצוני / קיים</span><span><i style="border-style:dashed"></i>מתוכנן או פתוח (קו מקווקו)</span></div>${agolItemsHtml(S)}`;
+      <div class="lg"><span><i style="background:#fef3c7"></i>משתמשים</span><span><i style="background:#dbeafe"></i>אפליקציות</span><span><i style="background:#d1fae5"></i>נתונים</span><span><i style="background:#ede9fe"></i>לוגיקה ואוטומציה</span><span><i style="background:#cffafe"></i>דוחות והתראות</span><span><i style="background:var(--s1)"></i>חיצוני / קיים</span><span><i style="border-style:dashed"></i>מתוכנן או פתוח (קו מקווקו)</span></div>${agolDiagramHtml(S)}${agolItemsHtml(S)}`;
   }
 
   /* ---------- תהליכים (swimlane) ---------- */
