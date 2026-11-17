@@ -2174,6 +2174,20 @@ window.SCHEMAS["signage"] = {
         }
       ]
     },
+  "agolItems": [
+      { "group": "נתונים", "type": "Hosted Feature Layer + טבלאות", "title": "שילוט (Signs, SignParts, SignVisits)", "role": "מקור האמת. שכבה נקודתית וטבלאות רכיבים וביקורים, מקושרות ב-GlobalID", "status": "planned", "deploy": true },
+      { "group": "נתונים", "type": "Hosted Feature Layer View", "title": "תצוגה לקבלנים (מוצע)", "role": "הגבלת עריכה והסתרת שדות פנימיים לקבלנים. טעון אישור אם נדרש", "status": "open" },
+      { "group": "נתונים", "type": "Feature Layer", "title": "שכבת שילוט קיימת (שטוחה)", "role": "מקור להסבה, כ-8,000 שלטים", "status": "exists" },
+      { "group": "נתונים", "type": "Feature Layer", "title": "שכבות יערות ודרכים", "role": "מקור לכתובת יערנית ושם דרך (pulldata). שם השכבה והשדות טרם נמסרו", "status": "open" },
+      { "group": "אפליקציות שטח", "type": "Survey123 Form", "title": "סקר שילוט", "role": "טופס אחד לכל הרמות, ביקורים ב-mode=edit. נפתח מ-Field Maps", "status": "planned" },
+      { "group": "אפליקציות שטח", "type": "Web Map (Field Maps)", "title": "מפת סקר שילוט", "role": "איתור שלטים, פופאפ Arcade, פתיחת הטופס. יווצר אחרי מפה ידנית לדוגמה", "status": "planned" },
+      { "group": "לוגיקה ואוטומציה", "type": "ArcGIS Notebook", "title": "מחברת הסבה", "role": "הסבת השכבה הקיימת למבנה הרלציוני. דורשת את רשימת השדות הנוכחית", "status": "open" },
+      { "group": "לוגיקה ואוטומציה", "type": "ArcGIS Notebook (מתוזמנת)", "title": "מחברת לילית: ביקור אחרון מול Signs", "role": "תיקון פערים והפקת רשימת חריגים, לפי אפיון תרחישי Make", "status": "planned" },
+      { "group": "לוגיקה ואוטומציה", "type": "Webhook", "title": "Webhooks על Signs ו-SignVisits", "role": "טריגרים ל-Make (Watch Features). עד 10 לשכבה או טבלה", "status": "planned" },
+      { "group": "דוחות", "type": "Dashboard", "title": "דשבורד שילוט", "role": "כמות לפי דגם, לא תקין, לפירוק, כיסוי, סכנה בטיחותית. יוגדר באפיון", "status": "planned" },
+      { "group": "הרשאות", "type": "Groups", "title": "קבוצות: קבלנים, רכזים, הנהלה (מוצע)", "role": "שיתוף השכבה, המפה והטופס לפי תפקיד. טעון אישור", "status": "open" },
+      { "group": "הרשאות", "type": "משתמשים", "title": "קבלנים: Mobile Worker", "role": "כ-10 משתמשים חיצוניים", "status": "exists" }
+    ],
     "flows": [
       {
         "id": "new",

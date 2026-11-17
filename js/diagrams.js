@@ -32,6 +32,8 @@
   .dgn.actor{background:#fef3c7;border-color:#b45309;border-radius:20px}.dgn.app{background:#dbeafe;border-color:#2563eb}
   .dgn.data{background:#d1fae5;border-color:var(--g7)}.dgn.logic{background:#ede9fe;border-color:#7c3aed}
   .dgn.ext{background:var(--s1);border-color:var(--s5)}.dgn.report{background:#cffafe;border-color:#0891b2}
+  .agt{border-collapse:collapse;width:100%;min-width:0;margin-top:14px;font-size:12px}.agt th,.agt td{border:1px solid var(--s7);padding:4px 8px;text-align:right;vertical-align:top;position:static;text-transform:none;letter-spacing:0;font-size:12px}.agt th{background:var(--s1);color:inherit}.agt tr.g td{background:#f1f5f9;font-weight:700}
+  .tag.exists{background:#16a34a}.tag.pub{background:#2563eb}
   .dgn.planned,.dgn.open,.st.planned,.st.open{border-style:dashed}
   .dgn .chip{display:inline-block;margin:2px 2px 0 0;background:#fff;border:1px solid var(--g7);border-radius:9px;padding:0 6px;font-size:10px}
   .tag{display:inline-block;font-size:9px;border-radius:3px;padding:0 4px;margin-right:4px;vertical-align:middle;color:#fff}
@@ -98,6 +100,19 @@
     if (c) return c;
     return { layers: [{ id: 'data', title: 'שכבת נתונים (AGOL)' }], nodes: [{ id: 'svc', layer: 'data', kind: 'data', title: 'Hosted Feature Layer', items: ['@entities'] }], edges: [] };
   }
+  function agolItemsHtml(S) {
+    const its = D(S).agolItems || []; if (!its.length) return '';
+    const dep = (S.deployments || []).filter((d) => d && d.serviceUrl);
+    const lab = { exists: ['exists', 'קיים'], planned: ['planned', 'מתוכנן'], open: ['open', 'פתוח'] };
+    let last = '', rows = '';
+    its.forEach((x) => {
+      if (x.group !== last) { last = x.group; rows += `<tr class="g"><td colspan="4">${esc(x.group)}</td></tr>`; }
+      let st2 = lab[x.status] || lab.planned, link = '';
+      if (x.deploy && dep.length) { st2 = ['pub', 'פורסם']; link = dep.map((d) => d.itemPage ? `<br><a href="${esc(d.itemPage)}" target="_blank" rel="noopener">${esc(d.title || d.service || 'פריט')}${d.org ? ' · ' + esc(d.org) : ''}</a>` : '').join(''); }
+      rows += `<tr><td>${esc(x.type)}</td><td><b>${esc(x.title)}</b>${link}</td><td>${esc(x.role || '')}</td><td><span class="tag ${st2[0]}" style="margin:0">${st2[1]}</span></td></tr>`;
+    });
+    return `<h3 style="margin:16px 0 0">פריטי ArcGIS Online התומכים בפתרון</h3><table class="agt"><thead><tr><th>סוג פריט</th><th>פריט</th><th>תפקיד</th><th>סטטוס</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
   function compPage(S) {
     const c = compData(S), nodes = c.nodes || [];
     const nodeHtml = (n) => {
@@ -108,7 +123,7 @@
     const edges = (c.edges || []).map((e) => ({ from: e.from, to: e.to, label: e.label, cls: e.status === 'planned' || e.status === 'open' ? 'dash' : 'solid' }));
     return `<div class="dgbar"><button onclick="DG.mermaid('comp')">העתק Mermaid</button><button onclick="window.print()">הדפס / PDF</button></div>
       <div class="dgwrap"><div class="dgroot" data-edges='${esc(JSON.stringify(edges)).replace(/'/g, '&#39;')}' data-mode="bez">${lay}<svg class="dge"></svg></div></div>
-      <div class="lg"><span><i style="background:#fef3c7"></i>משתמשים</span><span><i style="background:#dbeafe"></i>אפליקציות</span><span><i style="background:#d1fae5"></i>נתונים</span><span><i style="background:#ede9fe"></i>לוגיקה ואוטומציה</span><span><i style="background:#cffafe"></i>דוחות והתראות</span><span><i style="background:var(--s1)"></i>חיצוני / קיים</span><span><i style="border-style:dashed"></i>מתוכנן או פתוח (קו מקווקו)</span></div>`;
+      <div class="lg"><span><i style="background:#fef3c7"></i>משתמשים</span><span><i style="background:#dbeafe"></i>אפליקציות</span><span><i style="background:#d1fae5"></i>נתונים</span><span><i style="background:#ede9fe"></i>לוגיקה ואוטומציה</span><span><i style="background:#cffafe"></i>דוחות והתראות</span><span><i style="background:var(--s1)"></i>חיצוני / קיים</span><span><i style="border-style:dashed"></i>מתוכנן או פתוח (קו מקווקו)</span></div>${agolItemsHtml(S)}`;
   }
 
   /* ---------- תהליכים (swimlane) ---------- */

@@ -157,6 +157,12 @@
         B.push({ t: 'h2', text: 'רכיבי הפתרון' });
         B.push({ t: 'table', head: ['שכבה', 'רכיב', 'תיאור', 'פריטים'], w: [18, 22, 30, 30], rows: comps.map((n) => [layers[n.layer] || n.layer || '', n.title || '', n.sub || '', (n.items || []).map((i) => i === '@entities' ? S.entities.map((e) => e.alias).join(', ') : i === '@domains' ? Object.keys(S.domains || {}).length + ' דומיינים' : i).join(', ')]) });
       }
+      const ai = dg.agolItems || [];
+      if (ai.length) {
+        const stl = { exists: 'קיים', planned: 'מתוכנן', open: 'פתוח' };
+        B.push({ t: 'h2', text: 'פריטי ArcGIS Online התומכים בפתרון' });
+        B.push({ t: 'table', head: ['קבוצה', 'סוג פריט', 'פריט', 'תפקיד', 'סטטוס'], w: [12, 18, 22, 38, 10], rows: ai.map((x) => [x.group || '', x.type || '', x.title || '', x.role || '', stl[x.status] || '']) });
+      }
       flows.forEach((f) => {
         const lane = {}; (f.lanes || []).forEach((l) => { lane[l.id] = l.label; });
         B.push({ t: 'h2', text: 'תהליך: ' + f.title });
