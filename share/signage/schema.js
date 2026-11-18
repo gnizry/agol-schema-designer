@@ -2208,22 +2208,276 @@ window.SCHEMAS["signage"] = {
         }
       ]
     },
-  "agolItems": [
-      {"id": "legacy", "group": "נתונים", "kind": "ext", "type": "Feature Layer", "title": "שכבת שילוט קיימת (שטוחה)", "role": "מקור להסבה, כ-8,000 שלטים", "status": "exists", "links": [{"to": "nbmig", "label": "מקור להסבה", "status": "open"}]},
-      {"id": "forest", "group": "נתונים", "kind": "ext", "type": "Feature Layer", "title": "שכבות יערות ודרכים", "role": "מקור לכתובת יערנית ושם דרך (pulldata). שם השכבה והשדות טרם נמסרו", "status": "open", "links": [{"to": "form", "label": "pulldata (אונליין)", "status": "open"}]},
-      {"id": "hosted", "group": "נתונים", "kind": "data", "type": "Hosted Feature Layer + טבלאות", "title": "שילוט (Signs, SignParts, SignVisits)", "role": "מקור האמת. שכבה נקודתית וטבלאות רכיבים וביקורים, מקושרות ב-GlobalID", "status": "planned", "deploy": true, "links": [{"to": "view", "label": "מקור לתצוגה", "status": "open"}, {"to": "webhook", "label": "אירועי יצירה ועדכון", "status": "planned"}, {"to": "dash", "label": "נתוני דוחות", "status": "planned"}]},
-      {"id": "view", "group": "נתונים", "kind": "data", "type": "Hosted Feature Layer View", "title": "תצוגה לקבלנים (מוצע)", "role": "הגבלת עריכה והסתרת שדות פנימיים לקבלנים. טעון אישור אם נדרש", "status": "open", "links": [{"to": "webmap", "label": "מקור למפה (אם יאושר)", "status": "open"}]},
-      {"id": "form", "group": "אפליקציות שטח", "kind": "app", "type": "Survey123 Form", "title": "סקר שילוט", "role": "טופס אחד לכל הרמות, ביקורים ב-mode=edit. נפתח מ-Field Maps", "status": "planned", "links": [{"to": "hosted", "label": "כותב (סנכרון)"}]},
-      {"id": "webmap", "group": "אפליקציות שטח", "kind": "app", "type": "Web Map (Field Maps)", "title": "מפת סקר שילוט", "role": "איתור שלטים, פופאפ Arcade, פתיחת הטופס. יווצר אחרי מפה ידנית לדוגמה", "status": "planned", "links": [{"to": "hosted", "label": "מציגה ועורכת", "status": "planned"}, {"to": "form", "label": "פותחת טופס", "status": "planned"}]},
-      {"id": "office", "group": "אפליקציות משרד", "kind": "app", "type": "Instant App: Manager", "title": "אפליקציית טיוב משרדית (Manager)", "role": "סיווג שלטים מהשכבה הישנה לדגמים החדשים בהסבה: טבלה, מפה, סינון לפי סוג ישן ועריכה מרובה. מוצע (D30), טעון אישור", "status": "open", "links": [{"to": "omap", "label": "מציגה", "status": "open"}]},
-      {"id": "omap", "group": "אפליקציות משרד", "kind": "app", "type": "Web Map", "title": "מפת טיוב משרדית (מוצע)", "role": "שכבת Signs עם כל הרשומות כולל הממתינות לטיוב. טפסי עריכה לשדות הסיווג", "status": "open", "links": [{"to": "hosted", "label": "עורכת", "status": "open"}]},
-      {"id": "nbmig", "group": "לוגיקה ואוטומציה", "kind": "logic", "type": "ArcGIS Notebook", "title": "מחברת הסבה", "role": "הסבת השכבה הקיימת למבנה הרלציוני. דורשת את רשימת השדות הנוכחית", "status": "open", "links": [{"to": "hosted", "label": "הסבה", "status": "open"}]},
-      {"id": "nbnight", "group": "לוגיקה ואוטומציה", "kind": "logic", "type": "ArcGIS Notebook (מתוזמנת)", "title": "מחברת לילית: ביקור אחרון מול Signs", "role": "תיקון פערים והפקת רשימת חריגים, לפי אפיון תרחישי Make", "status": "planned", "links": [{"to": "hosted", "label": "בודקת ומתקנת", "status": "planned"}]},
-      {"id": "webhook", "group": "לוגיקה ואוטומציה", "kind": "logic", "type": "Webhook", "title": "Webhooks על Signs ו-SignVisits", "role": "טריגרים ל-Make (Watch Features). עד 10 לשכבה או טבלה", "status": "planned", "links": [{"to": "hosted", "label": "Make מעדכן (A, B)", "status": "planned"}]},
-      {"id": "dash", "group": "דוחות", "kind": "report", "type": "Dashboard", "title": "דשבורד שילוט", "role": "כמות לפי דגם, לא תקין, לפירוק, כיסוי, סכנה בטיחותית. יוגדר באפיון", "status": "planned", "links": []},
-      {"id": "groups", "group": "הרשאות", "kind": "actor", "type": "Groups", "title": "קבוצות: קבלנים, רכזים, הנהלה (מוצע)", "role": "שיתוף השכבה, המפה והטופס לפי תפקיד. טעון אישור", "status": "open", "links": [{"to": "hosted", "label": "משתפת", "status": "open"}, {"to": "webmap", "label": "משתפת", "status": "open"}, {"to": "form", "label": "משתפת", "status": "open"}, {"to": "office", "label": "משתפת", "status": "open"}]},
-      {"id": "mw", "group": "הרשאות", "kind": "actor", "type": "משתמשים", "title": "קבלנים: Mobile Worker", "role": "כ-10 משתמשים חיצוניים", "status": "exists", "links": [{"to": "groups", "label": "חברים בקבוצה", "status": "open"}]},
-      {"id": "officeusers", "group": "הרשאות", "kind": "actor", "type": "משתמשים", "title": "צוות הטיוב של הלקוח (משרד)", "role": "משתמשים עם הרשאת עריכה לשכבה. סוג רישיון וקבוצה טרם הוגדרו", "status": "open", "links": [{"to": "groups", "label": "חברים בקבוצה", "status": "open"}, {"to": "office", "label": "מטייבים", "status": "open"}]}
+    "agolItems": [
+      {
+        "id": "legacy",
+        "group": "נתונים",
+        "kind": "ext",
+        "type": "Feature Layer",
+        "title": "שכבת שילוט קיימת (שטוחה)",
+        "role": "מקור להסבה, כ-8,000 שלטים",
+        "status": "exists",
+        "links": [
+          {
+            "to": "nbmig",
+            "label": "מקור להסבה",
+            "status": "open"
+          }
+        ]
+      },
+      {
+        "id": "forest",
+        "group": "נתונים",
+        "kind": "ext",
+        "type": "Feature Layer",
+        "title": "שכבות יערות ודרכים",
+        "role": "מקור לכתובת יערנית ושם דרך (pulldata). שם השכבה והשדות טרם נמסרו",
+        "status": "open",
+        "links": [
+          {
+            "to": "form",
+            "label": "pulldata (אונליין)",
+            "status": "open"
+          }
+        ]
+      },
+      {
+        "id": "hosted",
+        "group": "נתונים",
+        "kind": "data",
+        "type": "Hosted Feature Layer + טבלאות",
+        "title": "שילוט (Signs, SignParts, SignVisits)",
+        "role": "מקור האמת. שכבה נקודתית וטבלאות רכיבים וביקורים, מקושרות ב-GlobalID",
+        "status": "planned",
+        "deploy": true,
+        "links": [
+          {
+            "to": "view",
+            "label": "מקור לתצוגה",
+            "status": "open"
+          },
+          {
+            "to": "webhook",
+            "label": "אירועי יצירה ועדכון",
+            "status": "planned"
+          },
+          {
+            "to": "dash",
+            "label": "נתוני דוחות",
+            "status": "planned"
+          }
+        ]
+      },
+      {
+        "id": "view",
+        "group": "נתונים",
+        "kind": "data",
+        "type": "Hosted Feature Layer View",
+        "title": "תצוגה לקבלנים (מוצע)",
+        "role": "הגבלת עריכה והסתרת שדות פנימיים לקבלנים. טעון אישור אם נדרש",
+        "status": "open",
+        "links": [
+          {
+            "to": "webmap",
+            "label": "מקור למפה (אם יאושר)",
+            "status": "open"
+          }
+        ]
+      },
+      {
+        "id": "form",
+        "group": "אפליקציות שטח",
+        "kind": "app",
+        "type": "Survey123 Form",
+        "title": "סקר שילוט",
+        "role": "טופס אחד לכל הרמות, ביקורים ב-mode=edit. נפתח מ-Field Maps",
+        "status": "planned",
+        "links": [
+          {
+            "to": "hosted",
+            "label": "כותב (סנכרון)"
+          }
+        ]
+      },
+      {
+        "id": "webmap",
+        "group": "אפליקציות שטח",
+        "kind": "app",
+        "type": "Web Map (Field Maps)",
+        "title": "מפת סקר שילוט",
+        "role": "איתור שלטים, פופאפ Arcade, פתיחת הטופס. יווצר אחרי מפה ידנית לדוגמה",
+        "status": "planned",
+        "links": [
+          {
+            "to": "hosted",
+            "label": "מציגה ועורכת",
+            "status": "planned"
+          },
+          {
+            "to": "form",
+            "label": "פותחת טופס",
+            "status": "planned"
+          }
+        ]
+      },
+      {
+        "id": "office",
+        "group": "אפליקציות משרד",
+        "kind": "app",
+        "type": "Instant App: Manager",
+        "title": "אפליקציית טיוב משרדית (Manager)",
+        "role": "סיווג שלטים מהשכבה הישנה לדגמים החדשים בהסבה: טבלה, מפה, סינון לפי סוג ישן ועריכה מרובה. מוצע (D30), טעון אישור",
+        "status": "open",
+        "links": [
+          {
+            "to": "omap",
+            "label": "מציגה",
+            "status": "open"
+          }
+        ]
+      },
+      {
+        "id": "omap",
+        "group": "אפליקציות משרד",
+        "kind": "app",
+        "type": "Web Map",
+        "title": "מפת טיוב משרדית (מוצע)",
+        "role": "שכבת Signs עם כל הרשומות כולל הממתינות לטיוב. טפסי עריכה לשדות הסיווג",
+        "status": "open",
+        "links": [
+          {
+            "to": "hosted",
+            "label": "עורכת",
+            "status": "open"
+          }
+        ]
+      },
+      {
+        "id": "nbmig",
+        "group": "לוגיקה ואוטומציה",
+        "kind": "logic",
+        "type": "ArcGIS Notebook",
+        "title": "מחברת הסבה",
+        "role": "הסבת השכבה הקיימת למבנה הרלציוני. דורשת את רשימת השדות הנוכחית",
+        "status": "open",
+        "links": [
+          {
+            "to": "hosted",
+            "label": "הסבה",
+            "status": "open"
+          }
+        ]
+      },
+      {
+        "id": "nbnight",
+        "group": "לוגיקה ואוטומציה",
+        "kind": "logic",
+        "type": "ArcGIS Notebook (מתוזמנת)",
+        "title": "מחברת לילית: ביקור אחרון מול Signs",
+        "role": "תיקון פערים והפקת רשימת חריגים, לפי אפיון תרחישי Make",
+        "status": "planned",
+        "links": [
+          {
+            "to": "hosted",
+            "label": "בודקת ומתקנת",
+            "status": "planned"
+          }
+        ]
+      },
+      {
+        "id": "webhook",
+        "group": "לוגיקה ואוטומציה",
+        "kind": "logic",
+        "type": "Webhook",
+        "title": "Webhooks על Signs ו-SignVisits",
+        "role": "טריגרים ל-Make (Watch Features). עד 10 לשכבה או טבלה",
+        "status": "planned",
+        "links": [
+          {
+            "to": "hosted",
+            "label": "Make מעדכן (A, B)",
+            "status": "planned"
+          }
+        ]
+      },
+      {
+        "id": "dash",
+        "group": "דוחות",
+        "kind": "report",
+        "type": "Dashboard",
+        "title": "דשבורד שילוט",
+        "role": "כמות לפי דגם, לא תקין, לפירוק, כיסוי, סכנה בטיחותית. יוגדר באפיון",
+        "status": "planned",
+        "links": []
+      },
+      {
+        "id": "groups",
+        "group": "הרשאות",
+        "kind": "actor",
+        "type": "Groups",
+        "title": "קבוצות: קבלנים, רכזים, הנהלה (מוצע)",
+        "role": "שיתוף השכבה, המפה והטופס לפי תפקיד. טעון אישור",
+        "status": "open",
+        "links": [
+          {
+            "to": "hosted",
+            "label": "משתפת",
+            "status": "open"
+          },
+          {
+            "to": "webmap",
+            "label": "משתפת",
+            "status": "open"
+          },
+          {
+            "to": "form",
+            "label": "משתפת",
+            "status": "open"
+          },
+          {
+            "to": "office",
+            "label": "משתפת",
+            "status": "open"
+          }
+        ]
+      },
+      {
+        "id": "mw",
+        "group": "הרשאות",
+        "kind": "actor",
+        "type": "משתמשים",
+        "title": "קבלנים: Mobile Worker",
+        "role": "כ-10 משתמשים חיצוניים",
+        "status": "exists",
+        "links": [
+          {
+            "to": "groups",
+            "label": "חברים בקבוצה",
+            "status": "open"
+          }
+        ]
+      },
+      {
+        "id": "officeusers",
+        "group": "הרשאות",
+        "kind": "actor",
+        "type": "משתמשים",
+        "title": "צוות הטיוב של הלקוח (משרד)",
+        "role": "משתמשים עם הרשאת עריכה לשכבה. סוג רישיון וקבוצה טרם הוגדרו",
+        "status": "open",
+        "links": [
+          {
+            "to": "groups",
+            "label": "חברים בקבוצה",
+            "status": "open"
+          },
+          {
+            "to": "office",
+            "label": "מטייבים",
+            "status": "open"
+          }
+        ]
+      }
     ],
     "flows": [
       {
@@ -3547,4 +3801,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "16.11.2026 17:50";
+window.__BUILT = "18.11.2026 07:55";
