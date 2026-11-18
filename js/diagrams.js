@@ -102,12 +102,21 @@
   }
   function agolDiagramHtml(S) {
     const its = D(S).agolItems || []; if (!its.length || !its[0].id) return '';
-    const groups = []; its.forEach((x) => { if (!groups.includes(x.group)) groups.push(x.group); });
     const dep = (S.deployments || []).some((d) => d && d.serviceUrl);
-    const nodeHtml = (n) => { const stt = n.deploy && dep ? '' : n.status === 'planned' || n.status === 'open' ? n.status : ''; return `<div class="dgn ${esc(n.kind || 'app')} ${stt}" data-id="ag_${esc(n.id)}"><b>${tag(stt)}${esc(n.title)}</b><small>${esc(n.type)}</small></div>`; };
-    const lay = groups.map((g) => `<div class="lay"><div class="lt">${esc(g)}</div><div class="ln">${its.filter((n) => n.group === g).map(nodeHtml).join('')}</div></div>`).join('');
+    const grid = its.every((x) => Array.isArray(x.pos));
+    const nodeHtml = (n) => { const stt = n.deploy && dep ? '' : n.status === 'planned' || n.status === 'open' ? n.status : ''; return `<div class="dgn ${esc(n.kind || 'app')} ${stt}" data-id="ag_${esc(n.id)}" title="${esc(n.role || '')}"${grid ? ' style="width:190px"' : ''}><b>${tag(stt)}${esc(n.title)}</b><small>${esc(n.type)}</small></div>`; };
     const edges = []; its.forEach((n) => (n.links || []).forEach((l) => edges.push({ from: 'ag_' + n.id, to: 'ag_' + l.to, label: l.label || '', cls: l.status === 'planned' || l.status === 'open' ? 'dash' : 'solid' })));
-    return `<h3 style="margin:16px 0 6px">פריטי ArcGIS Online והקשרים ביניהם</h3><div class="dgwrap"><div class="dgroot" data-edges='${esc(JSON.stringify(edges)).replace(/'/g, '&#39;')}' data-mode="bez">${lay}<svg class="dge"></svg></div></div>`;
+    const head = '<h3 style="margin:16px 0 6px">פריטי ArcGIS Online והקשרים ביניהם</h3>';
+    if (grid) {
+      /* פריסה קבועה (pos: [עמודה, שורה]) שנבחרה כך שאין קווים החוצים תיבות או קווים אחרים; העמודות מהופכות לקריאה מימין לשמאל */
+      const CW = 270, CH = 135, cols = Math.max(...its.map((x) => x.pos[0])) + 1, rows = Math.max(...its.map((x) => x.pos[1])) + 1;
+      const cells = its.map((n) => `<div style="position:absolute;left:${(cols - 1 - n.pos[0]) * CW}px;top:${n.pos[1] * CH}px;width:${CW}px;height:${CH}px;display:flex;align-items:center;justify-content:center">${nodeHtml(n)}</div>`).join('');
+      return `${head}<div class="dgwrap"><div class="dgroot" data-edges='${esc(JSON.stringify(edges)).replace(/'/g, '&#39;')}' data-mode="grid"><div style="position:relative;width:${cols * CW}px;height:${rows * CH}px;margin:0 auto">${cells}</div><svg class="dge"></svg></div></div>
+      <div class="lg"><span><i style="background:#fef3c7"></i>משתמשים</span><span><i style="background:#dbeafe"></i>אפליקציות</span><span><i style="background:#d1fae5"></i>נתונים</span><span><i style="background:#ede9fe"></i>לוגיקה ואוטומציה</span><span><i style="background:#cffafe"></i>דוחות</span><span><i style="background:var(--s1)"></i>חיצוני / קיים</span><span><i style="border-style:dashed"></i>מתוכנן או פתוח (קו מקווקו)</span><span>ריחוף על פריט מציג את תפקידו</span></div>`;
+    }
+    const groups = []; its.forEach((x) => { if (!groups.includes(x.group)) groups.push(x.group); });
+    const lay = groups.map((g) => `<div class="lay"><div class="lt">${esc(g)}</div><div class="ln">${its.filter((n) => n.group === g).map(nodeHtml).join('')}</div></div>`).join('');
+    return `${head}<div class="dgwrap"><div class="dgroot" data-edges='${esc(JSON.stringify(edges)).replace(/'/g, '&#39;')}' data-mode="bez">${lay}<svg class="dge"></svg></div></div>`;
   }
   function agolItemsHtml(S) {
     const its = D(S).agolItems || []; if (!its.length) return '';
@@ -173,6 +182,22 @@
       <div class="lg"><span><i style="background:#d1fae5;border-radius:9px"></i>התחלה</span><span><i style="background:#fff"></i>פעולה</span><span><i style="background:#fef3c7"></i>החלטה (כן / לא)</span><span><i style="background:#d1fae5"></i>נתונים נכתבים לשכבה</span><span><i style="background:#e2e8f0;border-radius:9px"></i>סיום</span><span><i style="border-style:dashed"></i>מתוכנן או פתוח</span><span>הקריאה מימין לשמאל; כל שורה היא גורם (אדם, אפליקציה או מערכת).</span></div>`;
   }
 
+  /* קווים ישרים בין תיבות בפריסת רשת: מתחילים וממשיכים בגבול התיבה, ולכן לא עוברים דרכה */
+  function drawGrid(root, svg, edges, R) {
+    let out = '<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#334155"/></marker></defs>';
+    const labels = [];
+    edges.forEach((e) => {
+      const a = R(e.from), b = R(e.to); if (!a || !b) return;
+      const dx = b.cx - a.cx, dy = b.cy - a.cy, ln = Math.hypot(dx, dy) || 1;
+      const t = (r) => Math.min(dx ? (r.w / 2 + 3) / Math.abs(dx) : 1e9, dy ? (r.h / 2 + 3) / Math.abs(dy) : 1e9);
+      const ta = t(a), tb = t(b), x1 = a.cx + dx * ta, y1 = a.cy + dy * ta, x2 = b.cx - dx * tb, y2 = b.cy - dy * tb;
+      out += `<path d="M${x1} ${y1}L${x2} ${y2}" fill="none" stroke="${e.cls === 'dash' ? '#64748b' : '#334155'}" stroke-width="1.6" ${e.cls === 'dash' ? 'stroke-dasharray="6 4"' : ''} marker-end="url(#ar)"/>`;
+      if (e.label && Math.hypot(x2 - x1, y2 - y1) > 95) labels.push([(x1 + x2) / 2, (y1 + y2) / 2, e.label]);
+    });
+    svg.innerHTML = out;
+    labels.forEach((l) => { const s = document.createElement('span'); s.className = 'dgl'; s.style.left = l[0] + 'px'; s.style.top = l[1] + 'px'; s.textContent = l[2]; root.appendChild(s); });
+  }
+
   /* ---------- ציור קווי חיבור (לאחר שה-DOM נבנה) ---------- */
   function draw() {
     document.querySelectorAll('.dgroot').forEach((root) => {
@@ -182,6 +207,7 @@
       const W = root.scrollWidth, H = root.scrollHeight, box = root.getBoundingClientRect();
       svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
       const R = (id) => { const el = root.querySelector('[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { l: r.left - box.left, r: r.right - box.left, t: r.top - box.top, b: r.bottom - box.top, w: r.width, h: r.height, cx: r.left - box.left + r.width / 2, cy: r.top - box.top + r.height / 2 }; };
+      if (root.dataset.mode === 'grid') { drawGrid(root, svg, edges, R); return; }
       const swim = root.dataset.mode === 'swim';
       const items = edges.map((e, i) => ({ e, i, a: R(e.from), b: R(e.to) })).filter((x) => x.a && x.b);
       /* פיזור נקודות יציאה/כניסה לאורך אותו צד של תיבה */

@@ -2223,6 +2223,10 @@ window.SCHEMAS["signage"] = {
             "label": "מקור להסבה",
             "status": "open"
           }
+        ],
+        "pos": [
+          0,
+          0
         ]
       },
       {
@@ -2239,6 +2243,10 @@ window.SCHEMAS["signage"] = {
             "label": "pulldata (אונליין)",
             "status": "open"
           }
+        ],
+        "pos": [
+          3,
+          1
         ]
       },
       {
@@ -2258,7 +2266,7 @@ window.SCHEMAS["signage"] = {
           },
           {
             "to": "webhook",
-            "label": "אירועי יצירה ועדכון",
+            "label": "אירועים; Make מעדכן (A, B)",
             "status": "planned"
           },
           {
@@ -2266,6 +2274,10 @@ window.SCHEMAS["signage"] = {
             "label": "נתוני דוחות",
             "status": "planned"
           }
+        ],
+        "pos": [
+          1,
+          2
         ]
       },
       {
@@ -2282,6 +2294,10 @@ window.SCHEMAS["signage"] = {
             "label": "מקור למפה (אם יאושר)",
             "status": "open"
           }
+        ],
+        "pos": [
+          1,
+          3
         ]
       },
       {
@@ -2297,6 +2313,10 @@ window.SCHEMAS["signage"] = {
             "to": "hosted",
             "label": "כותב (סנכרון)"
           }
+        ],
+        "pos": [
+          2,
+          2
         ]
       },
       {
@@ -2318,6 +2338,10 @@ window.SCHEMAS["signage"] = {
             "label": "פותחת טופס",
             "status": "planned"
           }
+        ],
+        "pos": [
+          2,
+          3
         ]
       },
       {
@@ -2334,6 +2358,10 @@ window.SCHEMAS["signage"] = {
             "label": "מציגה",
             "status": "open"
           }
+        ],
+        "pos": [
+          4,
+          1
         ]
       },
       {
@@ -2350,6 +2378,10 @@ window.SCHEMAS["signage"] = {
             "label": "עורכת",
             "status": "open"
           }
+        ],
+        "pos": [
+          3,
+          0
         ]
       },
       {
@@ -2366,6 +2398,10 @@ window.SCHEMAS["signage"] = {
             "label": "הסבה",
             "status": "open"
           }
+        ],
+        "pos": [
+          0,
+          1
         ]
       },
       {
@@ -2382,6 +2418,10 @@ window.SCHEMAS["signage"] = {
             "label": "בודקת ומתקנת",
             "status": "planned"
           }
+        ],
+        "pos": [
+          1,
+          1
         ]
       },
       {
@@ -2392,12 +2432,10 @@ window.SCHEMAS["signage"] = {
         "title": "Webhooks על Signs ו-SignVisits",
         "role": "טריגרים ל-Make (Watch Features). עד 10 לשכבה או טבלה",
         "status": "planned",
-        "links": [
-          {
-            "to": "hosted",
-            "label": "Make מעדכן (A, B)",
-            "status": "planned"
-          }
+        "links": [],
+        "pos": [
+          0,
+          3
         ]
       },
       {
@@ -2408,7 +2446,11 @@ window.SCHEMAS["signage"] = {
         "title": "דשבורד שילוט",
         "role": "כמות לפי דגם, לא תקין, לפירוק, כיסוי, סכנה בטיחותית. יוגדר באפיון",
         "status": "planned",
-        "links": []
+        "links": [],
+        "pos": [
+          0,
+          2
+        ]
       },
       {
         "id": "groups",
@@ -2419,11 +2461,6 @@ window.SCHEMAS["signage"] = {
         "role": "שיתוף השכבה, המפה והטופס לפי תפקיד. טעון אישור",
         "status": "open",
         "links": [
-          {
-            "to": "hosted",
-            "label": "משתפת",
-            "status": "open"
-          },
           {
             "to": "webmap",
             "label": "משתפת",
@@ -2439,6 +2476,10 @@ window.SCHEMAS["signage"] = {
             "label": "משתפת",
             "status": "open"
           }
+        ],
+        "pos": [
+          3,
+          2
         ]
       },
       {
@@ -2455,6 +2496,10 @@ window.SCHEMAS["signage"] = {
             "label": "חברים בקבוצה",
             "status": "open"
           }
+        ],
+        "pos": [
+          3,
+          4
         ]
       },
       {
@@ -2476,6 +2521,10 @@ window.SCHEMAS["signage"] = {
             "label": "מטייבים",
             "status": "open"
           }
+        ],
+        "pos": [
+          4,
+          2
         ]
       }
     ],
@@ -3801,4 +3850,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "18.11.2026 07:55";
+window.__BUILT = "18.11.2026 08:14";

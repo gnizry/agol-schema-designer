@@ -86,7 +86,7 @@
     for (const rel of rels) {
       try { const u = Media.resolver ? await Media.resolver(rel) : null; if (!u) { miss++; continue; } await writeFile(root, 'share/' + key + '/' + rel, await toBlob(u)); n++; } catch (e) { miss++; }
     }
-    return { key, url: siteUrl() + '?sim=' + encodeURIComponent(key), images: n, missing: miss };
+    return { key, url: siteUrl() + '?view=' + encodeURIComponent(key), images: n, missing: miss };
   }
   async function publish() {
     if (typeof window.showDirectoryPicker !== 'function') throw new Error('נדרש Chrome או Edge');
