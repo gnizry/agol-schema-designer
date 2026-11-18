@@ -1817,6 +1817,12 @@ window.SCHEMAS["signage"] = {
   ],
   "decisions": [
     {
+      "id": "D30",
+      "title": "סביבה משרדית לסיווג שלטים בהסבה: Instant Apps Manager (בקשת מנהל הפרויקט)",
+      "status": "open",
+      "note": "הצעה, טרם אושרה. בקשת מנהל הפרויקט: סביבה משרדית שתסייע בסיווג השלטים מהשכבה הישנה לדגמים החדשים. המלצה: אפליקציית Instant Apps Manager על מפת ויב ייעודית של שכבת Signs. אחרי ההסבה הראשונית (מחברת) הרשומות נטענות עם LegacySignType ו-MigrationStatus, והלקוח מסווג את SignModel בטבלה: סינון לפי סוג ישן, בחירה במפה או בטבלה ועריכה מרובה. ארבע ההמרות האוטומטיות מהאפיון נטענות כבר מסווגות (הומר אוטומטית). יתרונות: אין סבב אקסל, ההקשר המרחבי מול העיניים, והערכים נבחרים מהדומיין. חסרונות והשפעות: (1) רשומות לא מסווגות יושבות בשכבה החיה, ולכן מפת השטח והדוחות צריכים לסנן לפי MigrationStatus (תצוגה לקבלנים). (2) Manager אינו מעדכן MigrationStatus בעקבות סיווג ואינו גוזר ModelCode, שנגזר היום בטופס Survey123, ולכן נדרשת מחברת או תרחיש Make אחרי הטיוב. (3) אין אכיפת עקביות בין דגם לסטטוס. (4) התיעוד של Esri לא מפרט מגבלות של עריכה מרובה, ולכן יש לבדוק על הנפח המלא (כ-8,000). (5) משתמשי המשרד צריכים הרשאת עריכה ורישיון מתאים; סוג המשתמש טרם נקבע. פתוח: אישור מנהל הפרויקט, מי המטייבים, האם אקסל הטיוב של הלקוח נשאר מקור חלופי, ושינוי סדר השלבים בתהליך ההסבה (הטיוב אחרי הטעינה הראשונית ולא לפניה). הסימולטור בלשונית 'משרד: Manager'."
+    },
+    {
       "id": "D29",
       "title": "תכולת הפתרון כוללת גם מפה ב-Field Maps וסביבת ניהול ב-Experience Builder",
       "status": "open",
@@ -2013,6 +2019,22 @@ window.SCHEMAS["signage"] = {
       ],
       "nodes": [
         {
+          "id": "cleaner",
+          "layer": "users",
+          "kind": "actor",
+          "title": "צוות הטיוב של הלקוח",
+          "sub": "סיווג שלטים מהשכבה הישנה בהסבה (D30)",
+          "status": "open"
+        },
+        {
+          "id": "office",
+          "layer": "apps",
+          "kind": "app",
+          "title": "Instant App: Manager (טיוב משרדי)",
+          "sub": "טבלה, מפה, סינון לפי סוג ישן ועריכה מרובה. מוצע, טעון אישור",
+          "status": "open"
+        },
+        {
           "id": "mgr",
           "layer": "users",
           "kind": "actor",
@@ -2107,6 +2129,18 @@ window.SCHEMAS["signage"] = {
       ],
       "edges": [
         {
+          "from": "cleaner",
+          "to": "office",
+          "label": "מטייב",
+          "status": "open"
+        },
+        {
+          "from": "office",
+          "to": "hosted",
+          "label": "עורך (סיווג)",
+          "status": "open"
+        },
+        {
           "from": "contractor",
           "to": "s123",
           "label": "ממלא"
@@ -2181,12 +2215,15 @@ window.SCHEMAS["signage"] = {
       {"id": "view", "group": "נתונים", "kind": "data", "type": "Hosted Feature Layer View", "title": "תצוגה לקבלנים (מוצע)", "role": "הגבלת עריכה והסתרת שדות פנימיים לקבלנים. טעון אישור אם נדרש", "status": "open", "links": [{"to": "webmap", "label": "מקור למפה (אם יאושר)", "status": "open"}]},
       {"id": "form", "group": "אפליקציות שטח", "kind": "app", "type": "Survey123 Form", "title": "סקר שילוט", "role": "טופס אחד לכל הרמות, ביקורים ב-mode=edit. נפתח מ-Field Maps", "status": "planned", "links": [{"to": "hosted", "label": "כותב (סנכרון)"}]},
       {"id": "webmap", "group": "אפליקציות שטח", "kind": "app", "type": "Web Map (Field Maps)", "title": "מפת סקר שילוט", "role": "איתור שלטים, פופאפ Arcade, פתיחת הטופס. יווצר אחרי מפה ידנית לדוגמה", "status": "planned", "links": [{"to": "hosted", "label": "מציגה ועורכת", "status": "planned"}, {"to": "form", "label": "פותחת טופס", "status": "planned"}]},
+      {"id": "office", "group": "אפליקציות משרד", "kind": "app", "type": "Instant App: Manager", "title": "אפליקציית טיוב משרדית (Manager)", "role": "סיווג שלטים מהשכבה הישנה לדגמים החדשים בהסבה: טבלה, מפה, סינון לפי סוג ישן ועריכה מרובה. מוצע (D30), טעון אישור", "status": "open", "links": [{"to": "omap", "label": "מציגה", "status": "open"}]},
+      {"id": "omap", "group": "אפליקציות משרד", "kind": "app", "type": "Web Map", "title": "מפת טיוב משרדית (מוצע)", "role": "שכבת Signs עם כל הרשומות כולל הממתינות לטיוב. טפסי עריכה לשדות הסיווג", "status": "open", "links": [{"to": "hosted", "label": "עורכת", "status": "open"}]},
       {"id": "nbmig", "group": "לוגיקה ואוטומציה", "kind": "logic", "type": "ArcGIS Notebook", "title": "מחברת הסבה", "role": "הסבת השכבה הקיימת למבנה הרלציוני. דורשת את רשימת השדות הנוכחית", "status": "open", "links": [{"to": "hosted", "label": "הסבה", "status": "open"}]},
       {"id": "nbnight", "group": "לוגיקה ואוטומציה", "kind": "logic", "type": "ArcGIS Notebook (מתוזמנת)", "title": "מחברת לילית: ביקור אחרון מול Signs", "role": "תיקון פערים והפקת רשימת חריגים, לפי אפיון תרחישי Make", "status": "planned", "links": [{"to": "hosted", "label": "בודקת ומתקנת", "status": "planned"}]},
       {"id": "webhook", "group": "לוגיקה ואוטומציה", "kind": "logic", "type": "Webhook", "title": "Webhooks על Signs ו-SignVisits", "role": "טריגרים ל-Make (Watch Features). עד 10 לשכבה או טבלה", "status": "planned", "links": [{"to": "hosted", "label": "Make מעדכן (A, B)", "status": "planned"}]},
       {"id": "dash", "group": "דוחות", "kind": "report", "type": "Dashboard", "title": "דשבורד שילוט", "role": "כמות לפי דגם, לא תקין, לפירוק, כיסוי, סכנה בטיחותית. יוגדר באפיון", "status": "planned", "links": []},
-      {"id": "groups", "group": "הרשאות", "kind": "actor", "type": "Groups", "title": "קבוצות: קבלנים, רכזים, הנהלה (מוצע)", "role": "שיתוף השכבה, המפה והטופס לפי תפקיד. טעון אישור", "status": "open", "links": [{"to": "hosted", "label": "משתפת", "status": "open"}, {"to": "webmap", "label": "משתפת", "status": "open"}, {"to": "form", "label": "משתפת", "status": "open"}]},
-      {"id": "mw", "group": "הרשאות", "kind": "actor", "type": "משתמשים", "title": "קבלנים: Mobile Worker", "role": "כ-10 משתמשים חיצוניים", "status": "exists", "links": [{"to": "groups", "label": "חברים בקבוצה", "status": "open"}]}
+      {"id": "groups", "group": "הרשאות", "kind": "actor", "type": "Groups", "title": "קבוצות: קבלנים, רכזים, הנהלה (מוצע)", "role": "שיתוף השכבה, המפה והטופס לפי תפקיד. טעון אישור", "status": "open", "links": [{"to": "hosted", "label": "משתפת", "status": "open"}, {"to": "webmap", "label": "משתפת", "status": "open"}, {"to": "form", "label": "משתפת", "status": "open"}, {"to": "office", "label": "משתפת", "status": "open"}]},
+      {"id": "mw", "group": "הרשאות", "kind": "actor", "type": "משתמשים", "title": "קבלנים: Mobile Worker", "role": "כ-10 משתמשים חיצוניים", "status": "exists", "links": [{"to": "groups", "label": "חברים בקבוצה", "status": "open"}]},
+      {"id": "officeusers", "group": "הרשאות", "kind": "actor", "type": "משתמשים", "title": "צוות הטיוב של הלקוח (משרד)", "role": "משתמשים עם הרשאת עריכה לשכבה. סוג רישיון וקבוצה טרם הוגדרו", "status": "open", "links": [{"to": "groups", "label": "חברים בקבוצה", "status": "open"}, {"to": "office", "label": "מטייבים", "status": "open"}]}
     ],
     "flows": [
       {
@@ -2675,7 +2712,7 @@ window.SCHEMAS["signage"] = {
             "id": "m3",
             "lane": "client",
             "text": "טיוב ואישור התאמה בין סוג ישן לדגם חדש",
-            "note": "אקסל המיפוי טרם התקבל",
+            "note": "אקסל המיפוי טרם התקבל. חלופה מוצעת: טיוב ב-Manager (D30)",
             "status": "open",
             "next": [
               "m4"

@@ -564,12 +564,69 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
   }
 
   /* ---------- שלד ---------- */
+
+  /* ---------- משרד: Instant Apps Manager (סיווג שלטים מהשכבה הישנה בהסבה) ---------- */
+  /* סוגים ישנים וההערות עליהם לקוחים מהאפיון (סעיף הסבות). ארבעת הראשונים מסומנים בו להמרה אוטומטית. */
+  const MG_LEG = [
+    ['שלט כניסה ליער', 'פ-1:', ''], ['שלט מבואה', 'פ-2:', ''], ['שלט חיזוק מידע הורייה – עמוד', 'פ-8:', ''], ['שלט בטיחות', 'פ-10:', ''],
+    ['שלט הכוונה', '', 'תת דגם בפ-6, לא אוטומטי'], ['שלט מתחלף', '', 'תת דגם בפ-4; הקוד פ-4.1 הכפול טרם הוכרע'],
+    ['שלט תוכן / הסבר – מידע', '', 'מול פ-5.2, שיוך לטיוב'], ['סימון שביל (סינגל) אופניים', '', 'מול פ-3.4, תת דגם'], ['שלט הוראות בטיחות ומפה – שלט אתר', '', 'מול פ-5.1, שיוך לטיוב']
+  ];
+  const MG_PAT = [0, 0, 0, 1, 1, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 6, 6, 6, 6, 7, 7, 8, 8, 8, 8, 4, 4, 5, 6, 7, 0, 3, 8];
+  function mgFields(S, M) {
+    const f = (n) => M.main.fields.find((x) => x.name === n), model = f('SignModel'), ms = f('MigrationStatus'), lt = f('LegacySignType');
+    return model && ms && lt && dom(S, model) && dom(S, ms) ? { model, ms, lt } : null;
+  }
+  function mgCodes(S, F) {
+    const c = dom(S, F.ms).values.map((v) => v.code), pick = (re) => c.find((x) => re.test(x)) || '';
+    return { auto: pick(/אוטומטית/), pend: pick(/ממתין/), done: pick(/טויב/), exc: pick(/חריג/) };
+  }
+  function mgInit(S, M, F) {
+    const key = (S.meta && S.meta.key) || '';
+    if (st.mg && st.mg.key === key) return st.mg;
+    const K = mgCodes(S, F), mv = dom(S, F.model).values;
+    const rows = MG_PAT.map((li, i) => {
+      const L = MG_LEG[li], auto = !!L[1], hit = auto ? mv.find((v) => v.code.indexOf(L[1]) === 0) : null;
+      return { id: i, lid: 4100 + i * 7, lt: L[0], hint: L[2], model: hit ? hit.code : '', ms: auto && hit ? K.auto : K.pend, mc: !!hit, x: 12 + (i * 53) % 86, y: 10 + (i * 37) % 80 };
+    });
+    st.mg = { key, rows, sel: [], fl: '', fs: '', onlySel: false, batch: null, cur: null };
+    return st.mg;
+  }
+  const mgColor = (K, ms) => ms === K.auto ? '#16A34A' : ms === K.done ? '#2563EB' : ms === K.exc ? '#DC2626' : '#D97706';
+  function manager(S, M) {
+    const F = mgFields(S, M);
+    if (!F) return '<p>סביבת המשרד דורשת בשכבה הראשית את השדות SignModel, MigrationStatus ו-LegacySignType עם דומיינים.</p>';
+    const g = mgInit(S, M, F), K = mgCodes(S, F), mv = dom(S, F.model).values, sv = dom(S, F.ms).values;
+    const vis = g.rows.filter((r) => (!g.fl || r.lt === g.fl) && (!g.fs || r.ms === g.fs) && (!g.onlySel || g.sel.includes(r.id)));
+    const cnt = (c) => g.rows.filter((r) => r.ms === c).length;
+    const selAll = vis.length && vis.every((r) => g.sel.includes(r.id));
+    const opt = (vals, cur, blank) => (blank != null ? `<option value="">${esc(blank)}</option>` : '') + vals.map((v) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(v)}</option>`).join('');
+    const types = MG_LEG.map((l) => l[0]);
+    const th = (t) => `<th style="border:1px solid #CBD5E1;padding:4px 6px;background:#F1F5F9;position:static;text-align:right;font-size:12px">${t}</th>`;
+    const td = 'border:1px solid #E2E8F0;padding:3px 6px;font-size:12px';
+    const body = vis.map((r) => `<tr style="background:${g.sel.includes(r.id) ? '#DBEAFE' : '#fff'}"><td style="${td}"><input type="checkbox" ${g.sel.includes(r.id) ? 'checked' : ''} onchange="SimA.mgsel(${r.id})"></td><td style="${td}">${r.lid}</td><td style="${td}">${esc(r.lt)}</td><td style="${td}"><select style="max-width:210px;font-size:12px" onchange="SimA.mgrow(${r.id},'model',this.value)">${opt(mv.map((v) => v.code), r.model, '— לא סווג —')}</select></td><td style="${td}"><select style="font-size:12px" onchange="SimA.mgrow(${r.id},'ms',this.value)">${opt(sv.map((v) => v.code), r.ms)}</select></td><td style="${td};text-align:center">${r.model ? (r.mc ? '✓' : '<b style="color:#B91C1C">✗</b>') : ''}</td></tr>`).join('');
+    const dots = g.rows.map((r) => `<div onclick="SimA.mgpick(${r.id})" title="${esc(r.lt)}" style="position:absolute;left:${r.x}%;top:${r.y}%;width:14px;height:14px;border-radius:50%;background:${mgColor(K, r.ms)};border:${g.sel.includes(r.id) ? '3px solid #0F172A' : '2px solid #fff'};box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer"></div>`).join('');
+    const c = g.cur != null ? g.rows.find((r) => r.id === g.cur) : null;
+    const pop = c ? `<div style="font-size:12px;line-height:1.7"><b>שלט ${c.lid}</b><br>סוג ישן: ${esc(c.lt)}<br>דגם חדש: ${esc(c.model || 'לא סווג')}<br>סטטוס הסבה: ${esc(c.ms)}${c.hint ? `<br><span style="color:#64748B">מהאפיון: ${esc(c.hint)}</span>` : ''}</div>` : '<div style="color:#64748B;font-size:12px">בחר נקודה במפה או שורה בטבלה</div>';
+    const stale = g.rows.filter((r) => r.model && !r.mc).length, mism = g.rows.filter((r) => r.model && r.ms === K.pend).length, noModel = g.rows.filter((r) => !r.model && (r.ms === K.done || r.ms === K.auto)).length;
+    const warn = stale || mism || noModel ? `<div style="margin-top:8px;border:1px solid #FCD34D;background:#FFFBEB;border-radius:6px;padding:6px 10px;font-size:12px;line-height:1.7"><b>פערים ש-Manager לא מונע:</b>${mism ? `<br>• ${mism} שלטים עם דגם אבל סטטוס "${esc(K.pend)}"` : ''}${noModel ? `<br>• ${noModel} שלטים בסטטוס מטויב בלי דגם` : ''}${stale ? `<br>• ${stale} שלטים עם דגם בלי ModelCode (✗): עריכה ב-Manager אינה גוזרת אותו` : ''}</div>` : '';
+    const bt = g.batch ? `<div style="margin:8px 0;border:2px solid #2563EB;border-radius:8px;padding:10px;background:#EFF6FF;font-size:12px"><b>עריכה מרובה: ${g.sel.length} שלטים</b><div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:6px"><label>דגם<br><select style="max-width:260px" onchange="SimA.mgb('model',this.value)">${opt(mv.map((v) => v.code), g.batch.model, 'ללא שינוי')}</select></label><label>סטטוס הסבה<br><select onchange="SimA.mgb('ms',this.value)">${opt(sv.map((v) => v.code), g.batch.ms, 'ללא שינוי')}</select></label></div><div style="margin-top:8px"><button class="primary" onclick="SimA.mgapply()">החל על ${g.sel.length}</button> <button onclick="SimA.mgcancel()">ביטול</button></div></div>` : '';
+    return `<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start"><div style="flex:3;min-width:520px;border:1px solid #CBD5E1;border-radius:10px;overflow:hidden;background:#fff">
+      <div style="background:#1E3A8A;color:#fff;padding:8px 12px;font-weight:700;display:flex;justify-content:space-between"><span>טיוב שלטים · Manager</span><span style="font-weight:400;font-size:12px">שכבה: ${esc(M.main.name)} · דוגמה של ${g.rows.length} מתוך כ-8,000</span></div>
+      <div style="padding:8px 12px;border-bottom:1px solid #E2E8F0;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;font-size:12px"><label>סוג ישן<br><select onchange="SimA.mgf('fl',this.value)">${opt(types, g.fl, 'הכל')}</select></label><label>סטטוס הסבה<br><select onchange="SimA.mgf('fs',this.value)">${opt(sv.map((v) => v.code), g.fs, 'הכל')}</select></label><span style="margin-inline-start:auto">${vis.length} מתוך ${g.rows.length} · נבחרו ${g.sel.length}</span></div>
+      <div style="padding:6px 12px;border-bottom:1px solid #E2E8F0;display:flex;gap:6px;flex-wrap:wrap"><button class="mini" onclick="SimA.mgall()">${selAll ? 'בטל בחירה' : 'בחר הכל (מסונן)'}</button><button class="mini" onclick="SimA.mgshow()">${g.onlySel ? 'הצג הכל' : 'הצג נבחרים'}</button><button class="mini primary" ${g.sel.length ? '' : 'disabled'} onclick="SimA.mgbatch()">עריכה מרובה (${g.sel.length})</button><button class="mini" disabled title="בסימולטור בלבד">ייצוא CSV</button></div>
+      ${bt}<div style="max-height:340px;overflow:auto"><table style="border-collapse:collapse;width:100%;min-width:0"><tr>${th('')}${th('מזהה ישן')}${th('סוג ישן')}${th('דגם חדש')}${th('סטטוס הסבה')}${th('ModelCode')}</tr>${body || `<tr><td colspan="6" style="${td};color:#64748B">אין רשומות בסינון</td></tr>`}</table></div></div>
+      <div style="flex:1;min-width:240px"><div style="position:relative;height:200px;background:linear-gradient(135deg,#DCFCE7,#BBF7D0);border-radius:8px;overflow:hidden">${dots}</div><div style="margin-top:8px;border:1px solid #E2E8F0;border-radius:8px;padding:8px">${pop}</div>
+      <div style="margin-top:8px;font-size:12px;line-height:1.8">${[[K.auto, 'הומר אוטומטית'], [K.pend, 'ממתין'], [K.done, 'מטויב'], [K.exc, 'חריג']].map(([cd, l]) => `<span style="display:inline-block;margin-inline-end:10px"><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${mgColor(K, cd)}"></i> ${l} (${cnt(cd)})</span>`).join('')}</div>${warn}
+      <button class="mini" style="margin-top:8px" onclick="SimA.mgreset()">אפס נתוני דוגמה</button></div></div>
+      <h3>מה אתה בודק כאן</h3><ul style="line-height:1.9"><li>סינון לפי סוג ישן, בחירה במפה או בטבלה, ועריכה מרובה של דגם וסטטוס בבת אחת.</li><li>ארבעת הסוגים המסומנים באפיון להמרה אוטומטית מגיעים מסווגים. השאר ממתינים לטיוב.</li><li>העמודה והאזהרות מראות מה Manager לא עושה: אינו מעדכן סטטוס בעקבות סיווג, ואינו גוזר ModelCode.</li></ul>`;
+  }
   function render(S) {
     st.S = S; const M = model(S); if (!M.A) return '<p>הסימולטור דורש שכבה עם לפחות טבלה מקושרת אחת.</p>';
     const tab = (k, l) => `<button class="${st.tab === k ? 'primary' : ''}" onclick="SimA.tab('${k}')">${l}</button>`;
-    const body = st.tab === 'flow' ? flowTab(S, M) : st.tab === 's123' ? s123(S, M) : st.tab === 'fm' ? fm(S, M) : st.tab === 'struct' ? structure(S, M) : data(S, M);
+    const body = st.tab === 'flow' ? flowTab(S, M) : st.tab === 's123' ? s123(S, M) : st.tab === 'fm' ? fm(S, M) : st.tab === 'struct' ? structure(S, M) : st.tab === 'office' ? manager(S, M) : data(S, M);
     const sets = `<details class="simset"><summary>⚙ הגדרות סימולציה</summary><div class="simsetbody"><label>קשר ביקורים<select onchange="SimA.variant(this.value)"><option value="sign" ${st.variant === 'sign' ? 'selected' : ''}>ביקור → שלט</option><option value="part" ${st.variant === 'part' ? 'selected' : ''}>ביקור → רכיב</option></select></label><label class="inl"><input type="checkbox" ${st.online ? 'checked' : ''} onchange="SimA.online(this.checked)"> מחובר לרשת</label><label class="inl"><input type="checkbox" ${st.auto ? 'checked' : ''} onchange="SimA.auto(this.checked)"> עדכון מצב שלט אוטומטי מהביקור</label><button class="mini" onclick="SimA.seed()">טען מחדש נתוני דוגמה</button></div></details>`;
-    return `<div class="simroot"><div class="simtop"><div class="seg lg">${[['flow', 'זרימה Field Maps ↔ Survey123'], ['s123', 'Survey123'], ['fm', 'Field Maps'], ['struct', 'מבנה מלא'], ['data', 'נתונים והשוואה']].map(([k, l]) => `<button class="${st.tab === k ? 'on' : ''}" onclick="SimA.tab('${k}')">${l}</button>`).join('')}</div>${sets}<span class="simver">סכמה v${S.meta.version || '?'}</span></div>${body}</div>`;
+    return `<div class="simroot"><div class="simtop"><div class="seg lg">${[['flow', 'זרימה Field Maps ↔ Survey123'], ['s123', 'Survey123'], ['fm', 'Field Maps'], ['office', 'משרד: Manager'], ['struct', 'מבנה מלא'], ['data', 'נתונים והשוואה']].map(([k, l]) => `<button class="${st.tab === k ? 'on' : ''}" onclick="SimA.tab('${k}')">${l}</button>`).join('')}</div>${sets}<span class="simver">סכמה v${S.meta.version || '?'}</span></div>${body}</div>`;
   }
   const rr = () => {
     if (!(window.A && A.refresh)) return;
@@ -580,6 +637,11 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
   };
   Media.onLoad = () => { try { rr(); } catch (e) { /* */ } };
   window.SimA = {
+    mgf(k, v) { st.mg[k] = v; rr(); }, mgsel(i) { const a = st.mg.sel, j = a.indexOf(i); if (j < 0) a.push(i); else a.splice(j, 1); st.mg.cur = i; rr(); }, mgpick(i) { SimA.mgsel(i); },
+    mgall() { const g = st.mg, vis = g.rows.filter((r) => (!g.fl || r.lt === g.fl) && (!g.fs || r.ms === g.fs)).map((r) => r.id); g.sel = vis.every((i) => g.sel.includes(i)) ? g.sel.filter((i) => !vis.includes(i)) : Array.from(new Set(g.sel.concat(vis))); rr(); },
+    mgshow() { st.mg.onlySel = !st.mg.onlySel; rr(); }, mgbatch() { const K = mgCodes(st.S, mgFields(st.S, model(st.S))); st.mg.batch = { model: '', ms: K.done }; rr(); }, mgb(k, v) { st.mg.batch[k] = v; rr(); }, mgcancel() { st.mg.batch = null; rr(); },
+    mgapply() { const g = st.mg, b = g.batch; g.rows.filter((r) => g.sel.includes(r.id)).forEach((r) => { if (b.model) { r.model = b.model; r.mc = false; } if (b.ms) r.ms = b.ms; }); g.batch = null; rr(); },
+    mgrow(i, k, v) { const r = st.mg.rows.find((x) => x.id === i); r[k] = v; if (k === 'model') r.mc = false; st.mg.cur = i; rr(); }, mgreset() { st.mg = null; rr(); },
     vch(c) { st.vch = c; st.step = 0; st.sel = null; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; rr(); },
     applySc(i) { const S = st.S, M = model(S), sg = st.db.main[st.sel], sc = scenarios(M)[i], parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID); const v = newRow(M.B.ent); derive(M.B.ent, Object.assign(v, sc.visit), sg); Object.assign(v, sc.visit); v.__ps = sc.ps.map((r) => { const o = newRow(M.C.ent); o.RelatedPartGlobalID = parts[r.part].GlobalID; derive(M.C.ent, Object.assign(o, { PartStatusAtVisit: r.PartStatusAtVisit, PartNotes: r.PartNotes || '' }), sg); return Object.assign(o, { PartStatusAtVisit: r.PartStatusAtVisit, PartNotes: r.PartNotes || '' }); }); addVisit(S, M, sg, sg, v); st.cv = st.db.B[st.db.B.length - 1]; st.step = 3; rr(); },
     toS123() { st.tab = 'flow'; st.flow = 'visit'; st.vch = 's123'; st.step = 2; st.modal = null; rr(); },
