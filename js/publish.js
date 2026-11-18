@@ -10,7 +10,7 @@
 
   /* ---------- בניית ההגדרה (טהור, ללא רשת) ---------- */
   function domainOf(S, f) {
-    const d = f.domain && S.domains && S.domains[f.domain]; if (!d) return null;
+    const d = f.domain && S.domains && S.domains[f.domain]; if (!d || !(d.values || []).length) return null; /* דומיין ריק (למשל ערכים שמועתקים אחרי הפרסום) לא נוסף לשדה */
     const num = d.fieldType && d.fieldType !== 'TEXT';
     return { type: 'codedValue', name: d.name || f.domain, codedValues: (d.values || []).map((v) => ({ name: String(v.label == null ? v.code : v.label), code: num ? Number(v.code) : String(v.code) })) };
   }
@@ -38,6 +38,7 @@
         if (SYSTEM.includes(String(f.name).toUpperCase())) return;
         if (seen.has(f.name.toUpperCase())) { warn.push(e.name + ': שדה כפול ' + f.name); return; }
         seen.add(f.name.toUpperCase()); fields.push(fieldDef(S, f));
+        if (f.domain && S.domains && S.domains[f.domain] && !(S.domains[f.domain].values || []).length) warn.push(e.name + '.' + f.name + ': הדומיין "' + f.domain + '" ריק בסכמה ולכן לא נוסף לשדה בפרסום. יש להעתיק את ערכיו אחרי הפרסום (ראו הוראות הפרויקט)');
       });
       const L = { id: id[e.name], name: e.name, type: isLayer ? 'Feature Layer' : 'Table', description: e.description || '', defaultVisibility: true, hasAttachments: !!e.attachments, objectIdField: 'OBJECTID', globalIdField: 'GlobalID', displayField: (e.fields.find((f) => f.type === 'TEXT') || {}).name || 'OBJECTID', capabilities: 'Query,Create,Update,Delete,Editing,Sync', fields, types: [], templates: [], relationships: [], supportsApplyEditsWithGlobalIds: true, htmlPopupType: 'esriServerHTMLPopupTypeNone' };
       if (e.editorTracking) {
