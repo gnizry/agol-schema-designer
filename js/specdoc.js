@@ -142,11 +142,12 @@
         B.push({ t: 'table', head, w: head.length === 2 ? [50, 50] : head.length === 3 ? [34, 33, 33] : [25, 25, 25, 25], rows: vals.map((v) => [v.code, v.label].concat(hasP ? [v.parent || ''] : []).concat(hasE ? [v.ext || ''] : [])) });
       });
     }
-    const dec = S.decisions || [], open = [];
+    const dnum = (d) => { const n = parseInt(String((d && d.id) || '').replace(/\D/g, ''), 10); return isNaN(n) ? 1e9 : n; };
+    const dec = (S.decisions || []).map((d, i) => ({ d, i })).sort((a, b) => dnum(a.d) - dnum(b.d) || a.i - b.i).map((x) => x.d), open = [];
     S.entities.forEach((e) => e.fields.forEach((f) => { if (f.open) open.push([e.name + '.' + f.name, f.alias || '', f.note || '']); }));
     if (dec.length || open.length) {
       B.push({ t: 'h1', text: '5. נושאים פתוחים' });
-      if (dec.length) { B.push({ t: 'h2', text: 'החלטות' }); B.push(cl ? { t: 'table', head: ['#', 'נושא', 'סטטוס'], w: [8, 72, 20], rows: dec.map((d) => [d.id || '', d.title || '', d.status === 'closed' ? 'סגור' : 'פתוח']) } : { t: 'table', head: ['#', 'נושא', 'סטטוס', 'הערה'], w: [6, 40, 12, 42], rows: dec.map((d) => [d.id || '', d.title || '', d.status === 'closed' ? 'סגור' : 'פתוח', d.note || '']) }); }
+      if (dec.length) { B.push({ t: 'h2', text: 'החלטות' }); B.push(cl ? { t: 'table', head: ['#', 'נושא', 'סטטוס'], w: [8, 72, 20], rows: dec.map((d) => [d.id || '', d.title || '', d.status === 'closed' ? 'סגור' : d.status === 'decided' ? 'הוחלט' : 'פתוח']) } : { t: 'table', head: ['#', 'נושא', 'סטטוס', 'הערה'], w: [6, 40, 12, 42], rows: dec.map((d) => [d.id || '', d.title || '', d.status === 'closed' ? 'סגור' : d.status === 'decided' ? 'הוחלט' : 'פתוח', d.note || '']) }); }
       if (open.length) { B.push({ t: 'h2', text: 'שדות המסומנים כפתוחים (' + open.length + ')' }); B.push(cl ? { t: 'table', head: ['שדה', 'כינוי'], w: [50, 50], rows: open.map((r) => [r[0], r[1]]) } : { t: 'table', head: ['שדה', 'כינוי', 'הערה'], w: [28, 22, 50], rows: open }); }
     }
     const dg = S.diagrams || {}, comps = (dg.components && dg.components.nodes) || [], flows = dg.flows || [];

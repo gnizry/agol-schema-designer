@@ -166,10 +166,11 @@
 
   /* ---------- החלטות ---------- */
   function decisionsPage() {
-    const rows = S.decisions.map((d, i) => `<tr>
+    const dnum = (d) => { const n = parseInt(String((d && d.id) || '').replace(/\D/g, ''), 10); return isNaN(n) ? 1e9 : n; };
+    const rows = S.decisions.map((d, i) => ({ d, i })).sort((a, b) => dnum(a.d) - dnum(b.d) || a.i - b.i).map(({ d, i }) => `<tr>
       <td style="width:60px"><b>${esc(d.id)}</b></td>
       <td><input type="text" value="${esc(d.title)}" onchange="A.x(${i},'title',this.value)"></td>
-      <td style="width:110px"><select onchange="A.x(${i},'status',this.value)"><option value="open" ${d.status === 'open' ? 'selected' : ''}>פתוח</option><option value="closed" ${d.status === 'closed' ? 'selected' : ''}>סגור</option></select></td>
+      <td style="width:110px"><select onchange="A.x(${i},'status',this.value)"><option value="open" ${d.status === 'open' ? 'selected' : ''}>פתוח</option><option value="decided" ${d.status === 'decided' ? 'selected' : ''}>הוחלט</option><option value="closed" ${d.status === 'closed' ? 'selected' : ''}>סגור</option></select></td>
       <td><input type="text" value="${esc(d.note)}" onchange="A.x(${i},'note',this.value)"></td></tr>`).join('');
     const flagged = [];
     S.entities.forEach((e) => e.fields.forEach((f) => { if (f.open) flagged.push(`<li><code dir="ltr">${esc(e.name)}.${esc(f.name)}</code> — ${esc(f.alias)}: ${esc(f.note)}</li>`); }));
