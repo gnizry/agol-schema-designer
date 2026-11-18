@@ -50,13 +50,17 @@
       return L;
     };
     const built = {}; ordered.forEach((e) => { built[e.name] = build(e); });
+    const relDefs = {}; /* layerId -> [relationships]; נוספות בבקשה נפרדת אחרי שכל השכבות והטבלאות קיימות */
     rels.forEach((r, i) => {
+      (relDefs[id[r.origin]] = relDefs[id[r.origin]] || []).push({ id: i, name: r.forward || r.name, relatedTableId: id[r.destination], cardinality: 'esriRelCardinalityOneToMany', role: 'esriRelRoleOrigin', keyField: r.originKey || 'GlobalID', composite: r.type === 'COMPOSITE', relationshipTableId: -1 });
+      (relDefs[id[r.destination]] = relDefs[id[r.destination]] || []).push({ id: i, name: r.backward || r.name, relatedTableId: id[r.origin], cardinality: 'esriRelCardinalityOneToMany', role: 'esriRelRoleDestination', keyField: r.destKey || 'ParentGlobalID', composite: r.type === 'COMPOSITE', relationshipTableId: -1 });
       built[r.origin].relationships.push({ id: i, name: r.forward || r.name, relatedTableId: id[r.destination], cardinality: 'esriRelCardinalityOneToMany', role: 'esriRelRoleOrigin', keyField: r.originKey || 'GlobalID', composite: r.type === 'COMPOSITE', relationshipTableId: -1 });
       built[r.destination].relationships.push({ id: i, name: r.backward || r.name, relatedTableId: id[r.origin], cardinality: 'esriRelCardinalityOneToMany', role: 'esriRelRoleDestination', keyField: r.destKey || 'ParentGlobalID', composite: r.type === 'COMPOSITE', relationshipTableId: -1 });
       if (!built[r.destination].fields.some((f) => f.name === (r.destKey || 'ParentGlobalID'))) warn.push(r.destination + ': חסר שדה מפתח זר ' + (r.destKey || 'ParentGlobalID'));
     });
+    ordered.forEach((e) => { built[e.name].relationships = []; });
     const createParams = { name, serviceDescription: title, hasStaticData: false, maxRecordCount: 2000, supportedQueryFormats: 'JSON', capabilities: 'Query,Create,Update,Delete,Editing,Sync', allowGeometryUpdates: true, spatialReference: SR, initialExtent: EXT, editorTrackingInfo: { enableEditorTracking: true, enableOwnershipAccessControl: false, allowOthersToUpdate: true, allowOthersToDelete: true, allowOthersToQuery: true } };
-    return { name, title, createParams, addToDefinition: { layers: layersE.map((e) => built[e.name]), tables: tablesE.map((e) => built[e.name]) }, warn,
+    return { name, title, createParams, addToDefinition: { layers: layersE.map((e) => built[e.name]), tables: tablesE.map((e) => built[e.name]) }, relDefs, warn,
       summary: ordered.map((e) => ({ id: id[e.name], name: e.name, kind: layersE.includes(e) ? 'שכבה' : 'טבלה', fields: built[e.name].fields.length })) };
   }
 
@@ -90,7 +94,16 @@
       if (r.success === false) throw new Error('addToDefinition החזיר כישלון');
     } catch (e) { e.itemId = c.itemId; e.partial = true; throw e; }
     log('נוספו ' + def.addToDefinition.layers.length + ' שכבות ו-' + def.addToDefinition.tables.length + ' טבלאות');
-    return { itemId: c.itemId, url: c.serviceurl, itemPage: sess.portal + '/home/item.html?id=' + c.itemId };
+    /* קשרים בבקשה נפרדת, אחרי שכל הישויות קיימות (בבקשה אחת AGOL נכשל: "Unable to find related layer") */
+    const relErrors = [];
+    for (const lid of Object.keys(def.relDefs || {})) {
+      try {
+        const r = await call(admin + '/' + lid + '/addToDefinition', { token: sess.token, addToDefinition: JSON.stringify({ relationships: def.relDefs[lid] }) });
+        if (r.success === false) throw new Error('addToDefinition החזיר כישלון');
+        log('נוספו קשרים לישות ' + lid);
+      } catch (e) { relErrors.push('ישות ' + lid + ': ' + e.message); }
+    }
+    return { itemId: c.itemId, url: c.serviceurl, itemPage: sess.portal + '/home/item.html?id=' + c.itemId, relErrors };
   }
 
   /* ---------- חלון ---------- */
@@ -99,7 +112,7 @@
     const S = D.S; let sess = null;
     const ov = document.createElement('div'); ov.id = 'agol-ov';
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px';
-    ov.innerHTML = '<div dir="rtl" style="background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:90vh;overflow:auto;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.4)"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">פרסום ל-ArcGIS Online</h3><button id="ag-x">✕</button></div><div id="ag-body"></div></div>';
+    ov.innerHTML = '<div dir="rtl" style="background:#fff;border-radius:16px;max-width:720px;width:100%;max-height:90vh;overflow:auto;overflow-x:hidden;padding:22px;overflow-wrap:anywhere;box-sizing:border-box;box-shadow:0 20px 60px rgba(0,0,0,.4)"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0">פרסום ל-ArcGIS Online</h3><button id="ag-x">✕</button></div><div id="ag-body"></div></div>';
     document.body.appendChild(ov);
     const body = ov.querySelector('#ag-body'), close = () => { sess = null; ov.remove(); };
     ov.querySelector('#ag-x').onclick = close;
@@ -117,9 +130,9 @@
       const def0 = buildDefinition(S, {});
       body.innerHTML = '<p style="color:#166534;font-size:13px">מחובר כ-<b dir="ltr">' + esc(sess.user) + '</b>' + (sess.org ? ' בארגון <b>' + esc(sess.org) + '</b>' : '') + '</p><label>שם השירות (אנגלית, ספרות וקו תחתון)</label><input id="ag-n" ' + inp + ' dir="ltr" value="' + esc(def0.name) + '"><label>כותרת הפריט</label><input id="ag-t" ' + inp + ' value="' + esc(def0.title) + '"><div id="ag-sum"></div><div id="ag-log" style="font-size:13px;line-height:1.7;margin:8px 0"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button id="ag-pv">תצוגה מקדימה (JSON)</button><button id="ag-mk" class="primary">צור שירות בארגון</button></div><div id="ag-out"></div>';
       const cur = () => buildDefinition(S, { name: $('ag-n').value.trim(), title: $('ag-t').value.trim() });
-      const sum = () => { const d = cur(); $('ag-sum').innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse;margin:6px 0">' + d.summary.map((r) => '<tr><td style="border:1px solid #E2E8F0;padding:3px 6px">' + r.id + '</td><td style="border:1px solid #E2E8F0;padding:3px 6px" dir="ltr">' + esc(r.name) + '</td><td style="border:1px solid #E2E8F0;padding:3px 6px">' + r.kind + '</td><td style="border:1px solid #E2E8F0;padding:3px 6px">' + r.fields + ' שדות</td></tr>').join('') + '</table>' + (d.warn.length ? '<div style="color:#B45309;font-size:12px">' + d.warn.map(esc).join('<br>') + '</div>' : ''); };
+      const sum = () => { const d = cur(); $('ag-sum').innerHTML = '<table style="width:100%;table-layout:fixed;font-size:12px;border-collapse:collapse;margin:6px 0">' + d.summary.map((r) => '<tr><td style="border:1px solid #E2E8F0;padding:3px 6px">' + r.id + '</td><td style="border:1px solid #E2E8F0;padding:3px 6px" dir="ltr">' + esc(r.name) + '</td><td style="border:1px solid #E2E8F0;padding:3px 6px">' + r.kind + '</td><td style="border:1px solid #E2E8F0;padding:3px 6px">' + r.fields + ' שדות</td></tr>').join('') + '</table>' + (d.warn.length ? '<div style="color:#B45309;font-size:12px">' + d.warn.map(esc).join('<br>') + '</div>' : ''); };
       sum(); $('ag-n').oninput = sum;
-      $('ag-pv').onclick = () => { const d = cur(); $('ag-out').innerHTML = '<textarea readonly dir="ltr" style="width:100%;height:240px;margin-top:8px;font:11px monospace">' + esc(JSON.stringify({ createService: d.createParams, addToDefinition: d.addToDefinition }, null, 2)) + '</textarea>'; };
+      $('ag-pv').onclick = () => { const d = cur(); $('ag-out').innerHTML = '<textarea readonly dir="ltr" style="width:100%;height:240px;margin-top:8px;font:11px monospace">' + esc(JSON.stringify({ step1_createService: d.createParams, step2_addToDefinition: d.addToDefinition, step3_relationships_per_layer: d.relDefs }, null, 2)) + '</textarea>'; };
       $('ag-mk').onclick = async () => {
         const d = cur(); if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(d.name)) { $('ag-log').innerHTML = '<span style="color:#B91C1C">שם השירות חייב להתחיל באות ולהכיל אנגלית, ספרות וקו תחתון בלבד.</span>'; return; }
         if (!confirm('ייווצר פריט חדש "' + d.name + '" בארגון ' + (sess.org || sess.portal) + '. להמשיך?')) return;
@@ -133,6 +146,7 @@
             if (D.save) D.save();
             log('הכתובות נרשמו בסכימה. לשמירה בקובץ: "שמור לתיקייה", ואז Commit ו-Push');
           } catch (e2) { log('הפרסום הצליח, אך רישום הכתובות בסכימה נכשל: ' + e2.message); }
+          if (r.relErrors && r.relErrors.length) lg.insertAdjacentHTML('beforeend', '<span style="color:#B45309">השירות נוצר, אך הקשרים לא נוספו (' + esc(r.relErrors.join(' | ')) + '). אפשר להגדיר את הקשר ידנית ב-Pro או ב-AGOL.</span><br>');
           lg.insertAdjacentHTML('beforeend', '<b style="color:#166534">הסתיים בהצלחה.</b><br><a target="_blank" rel="noopener" href="' + esc(r.itemPage) + '">פתח את הפריט ב-AGOL</a> · <span dir="ltr">' + esc(r.url) + '</span>'); }
         catch (e) { lg.insertAdjacentHTML('beforeend', '<span style="color:#B91C1C">נכשל: ' + esc(e.message) + '</span>' + (e.partial ? '<br>נוצר שירות ריק (פריט ' + esc(e.itemId) + ') שלא הושלם. אפשר למחוק אותו ב-AGOL ולנסות שוב.' : '')); $('ag-mk').disabled = false; }
       };
