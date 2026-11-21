@@ -622,6 +622,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
       <h3>מה אתה בודק כאן</h3><ul style="line-height:1.9"><li>סינון לפי סוג ישן, בחירה במפה או בטבלה, ועריכה מרובה של דגם וסטטוס בבת אחת.</li><li>ארבעת הסוגים המסומנים באפיון להמרה אוטומטית מגיעים מסווגים. השאר ממתינים לטיוב.</li><li>העמודה והאזהרות מראות מה Manager לא עושה: אינו מעדכן סטטוס בעקבות סיווג, ואינו גוזר ModelCode.</li></ul>`;
   }
   function render(S) {
+    if (window.SimGen && SimGen.applies(S)) return SimGen.render(S);
     st.S = S; const M = model(S); if (!M.A) return '<p>הסימולטור דורש שכבה עם לפחות טבלה מקושרת אחת.</p>';
     const tab = (k, l) => `<button class="${st.tab === k ? 'primary' : ''}" onclick="SimA.tab('${k}')">${l}</button>`;
     const body = st.tab === 'flow' ? flowTab(S, M) : st.tab === 's123' ? s123(S, M) : st.tab === 'fm' ? fm(S, M) : st.tab === 'struct' ? structure(S, M) : st.tab === 'office' ? manager(S, M) : data(S, M);
@@ -707,5 +708,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
       addVisit(S, M, sg, parent, Object.assign({}, st.modal.v)); st.cv = st.db.B[st.db.B.length - 1]; st.modal = null; rr();
     },
   };
+  /* עזרים משותפים לסימולטור הכללי (simgen.js) */
+  window.SimCore = { esc, uid, dom, relOk, hidden, readonly, phone, sample };
   window.Sim = { render };
 })();

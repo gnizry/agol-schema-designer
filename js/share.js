@@ -99,7 +99,7 @@
   async function build() {
     const D = window.__designer, S = D && D.S;
     if (!S) throw new Error('אין סכמה פעילה');
-    const files = ['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js', 'js/share.js'];
+    const files = ['js/generators.js', 'js/sim.js', 'js/simgen.js', 'js/diagrams.js', 'js/app.js', 'js/share.js'];
     let src;
     try {
       src = await Promise.all(files.map((f) => fetch(f, { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error(f); return r.text(); })));
