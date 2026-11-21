@@ -502,6 +502,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
   }
   function editModal(S, M) { return st.emod ? `<div style="position:absolute;inset:0;background:#fff;overflow:auto;padding:8px;z-index:5"><b>עריכת פרטי שלט</b>${formFields(S, M.main, st.emod, {}, 'SimA.es')}<div style="display:flex;gap:8px;margin-top:10px"><button class="primary" style="flex:1;padding:10px" onclick="SimA.esave()">שמור</button><button style="flex:1" onclick="SimA.ecancel()">ביטול</button></div></div>` : ''; }
   function fm(S, M) {
+    if (window.SimGen) return SimGen.fmView(S);
     ensure(S);
     const dots = st.db.main.map((s, i) => { const x = 40 + (i * 83) % 280, y = 50 + (i * 61) % 200; return `<div onclick="SimA.sel(${i})" title="${esc(s.SignID || '')}" style="position:absolute;left:${x}px;top:${y}px;width:22px;height:22px;border-radius:50%;background:${statusColor(s.SignStatus)};border:3px solid ${st.sel === i ? '#0F172A' : '#fff'};box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer"></div>`; }).join('');
     let popup = '<div style="color:#64748B;padding:10px">בחר שלט במפה</div>';
@@ -709,6 +710,11 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     },
   };
   /* עזרים משותפים לסימולטור הכללי (simgen.js) */
-  window.SimCore = { esc, uid, dom, relOk, hidden, readonly, phone, sample };
+  window.SimCore = {
+    esc, uid, dom, relOk, hidden, readonly, phone, sample, parentField, newId,
+    derive(S, ent, vals, up, isEdit) { const s0 = st.S, e0 = st.editId; st.S = S; st.editId = isEdit ? 'x' : null; try { derive(ent, vals, up); } finally { st.S = s0 || S; st.editId = e0; } },
+    geoVal: (f, loc) => zoneVal(f, zoneOf(loc)),
+    isGeo: (f) => /@layer/.test(f.calc || '') || (!!GEO[f.name] && f.mode === 'אוטומטי'),
+  };
   window.Sim = { render };
 })();
