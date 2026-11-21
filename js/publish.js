@@ -20,6 +20,11 @@
     else if (t === FT.DATE) o.length = 8; else if (t === FT.GUID) o.length = 38;
     return o;
   }
+  const SYMBOL = {
+    point: { type: 'esriSMS', style: 'esriSMSCircle', color: [30, 58, 138, 255], size: 8, outline: { color: [255, 255, 255, 255], width: 1 } },
+    line: { type: 'esriSLS', style: 'esriSLSSolid', color: [30, 58, 138, 255], width: 2 },
+    polygon: { type: 'esriSFS', style: 'esriSFSSolid', color: [30, 58, 138, 64], outline: { type: 'esriSLS', style: 'esriSLSSolid', color: [30, 58, 138, 255], width: 1.5 } }
+  };
   function buildDefinition(S, opt) {
     opt = opt || {};
     const name = opt.name || String(S.meta.key).replace(/[^A-Za-z0-9_]/g, '_'), title = opt.title || S.meta.title || name;
@@ -46,7 +51,7 @@
         L.editFieldsInfo = { creationDateField: 'CreationDate', creatorField: 'Creator', editDateField: 'EditDate', editorField: 'Editor' };
       }
       if (isLayer) Object.assign(L, { geometryType: e.kind === 'point' ? 'esriGeometryPoint' : e.kind === 'line' ? 'esriGeometryPolyline' : 'esriGeometryPolygon', hasZ: false, hasM: false, allowGeometryUpdates: true, extent: EXT,
-        drawingInfo: { renderer: { type: 'simple', symbol: { type: 'esriSMS', style: 'esriSMSCircle', color: [30, 58, 138, 255], size: 8, outline: { color: [255, 255, 255, 255], width: 1 } } } } });
+        drawingInfo: { renderer: { type: 'simple', symbol: SYMBOL[e.kind] || SYMBOL.point } } });
       return L;
     };
     const built = {}; ordered.forEach((e) => { built[e.name] = build(e); });

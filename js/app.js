@@ -115,7 +115,7 @@
         <div class="row">
           <div style="width:200px"><label>שם (Name)</label><input type="text" dir="ltr" value="${esc(e.name)}" onchange="A.e(${ei},'name',this.value.trim())"></div>
           <div style="width:220px"><label>כינוי (Alias)</label><input type="text" value="${esc(e.alias)}" onchange="A.e(${ei},'alias',this.value)"></div>
-          <div style="width:150px"><label>סוג</label><select onchange="A.e(${ei},'kind',this.value)"><option value="point" ${e.kind === 'point' ? 'selected' : ''}>שכבת נקודות</option><option value="table" ${e.kind === 'table' ? 'selected' : ''}>טבלה</option></select></div>
+          <div style="width:150px"><label>סוג</label><select onchange="A.e(${ei},'kind',this.value)"><option value="point" ${e.kind === 'point' ? 'selected' : ''}>שכבת נקודות</option><option value="line" ${e.kind === 'line' ? 'selected' : ''}>שכבת קווים</option><option value="polygon" ${e.kind === 'polygon' ? 'selected' : ''}>שכבת פוליגונים</option><option value="table" ${e.kind === 'table' ? 'selected' : ''}>טבלה</option></select></div>
           <label style="display:flex;gap:5px;align-items:center;margin:0 0 6px"><input type="checkbox" ${e.attachments ? 'checked' : ''} onchange="A.e(${ei},'attachments',this.checked)"> Attachments</label>
           <label style="display:flex;gap:5px;align-items:center;margin:0 0 6px"><input type="checkbox" ${e.editorTracking ? 'checked' : ''} onchange="A.e(${ei},'editorTracking',this.checked)"> Editor Tracking</label>
         </div>
