@@ -209,7 +209,7 @@
   /* ?view=<key>: כל הכלי לצפייה בלבד, מהעותק המפורסם share/<key>/schema.js */
   var view = sim ? '' : (new URLSearchParams(location.search).get('view') || '').replace(/[^A-Za-z0-9_\-]/g, '');
   if (view) { files = ['share/' + view + '/schema.js']; window.__VIEW_ONLY = true; window.__MEDIA_BASE = 'share/' + view + '/'; }
-  files = files.concat(['js/generators.js', 'js/sim.js', 'js/diagrams.js', 'js/app.js', 'js/share.js', 'js/specdoc.js', 'js/xlsform.js', 'js/publish.js']);
+  files = files.concat(['js/generators.js', 'js/sim.js', 'js/simgen.js', 'js/diagrams.js', 'js/app.js', 'js/share.js', 'js/specdoc.js', 'js/xlsform.js', 'js/publish.js']);
   (function next(i) {
     if (i >= files.length) return;
     var s = document.createElement('script'); s.src = files[i];
