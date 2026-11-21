@@ -96,8 +96,8 @@ for ent in ENTITIES:
         else:
             print("  = קיים, מדלג:", ent["name"])
             continue
-    if ent["kind"] == "POINT":
-        arcpy.management.CreateFeatureclass(gdb, ent["name"], "POINT", spatial_reference=sr, has_m="DISABLED", has_z="DISABLED")
+    if ent["kind"] in ("POINT", "POLYLINE", "POLYGON"):
+        arcpy.management.CreateFeatureclass(gdb, ent["name"], ent["kind"], spatial_reference=sr, has_m="DISABLED", has_z="DISABLED")
     else:
         arcpy.management.CreateTable(gdb, ent["name"])
     try:

@@ -38,7 +38,7 @@ tools/generate.js             node tools/generate.js [key]  → generated/ (או
 
 ## מושגי הסכמה
 
-- **ישות**: שכבת נקודות או טבלה. GlobalID / OBJECTID נוצרים אוטומטית; Editor Tracking מוסיף Creator, CreationDate, Editor, EditDate.
+- **ישות**: שכבת נקודות, קווים או פוליגונים, או טבלה. GlobalID / OBJECTID נוצרים אוטומטית; Editor Tracking מוסיף Creator, CreationDate, Editor, EditDate.
 - **קשר**: 1:N לפי `GlobalID` של האב ו-`ParentGlobalID` (GUID) בבן — המבנה ש-Survey123 משתמש בו עבור Repeat. COMPOSITE (מחיקת אב מוחקת בנים) או SIMPLE (ההיסטוריה נשמרת).
 - **דומיין**: רשימת ערכים עם קוד, תווית, הורה ומפתח חיצוני (אופציונליים). "מפתח חיצוני" הוא קוד טכני לממשקים עם מערכות אחרות; הוא מועתק לשדה מחושב ולא משמש כקוד הדומיין.
 - **כללי פרויקט** (`meta.rules`): `minTextLength` (למשל 255 — שדה טקסט שנוצר קצר קשה להרחבה בשכבה מתארחת) ו-`domainCodeEqualsLabel` (קוד = תווית, בלי קודים מספריים). הבדיקות מתריעות על חריגה.

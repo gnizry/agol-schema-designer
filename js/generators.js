@@ -7,6 +7,8 @@
   const RESERVED = ['OBJECTID', 'GLOBALID', 'SHAPE'];
   const TRACKING = ['CREATOR', 'CREATIONDATE', 'EDITOR', 'EDITDATE'];
   const NUMERIC = ['SHORT', 'LONG'];
+  const GEOM = { point: 'POINT', line: 'POLYLINE', polygon: 'POLYGON' }; // סוג ישות ← סוג גיאומטריה ב-ArcPy
+  const KIND_HE = { point: 'שכבת נקודות', line: 'שכבת קווים', polygon: 'שכבת פוליגונים', table: 'טבלה' };
 
   const py = (s) => JSON.stringify(s == null ? '' : String(s));
   const isNum = (t) => NUMERIC.indexOf(t) >= 0;
@@ -125,7 +127,7 @@
     p('# ---------------------------------------------------------------- ישויות');
     p('ENTITIES = [');
     S.entities.forEach((e) => {
-      p('    {"name": ' + py(e.name) + ', "alias": ' + py(e.alias) + ', "kind": ' + py(e.kind === 'point' ? 'POINT' : 'TABLE') +
+      p('    {"name": ' + py(e.name) + ', "alias": ' + py(e.alias) + ', "kind": ' + py(GEOM[e.kind] || 'TABLE') +
         ', "attachments": ' + (e.attachments ? 'True' : 'False') + ', "editor_tracking": ' + (e.editorTracking ? 'True' : 'False') + ', "fields": [');
       e.fields.forEach((f) => {
         const len = f.type === 'TEXT' ? String(Number(f.length)) : 'None';
@@ -177,8 +179,8 @@ for ent in ENTITIES:
         else:
             print("  = קיים, מדלג:", ent["name"])
             continue
-    if ent["kind"] == "POINT":
-        arcpy.management.CreateFeatureclass(gdb, ent["name"], "POINT", spatial_reference=sr, has_m="DISABLED", has_z="DISABLED")
+    if ent["kind"] in ("POINT", "POLYLINE", "POLYGON"):
+        arcpy.management.CreateFeatureclass(gdb, ent["name"], ent["kind"], spatial_reference=sr, has_m="DISABLED", has_z="DISABLED")
     else:
         arcpy.management.CreateTable(gdb, ent["name"])
     try:
@@ -243,7 +245,7 @@ print("\\n>>> הסתיים. המשך: Share As Web Layer.")
     L.push('> נוצר אוטומטית מ-`projects/' + (S.meta.key || 'project') + '.schema.js`. אין לערוך ידנית.');
     L.push('');
     S.entities.forEach((e) => {
-      L.push('## ' + e.name + ' — ' + e.alias + ' (' + (e.kind === 'point' ? 'שכבת נקודות' : 'טבלה') + ')');
+      L.push('## ' + e.name + ' — ' + e.alias + ' (' + (KIND_HE[e.kind] || 'טבלה') + ')');
       L.push('');
       if (e.description) { L.push(e.description); L.push(''); }
       L.push('Attachments: ' + (e.attachments ? 'כן' : 'לא') + ' · Editor Tracking: ' + (e.editorTracking ? 'כן (Creator, CreationDate, Editor, EditDate)' : 'לא'));
