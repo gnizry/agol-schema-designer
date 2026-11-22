@@ -8,7 +8,8 @@
      templateField                        שדה שערכיו הם התבניות ב"בחר סוג" (ברירת מחדל: statusField כשהוגדר)
      colors: { ערך: צבע }
      newValue, continueValue              "חדש" ו"המשך": המשך מקבל את המזהה של "חדש" הסמוך ומאוחד בסקריפט הלילי
-     editing (ברירת מחדל true: false = העריכה במפה כבויה, ללא כפתורי עריכה והעתקה), relatedList (ברירת מחדל true: false = ללא הרשומות הקשורות המובנות בפופאפ),
+     rich {subtitle, image, hazard{f,notes,whenStatus}, typeField, typeColors, weakVisit, details[], parts{entity,title,meta[],status{entity,partField,stateField,notes}}, sections[{title,fields[]}]}   פופאפ עשיר במקום chips/kpis
+   editing (ברירת מחדל true: false = העריכה במפה כבויה, ללא כפתורי עריכה והעתקה), relatedList (ברירת מחדל true: false = ללא הרשומות הקשורות המובנות בפופאפ),
      chips, kpis: [{f, label, unit}], childTitle, childCard   תוכן פופאפ מעוצב (כמו פופאפ Arcade). בלעדיהם: רשימת שדות כמו בפופאפ ברירת המחדל
      auto: { שדה: 'now' | 'user' | 'area' | 'id' | 'weekday:<שדה>' | 'parent:<שדה באב>' | 'script' }
      survey123: { itemId }                הוספה ועריכה של ישות ראשית רק דרך Survey123 (למשל שילוט): ה-+ במפה לא פותח טופס Field Maps אלא מציג את קישור האיסוף, וכפתור העריכה בפופאפ הוא קישור Inbox. ביקורים (בן) ממשיכים להיפתח ב-Field Maps
@@ -337,7 +338,55 @@
       return `<div style="padding:4px 12px 12px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">${grid}</div>${sub}</div>`;
     };
     const cards = '<style>.sg-v>summary{display:flex;list-style:none;cursor:pointer}.sg-v>summary::-webkit-details-marker{display:none}.sg-v[open]>summary .sg-ch{transform:rotate(180deg)}.sg-v[open]{border-color:#93C5FD;box-shadow:0 1px 6px rgba(30,58,138,.12)}</style>' + kids.slice().reverse().map((k) => `<details class="sg-v" style="border:1px solid #E2E8F0;border-radius:12px;margin-top:8px;background:#fff;overflow:hidden"><summary style="align-items:center;gap:8px;padding:10px 12px;background:#F8FAFC"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:#0F172A">${esc(show(k[sim.childTitle]) || display(K, K.kid.name, k))}</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">${hf.map((n) => k[n] ? kidChip(k[n]) : '').join('')}</div></div><span class="sg-ch" style="color:#64748B;font-size:12px;transition:transform .15s">▼</span></summary>${detail(k)}</details>`).join('');
+    if (sim.rich) return richContent(K, rec, cards);
     return `<div style="padding:12px 14px;font-family:Tahoma,sans-serif"><div style="display:flex;gap:4px;flex-wrap:wrap">${chips}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${kpis}</div>${warn}${acts}${cards}</div>`;
+  }
+  /* פופאפ עשיר (sim.rich): כותרת עם דגם ותמונה, פס מצבים, באנר סכנה, כפתורי הוספת ביקור לפי סוג, ביקור פתוח עם דיווח מצב רכיבים, פרטים, ואקורדיונים (רכיבים, ביקורים, קבוצות שדות). מקביל לביטוי ה-Arcade של הפופאפ */
+  function richContent(K, rec, visitCards) {
+    const sim = K.sim, R = sim.rich, rel = K.childRel, kids = rel ? kidsOf(rel, rec) : [];
+    const dvals = (ent, n) => { const f = K.F(ent, n), d = f && f.domain && K.S.domains && K.S.domains[f.domain]; return d ? d.values : []; };
+    const al = (ent, n) => { const f = K.F(ent, n); return f ? (f.alias || n) : n; };
+    const col = (v) => K.colors[v] || ({ 'חסר': '#6B7280', 'לא דווח': '#94A3B8' }[v]) || '#94A3B8';
+    const pch = (t, c) => `<span style="display:inline-block;white-space:nowrap;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;background:${c};color:#fff">${esc(show(t))}</span>`;
+    const tcol = (t) => (R.typeColors || {})[t] || '#64748B';
+    const dateF = sim.childTitle, typeF = R.typeField;
+    const byDate = kids.slice().sort((a, b) => String(b[dateF] || '').localeCompare(String(a[dateF] || '')));
+    const last = byDate[0];
+    const head = `<div style="font-size:14px">${esc(R.subtitle ? rec[R.subtitle] || '' : '')}</div><div style="font-size:12px;color:#64748B;margin-top:2px">${last ? 'ביקור אחרון: ' + esc(show(last[dateF] || '')) + (typeF && last[typeF] ? ' (' + esc(last[typeF]) + ')' : '') : 'טרם בוצע ביקור'} · ${kids.length} ${esc(K.kid ? K.kid.alias : '')}</div>`;
+    let img = '';
+    if (R.image) { const v = dvals(K.main, R.image).find((x) => x.label === rec[R.image]), u = v && v.img && window.Media ? Media.get(v.img) : null; if (u) img = `<img src="${u}" alt="" style="width:100%;max-height:150px;object-fit:contain;border:1px solid #E2E8F0;border-radius:10px;margin-top:8px;background:#fff">`; }
+    const states = dvals(K.main, K.statusField).map((v) => v.label);
+    const bar = states.length ? `<div style="display:flex;gap:5px;margin-top:10px">${states.map((x) => { const on = x === rec[K.statusField]; return `<div style="flex:1;text-align:center;padding:5px 2px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid ${on ? col(x) : '#E2E8F0'};background:${on ? col(x) : '#fff'};color:${on ? '#fff' : '#94A3B8'}">${esc(x)}</div>`; }).join('')}</div>` : '';
+    let hz = '';
+    if (R.hazard) { const hv = rec[R.hazard.f] || '', nt = R.hazard.notes ? rec[R.hazard.notes] : ''; if (hv && /סכנה/.test(hv) && !/^לא/.test(hv)) hz = `<div style="margin-top:8px;background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:700">${esc(hv)}${nt ? ': ' + esc(nt) : ''}</div>`; else if (nt && rec[K.statusField] === R.hazard.whenStatus) hz = `<div style="margin-top:8px;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E;border-radius:8px;padding:7px 10px;font-size:13px">${esc(nt)}</div>`; }
+    const types = typeF ? dvals(K.kid, typeF).map((v) => v.label) : [];
+    const vbtn = (t) => `<button onclick="SimG.addKid('${rel.name}','${rec.GlobalID}',true,'${encodeURIComponent(JSON.stringify({ [typeF]: t }))}')" style="cursor:pointer;flex:1;border:0;border-radius:10px;padding:10px 4px;background:${tcol(t)};color:#fff;font-weight:700;font-size:14px">${esc(t)}</button>`;
+    const actions = rel ? `<div style="margin-top:12px;font-size:12px;color:#64748B">הוסף ${esc(K.kid.alias)} לשלט</div><div style="display:flex;gap:6px;margin-top:4px">${types.length ? types.map(vbtn).join('') : `<button onclick="SimG.addKid('${rel.name}','${rec.GlobalID}',true)" style="cursor:pointer;flex:1;border:0;border-radius:10px;padding:10px;background:#C2410C;color:#fff;font-weight:700">+ ${esc(K.kid.alias)}</button>`}</div>${K.s123 ? `<button onclick="SimG.s123Edit('${rec.GlobalID}')" style="margin-top:6px;width:100%;cursor:pointer;border:1px dashed #64748B;color:#334155;background:#F8FAFC;border-radius:10px;padding:8px;font-weight:600">${R.weakVisit ? esc(K.kid.alias) + ' ב-Survey123 (חיבור חלש)' : 'עריכת ' + esc(K.main.alias) + ' ב-Survey123'}</button>${R.weakVisit ? `<button onclick="SimG.s123Edit('${rec.GlobalID}')" style="margin-top:6px;width:100%;cursor:pointer;border:1px solid #1E3A8A;color:#1E3A8A;background:#fff;border-radius:10px;padding:8px;font-weight:700">עריכת פרטי ${esc(K.main.alias)} ב-Survey123</button>` : ''}` : ''}` : '';
+    /* רכיבים ומצב כל רכיב לפי הדיווח האחרון */
+    const P = R.parts, partEnt = P && K.E(P.entity), partRel = P && K.S.relationships.find((x) => x.origin === K.main.name && x.destination === P.entity);
+    const parts = partRel ? kidsOf(partRel, rec) : [];
+    const PS = P && P.status, psRel = PS && K.kid && K.S.relationships.find((x) => x.origin === K.kid.name && x.destination === PS.entity);
+    const psOf = (v) => (psRel ? kidsOf(psRel, v) : []);
+    const partState = (pg) => { let hit = null; kids.slice().sort((a, b) => String(a[dateF] || '').localeCompare(String(b[dateF] || ''))).forEach((v) => psOf(v).forEach((r) => { if (r[PS.partField] === pg) hit = { r, v }; })); return hit; };
+    const pname = (p) => esc(p[P.title] || (partEnt ? partEnt.alias : 'רכיב'));
+    const pmeta = (p) => (P.meta || []).filter((n) => p[n] !== '' && p[n] != null).map((n) => esc(al(partEnt, n)) + ': ' + esc(show(p[n]))).join(' · ');
+    const partsHtml = P ? (parts.map((p) => {
+      const h = PS ? partState(p.GlobalID) : null, state = h ? (h.r[PS.stateField] || 'דווח') : 'לא דווח', m = pmeta(p);
+      return `<div style="padding:9px 0;border-bottom:1px solid #E2E8F0"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:14px">${pname(p)}</b>${PS ? pch(state, col(state)) : ''}</div>${m ? `<div style="font-size:12px;color:#64748B;margin-top:2px">${m}</div>` : ''}${h ? `<div style="font-size:11px;color:#94A3B8">דווח ${esc(show(h.v[dateF] || ''))}</div>` : ''}</div>`;
+    }).join('') || '<small style="color:#64748B">אין רכיבים</small>') : '';
+    /* ביקור פתוח: הביקור שנשמר עכשיו, עם כפתור דיווח לכל רכיב */
+    const ov = g.openVisit && kids.find((v) => v.GlobalID === g.openVisit);
+    let openCard = '';
+    if (ov && P && PS && psRel) {
+      const rws = psOf(ov);
+      const list = parts.map((p) => { const r = rws.find((x) => x[PS.partField] === p.GlobalID), m = pmeta(p); return `<div style="padding:8px 0;border-bottom:1px solid #FDE7C7;display:flex;align-items:center;justify-content:space-between;gap:8px"><div><b style="font-size:14px">${pname(p)}</b>${m ? `<div style="font-size:12px;color:#64748B">${m}</div>` : ''}${r && PS.notes && r[PS.notes] ? `<div style="font-size:12px;color:#64748B">${esc(r[PS.notes])}</div>` : ''}</div><div style="display:flex;align-items:center;gap:6px">${pch(r ? (r[PS.stateField] || 'דווח') : 'לא דווח', r ? col(r[PS.stateField]) : '#94A3B8')}${r ? '' : `<button title="דווח מצב" onclick="SimG.addKid('${psRel.name}','${ov.GlobalID}',true,'${encodeURIComponent(JSON.stringify({ [PS.partField]: p.GlobalID }))}')" style="cursor:pointer;border:0;border-radius:50%;width:30px;height:30px;background:#1E3A8A;color:#fff;font-size:18px;line-height:1">+</button>`}</div></div>`; }).join('') || '<small style="color:#64748B">אין רכיבים בשלט</small>';
+      openCard = `<div style="margin-top:12px;border:1.5px solid #FDBA74;border-radius:12px;background:#FFF9F1;padding:10px 12px"><div style="display:flex;justify-content:space-between;align-items:center;gap:6px"><b style="font-size:14px">${esc(K.kid.alias)} פתוח</b><span>${typeF && ov[typeF] ? pch(ov[typeF], tcol(ov[typeF])) : ''} ${ov[K.sim.childCard && K.sim.childCard[1]] ? pch(ov[K.sim.childCard[1]], col(ov[K.sim.childCard[1]])) : ''}</span></div><div style="font-size:12px;color:#64748B;margin-top:2px">דווחו ${rws.length} מתוך ${parts.length} רכיבים. מדווחים רק על רכיב שנבדק או שיש בו ממצא.</div>${list}<button onclick="SimG.closeVisit()" style="margin-top:8px;width:100%;cursor:pointer;border:0;border-radius:10px;padding:8px;background:#1E3A8A;color:#fff;font-weight:700">סיום</button></div>`;
+    }
+    const acc = (title, n, body, accent, open) => `<details ${open ? 'open' : ''} style="margin-top:10px;border:1px solid #E2E8F0;border-radius:10px;overflow:hidden;background:#fff"><summary style="cursor:pointer;padding:11px 13px;background:#F8FAFC;border-right:5px solid ${accent};font-weight:700;font-size:14px;color:#0F172A">${title}${n >= 0 ? ` <span style="color:#64748B;font-weight:400">(${n})</span>` : ''}</summary><div style="padding:10px 13px;border-top:1px solid #E2E8F0">${body}</div></details>`;
+    const grid = (ent, ks) => { const r = ks.filter((k) => rec[k] !== '' && rec[k] != null).map((k) => `<div><div style="font-size:11px;color:#64748B">${esc(al(ent, k))}</div><div style="font-size:13px">${esc(show(rec[k]))}</div></div>`).join(''); return r ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">${r}</div>` : '<small style="color:#64748B">אין נתונים</small>'; };
+    const detailsBox = (R.details || []).length ? `<div style="margin-top:12px;border:1px solid #E2E8F0;border-radius:12px;padding:12px">${grid(K.main, R.details)}</div>` : '';
+    const sections = (R.sections || []).map((x) => acc(esc(x.title), -1, grid(K.main, x.fields), '#a7c636', false)).join('');
+    return `<div style="padding:12px 14px;font-family:Tahoma,sans-serif">${head}${img}${bar}${hz}${actions}${openCard}${detailsBox}${P ? acc(esc(partEnt.alias), parts.length, partsHtml, '#149ece', true) : ''}${K.kid ? acc(esc(K.kid.alias), kids.length, visitCards || '<small style="color:#64748B">אין ביקורים</small>', '#fc921f', true) : ''}${sections}</div>`;
   }
   /* פופאפ ברירת מחדל של Field Maps: רשימת שדות (כינוי מעל ערך) */
   function fieldList(K, ent, rec) {
@@ -491,11 +540,12 @@
     s123Url(action, gid) { const K = K0(), id = (K.s123 && K.s123.itemId) || '<SURVEY_ITEM_ID>'; return 'arcgis-survey123://?itemID=' + id + (action === 'edit' ? '&action=edit&q:globalId=' + gid + '&folder=inbox&update=true' : '&action=collect') + '&callback=https://fieldmaps.arcgis.app'; },
     s123New() { g.link = SimG.s123Url('collect'); toast('הוספת ' + K0().main.alias + ' חדש: רק ב-Survey123 (קישור איסוף)'); rr(); },
     s123Edit(gid) { if (g.ext && g.ext.s123) { g.ext.s123(); return; } g.link = SimG.s123Url('edit', gid); toast('עריכה ב-Survey123: נפתחת הרשומה מה-Inbox'); rr(); },
-    addKid(relName, pgid, viaLink) {
+    addKid(relName, pgid, viaLink, presetJson) {
       if (g.ext && g.ext.ro) { toast('בתרחיש הזה הפעולה אינה פעילה: ביקורים בתרחיש "ביקור"'); rr(); return; }
       const K = K0(), rel = K.S.relationships.find((x) => x.name === relName), par = findRec(rel.origin, pgid), ent = K.E(rel.destination);
       const v = { GlobalID: uid(), [rel.destKey]: pgid }; autoFill(K, ent, v, par, true);
-      if (viaLink) { g.link = link(K, 'addRelatedFeature', rel.origin, par, rel, parentPreset(K, rel, par)); toast('קישור עומק: טופס חדש, מקושר וממולא מראש'); }
+      let pre = {}; try { pre = presetJson ? JSON.parse(decodeURIComponent(presetJson)) : {}; } catch (e) { pre = {}; } Object.assign(v, pre);
+      if (viaLink) { g.link = link(K, 'addRelatedFeature', rel.origin, par, rel, Object.assign(parentPreset(K, rel, par), pre)); toast('קישור עומק: טופס חדש, מקושר וממולא מראש'); }
       openForm(K, rel.destination, v, true, null, rel.origin, pgid); rr();
     },
     save() {
@@ -506,11 +556,13 @@
       const saved = f.isNew ? f.vals : f.ref;
       if (f.ent !== K.main.name) fromKid(K, ent, saved);
       else K.relsOf(f.ent).forEach((rel) => kidsOf(rel, saved).forEach((k) => autoFill(K, K.E(rel.destination), k, saved, false)));
+      if (f.isNew && K.kid && f.ent === K.kid.name && K.sim.rich) g.openVisit = saved.GlobalID;
       commit(); toast(g.online ? (f.isNew ? 'נשלח' : 'עודכן') : 'נשמר במכשיר, ממתין לסנכרון');
       g.nav.pop(); g.showReq = false;
       if (f.isNew && f.ent === K.main.name) { g.nav = [{ s: 'map' }]; g.sel = rows(K.main.name).length - 1; }
       rr();
     },
+    closeVisit() { g.openVisit = null; rr(); },
     del() {
       const K = K0(), f = top();
       const drop = (ent, rec) => { K.relsOf(ent).forEach((rel) => kidsOf(rel, rec).forEach((k) => drop(rel.destination, k))); const a = rows(ent); a.splice(a.indexOf(rec), 1); };

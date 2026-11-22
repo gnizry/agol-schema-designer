@@ -3622,6 +3622,62 @@ window.SCHEMAS["signage"] = {
     "survey123": {},
     "editing": false,
     "relatedList": false,
+    "rich": {
+      "subtitle": "SignModel",
+      "image": "SignModel",
+      "hazard": {
+        "f": "SafetyHazard",
+        "notes": "FaultNotes",
+        "whenStatus": "לא תקין"
+      },
+      "typeField": "VisitType",
+      "typeColors": {
+        "מעקב": "#149ece",
+        "פיקוח": "#fc921f",
+        "טיפול": "#a7c636"
+      },
+      "weakVisit": true,
+      "details": [
+        "SignContentText",
+        "LocationDescription",
+        "RoadName",
+        "RoadColor",
+        "PlacementDate",
+        "MappingDate",
+        "MapperName",
+        "NewSignageTheory"
+      ],
+      "parts": {
+        "entity": "SignParts",
+        "title": "ComponentType",
+        "meta": [
+          "WingNumber",
+          "Direction",
+          "Level",
+          "Side",
+          "PictogramCode",
+          "SupplierName"
+        ],
+        "status": {
+          "entity": "SignPartStatus",
+          "partField": "RelatedPartGlobalID",
+          "stateField": "PartStatusAtVisit",
+          "notes": "PartNotes"
+        }
+      },
+      "sections": [
+        {
+          "title": "כתובת יערנית ואחראים",
+          "fields": [
+            "DistrictName",
+            "RegionName",
+            "GushName",
+            "ForestName",
+            "ResponsibleUnit"
+          ]
+        }
+      ]
+    },
     "chips": [
       "SignModel",
       "SafetyHazard"
@@ -3936,4 +3992,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "22.11.2026 08:35";
+window.__BUILT = "22.11.2026 08:55";
