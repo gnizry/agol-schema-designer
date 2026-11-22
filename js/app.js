@@ -85,7 +85,7 @@
       '<h4>ישויות</h4>' + S.entities.map((e, i) => it('entity', i, esc(e.alias) + ' · ' + esc(e.name), e.fields.length)).join('') +
       '<h4>מבנה</h4>' + it('domains', 0, 'דומיינים', Object.keys(S.domains).length) + it('rels', 0, 'קשרים', S.relationships.length) +
       '<h4>ניהול</h4>' + it('decisions', 0, 'החלטות פתוחות', open) +
-      it('questions', 0, 'שאלות ללקוח', MG.q) + it('plan', 0, 'תוכנית יישום', MG.h == null ? null : MG.h + ' ש׳') + it('changes', 0, 'בקשות שינוי', MG.c) + (VIEWONLY ? '' : it('sync', 0, 'סנכרון מ-AGOL')) +
+      it('questions', 0, 'שאלות ללקוח', MG.q) + it('plan', 0, 'תוכנית יישום', MG.h == null ? null : MG.h + ' ש׳') + it('changes', 0, 'בקשות שינוי', MG.c) + (VIEWONLY ? '' : it('sync', 0, 'סנכרון מ-AGOL') + (window.Discover ? it('discover', 0, 'ייבוא פתרון קיים') : '')) +
       it('validate', 0, 'בדיקות', errs + warns, errs ? 'err' : '') +
       '<h4>תרשימים</h4>' + it('dg-erd', 0, 'ERD · ישויות וקשרים', S.relationships.length) + it('dg-comp', 0, 'רכיבי הפתרון', window.Diagrams ? Diagrams.count(S).nodes || null : null) + it('dg-flow', 0, 'תהליכים וזרימות', window.Diagrams ? Diagrams.count(S).flows || null : null) +
       '<h4>סימולציה</h4>' + it('sim', 0, 'סימולטור Survey123 / Field Maps') +
@@ -199,11 +199,12 @@
       <p class="hint">בריפו, הקבצים נוצרים גם משורת פקודה: <code dir="ltr">node tools/generate.js</code> → תיקיית generated/.</p>`;
   }
 
-  const TITLES = { 'dg-erd': 'ERD: ישויות וקשרים', 'dg-comp': 'רכיבי הפתרון והקשרים ביניהם', 'dg-flow': 'תהליכים: זרימת משתמש וזרימת נתונים', entity: null, domains: 'דומיינים (Coded Value Domains)', rels: 'קשרים בין ישויות', decisions: 'החלטות פתוחות מול הלקוח', questions: 'שאלות לדיון עם הלקוח', plan: 'תוכנית יישום והערכת זמן', changes: 'בקשות שינוי ושיפורים', sync: 'סנכרון מהאונליין לכלי', validate: 'בדיקות תקינות', output: 'תוצרים', sim: 'סימולטור חוויית משתמש' };
+  const TITLES = { 'dg-erd': 'ERD: ישויות וקשרים', 'dg-comp': 'רכיבי הפתרון והקשרים ביניהם', 'dg-flow': 'תהליכים: זרימת משתמש וזרימת נתונים', entity: null, domains: 'דומיינים (Coded Value Domains)', rels: 'קשרים בין ישויות', decisions: 'החלטות פתוחות מול הלקוח', questions: 'שאלות לדיון עם הלקוח', plan: 'תוכנית יישום והערכת זמן', changes: 'בקשות שינוי ושיפורים', sync: 'סנכרון מהאונליין לכלי', discover: 'ייבוא פתרון קיים מ-AGOL', validate: 'בדיקות תקינות', output: 'תוצרים', sim: 'סימולטור חוויית משתמש' };
   function render() {
+    if (V.page === 'entity' && !S.entities[V.idx]) { V.page = 'dg-comp'; V.idx = 0; } // פרויקט בלי ישויות (למשל ייבוא בלי שירות מתארח)
     renderNav();
     const t = V.page === 'entity' ? esc(S.entities[V.idx].alias) + ' — ' + esc(S.entities[V.idx].name) : TITLES[V.page];
-    let body; try { body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, questions: () => Mgmt.questions(S), plan: () => Mgmt.plan(S), changes: () => Mgmt.changes(S), sync: () => Sync.page(S), validate: validatePage, output: outputPage, sim: () => (window.Sim ? Sim.render(S) : ''), 'dg-erd': () => Diagrams.page(S, 'erd'), 'dg-comp': () => Diagrams.page(S, 'comp'), 'dg-flow': () => Diagrams.page(S, 'flow') }[V.page](); } catch (err) { console.error(err); body = '<div style="background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:10px;padding:12px;direction:ltr;text-align:left;white-space:pre-wrap;font:12px monospace"><b>שגיאה בהצגת העמוד</b>\n' + esc(String(err && err.stack || err)) + '</div>'; }
+    let body; try { body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, questions: () => Mgmt.questions(S), plan: () => Mgmt.plan(S), changes: () => Mgmt.changes(S), sync: () => Sync.page(S), discover: () => Discover.page(S), validate: validatePage, output: outputPage, sim: () => (window.Sim ? Sim.render(S) : ''), 'dg-erd': () => Diagrams.page(S, 'erd'), 'dg-comp': () => Diagrams.page(S, 'comp'), 'dg-flow': () => Diagrams.page(S, 'flow') }[V.page](); } catch (err) { console.error(err); body = '<div style="background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:10px;padding:12px;direction:ltr;text-align:left;white-space:pre-wrap;font:12px monospace"><b>שגיאה בהצגת העמוד</b>\n' + esc(String(err && err.stack || err)) + '</div>'; }
     $('main').innerHTML = `<h2 style="margin:0 0 10px">${t}</h2>` + body;
     if (VIEWONLY && ['entity', 'domains', 'rels', 'decisions', 'questions', 'plan', 'changes', 'sync', 'validate'].indexOf(V.page) >= 0) { // מצב צפייה: ללא עריכה
       $('main').querySelectorAll('input,select,textarea').forEach((el) => { el.disabled = true; });
@@ -446,7 +447,14 @@
       return URL.createObjectURL(await (await d.getFileHandle(parts[parts.length - 1])).getFile());
     } catch (e) { return null; }
   };
-  window.__designer = { openFolder, saveFolder, FOLDER, save, render, get cur() { return cur; }, get S() { return S; } }; // לבדיקות
+  /* פרויקט חדש מסכמה מוכנה (ייבוא פתרון קיים): נשמר כטיוטה עד "שמור לתיקייה" */
+  function addProject(id, ns) {
+    if (allKeys().indexOf(id) >= 0) throw new Error('פרויקט ' + id + ' כבר קיים. בחר מפתח אחר.');
+    save(); LS.set(LIST_KEY, JSON.stringify(extraKeys().concat([id])));
+    LS.set(PREFIX + id, JSON.stringify({ base: 0, schema: ns }));
+    cur = id; S = load(id); V = { page: 'discover', idx: 0, script: 'arcpy' }; LS.set('agol-schema-designer:current', cur); fillProjects();
+  }
+  window.__designer = { openFolder, saveFolder, FOLDER, save, render, addProject, get cur() { return cur; }, get S() { return S; } }; // לבדיקות
 
   fillProjects();
   render();

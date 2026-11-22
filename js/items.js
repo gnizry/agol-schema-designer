@@ -17,13 +17,14 @@
     if (/Webhook|Groups|משתמשים/.test(t)) return null;
     if (/Feature Layer/.test(t)) return 'Feature Service';
     if (/Survey123/.test(t)) return 'Form';
+    if (/Web Mapping Application|Instant App|Manager/.test(t)) return 'Web Mapping Application';
+    if (/Experience Builder/.test(t)) return 'Web Experience';
     if (/Web Map/.test(t)) return 'Web Map';
     if (/Dashboard/.test(t)) return 'Dashboard';
-    if (/Instant App|Manager/.test(t)) return 'Web Mapping Application';
     if (/Notebook/.test(t)) return 'Notebook';
     return '';
   }
-  const refType = (type) => /Web Map|Dashboard|Web Mapping Application|Form|Feature Service/.test(type || '');
+  const refType = (type) => /Web Map|Dashboard|Web Mapping Application|Web Experience|StoryMap|Form|Feature Service/.test(type || '');
   const parseRef = (s) => { const m = String(s || '').match(/[0-9a-f]{32}/i); return m ? m[0].toLowerCase() : ''; };
   const normPortal = (u) => String(u || '').trim().replace(/\/+$/, '').replace(/\/(sharing|home).*$/, '') || 'https://www.arcgis.com';
   const baseUrl = (u) => String(u || '').toLowerCase().replace(/\/+$/, '').replace(/\/\d+$/, '');
@@ -53,7 +54,7 @@
   async function refsOf(l, token) {
     const ids = {}, urls = {};
     const scan = (txt) => { (String(txt).match(/[0-9a-f]{32}/gi) || []).forEach((x) => { ids[x.toLowerCase()] = 1; }); (String(txt).match(/https?:\/\/[^"'\\\s]+?\/FeatureServer/gi) || []).forEach((x) => { urls[baseUrl(x)] = 1; }); };
-    if (/Web Map|Dashboard|Web Mapping Application/.test(l.type)) { try { scan(JSON.stringify(await jget(l.portal + '/sharing/rest/content/items/' + l.itemId + '/data', token))); } catch (e) { /* ללא גישה */ } }
+    if (/Web Map|Dashboard|Web Mapping Application|Web Experience|StoryMap/.test(l.type)) { try { scan(JSON.stringify(await jget(l.portal + '/sharing/rest/content/items/' + l.itemId + '/data', token))); } catch (e) { /* ללא גישה */ } }
     for (const rel of ['Survey2Service', 'Map2Service', 'Service2Service', 'WMA2Code']) for (const dir of ['forward', 'reverse']) {
       try { const r = await jget(l.portal + '/sharing/rest/content/items/' + l.itemId + '/relatedItems?relationshipType=' + rel + '&direction=' + dir, token); (r.relatedItems || []).forEach((x) => { ids[String(x.id).toLowerCase()] = 1; }); } catch (e) { /* */ }
     }

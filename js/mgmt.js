@@ -82,6 +82,7 @@
     const cnt = (st) => L.filter((c) => c.status === st).length;
     const shown = L.map((c, i) => ({ c, i })).filter((x) => F.c === 'all' ? true : F.c === 'active' ? activeSt.indexOf(x.c.status) >= 0 : x.c.status === F.c);
     const est = L.filter((c) => ['approved', 'doing'].indexOf(c.status) >= 0).reduce((s, c) => s + (+c.est || 0), 0);
+    const comps = ((S.diagrams || {}).agolItems || []).filter((n) => n.id); // רכיבי הפתרון: כל בקשה או תקלה משויכת לרכיב
     const rows = shown.map(({ c, i }) => {
       const f = (k) => `A.ls('changes',${i},'${k}',`;
       return `<tr><td style="width:60px"><b>${esc(c.id)}</b><div style="font-size:11px;color:#64748B">${inp(c.date, f('date'), '88px')}</div></td>
@@ -89,7 +90,7 @@
       <td>${inp(c.title, f('title'), '100%')}${ta(c.desc, f('desc'), 2)}${taskList(c, i)}</td>
       <td style="width:90px">${sel(C_TY, c.type, f('type'))}</td>
       <td style="width:110px">${sel(C_ST, c.status, f('status'))}</td>
-      <td>${inp(c.areas, f('areas'), '100%')}<div style="font-size:12px;color:#64748B;margin-top:2px">הערכה (ש׳): ${num(c.est, f('est'))} · קשר: ${inp(c.ref, f('ref'), '70px')} · גרסה: ${inp(c.version, f('version'), '60px')}</div></td>
+      <td>${inp(c.areas, f('areas'), '100%')}<div style="font-size:12px;color:#64748B;margin-top:2px">הערכה (ש׳): ${num(c.est, f('est'))} · קשר: ${inp(c.ref, f('ref'), '70px')} · גרסה: ${inp(c.version, f('version'), '60px')}</div>${comps.length ? `<div style="font-size:12px;color:#64748B;margin-top:2px">רכיב: <select onchange="${f('comp')}this.value)"><option value="">—</option>${comps.map((n) => `<option value="${esc(n.id)}" ${n.id === c.comp ? 'selected' : ''}>${esc(n.title)}</option>`).join('')}</select></div>` : ''}</td>
       <td>${ta(c.note, f('note'), 3)}</td><td><button class="mini danger" onclick="A.lsDel('changes',${i})">מחק</button></td></tr>`;
     }).join('');
     return `<div class="card" style="margin-bottom:10px"><b>יומן בקשות שינוי ושיפורים.</b> כל בקשה מהלקוח (פגישה, מייל, שיחה) נרשמת כאן עם מקור, תחום מושפע, הערכה וסטטוס, כדי שאפשר יהיה לדעת מה אושר, מה בעבודה ובאיזו גרסת סכמה (${esc((S.meta || {}).version || '')}) זה נכנס. עלות שעות באישור או בעבודה: <b>${est}</b>.</div>
@@ -171,7 +172,7 @@
     counts(S) { return { q: (S.questions || []).filter((x) => x.status === 'open').length, c: (S.changes || []).filter((x) => ['new', 'review', 'waiting', 'approved', 'doing'].indexOf(x.status) >= 0).length, h: S.plan ? Math.round(planTotals(S.plan).max) : null }; },
     blank: {
       questions: () => ({ topic: '', q: '', proposal: '', status: 'open', answer: '', date: '', ref: '' }),
-      changes: () => ({ date: today(), source: '', title: '', desc: '', type: 'req', status: 'new', areas: '', est: '', ref: '', version: '', note: '' })
+      changes: () => ({ date: today(), source: '', title: '', desc: '', type: 'req', status: 'new', areas: '', comp: '', est: '', ref: '', version: '', note: '' })
     }
   };
 })();

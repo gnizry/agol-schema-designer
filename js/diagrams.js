@@ -128,7 +128,8 @@
       if (x.group !== last) { last = x.group; rows += `<tr class="g"><td colspan="5">${esc(x.group)}</td></tr>`; }
       let st2 = lab[x.status] || lab.planned, link = '';
       if (x.deploy && dep.length) { st2 = ['pub', 'פורסם']; link = dep.map((d) => d.itemPage ? `<br><a href="${esc(d.itemPage)}" target="_blank" rel="noopener">${esc(d.title || d.service || 'פריט')}${d.org ? ' · ' + esc(d.org) : ''}</a>` : '').join(''); }
-      rows += `<tr><td>${esc(x.type)}</td><td><b>${esc(x.title)}</b>${link}</td><td>${esc(x.role || '')}</td><td><span class="tag ${st2[0]}" style="margin:0">${st2[1]}</span></td><td>${window.Items ? window.Items.cell(S, x) : ''}</td></tr>`;
+      const cr = (S.changes || []).filter((c) => c.comp && c.comp === x.id && ['done', 'rejected'].indexOf(c.status) < 0);
+      rows += `<tr><td>${esc(x.type)}</td><td><b>${esc(x.title)}</b>${link}</td><td>${esc(x.role || '')}${cr.length ? `<br><a href="#" onclick="A.go('changes',0);return false" style="font-size:12px">🔧 ${cr.length} פתוחות: ${cr.map((c) => esc(c.id)).join(', ')}</a>` : ''}</td><td><span class="tag ${st2[0]}" style="margin:0">${st2[1]}</span></td><td>${window.Items ? window.Items.cell(S, x) : ''}</td></tr>`;
     });
     return `<h3 style="margin:16px 0 0">פריטי ArcGIS Online התומכים בפתרון</h3><table class="agt"><thead><tr><th>סוג פריט</th><th>פריט</th><th>תפקיד</th><th>סטטוס בתכנון</th><th>הפריט באונליין</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
