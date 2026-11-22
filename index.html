@@ -153,7 +153,7 @@
     #menu-pop[hidden] { display:none; }
     #menu-pop button { text-align:start; border:0; background:transparent; width:100%; }
     #menu-pop button:hover { background:#F1F5F9; }
-    body.viewonly #proj, body.viewonly #b-folder, body.viewonly #b-resume, body.viewonly #b-save, body.viewonly #b-new, body.viewonly #b-import, body.viewonly #b-export, body.viewonly #b-reset, body.viewonly #b-publish, body.viewonly #b-agol, body.viewonly #b-share { display:none !important; }
+    body.viewonly #proj, body.viewonly #b-folder, body.viewonly #b-resume, body.viewonly #b-save, body.viewonly #b-new, body.viewonly #b-discover,body.viewonly #b-import, body.viewonly #b-export, body.viewonly #b-reset, body.viewonly #b-publish, body.viewonly #b-agol, body.viewonly #b-share { display:none !important; }
     body.viewonly input:disabled, body.viewonly select:disabled, body.viewonly textarea:disabled { background:#F8FAFC; color:#334155; opacity:1; cursor:default; }
     body.simonly nav, body.simonly .btns { display:none; }
     body.simonly .layout { display:block; }
@@ -176,6 +176,7 @@
     <button id="b-resume" hidden></button>
     <button id="b-save" class="primary" hidden>💾 שמור לתיקייה</button>
     <button id="b-new">פרויקט חדש…</button>
+    <button id="b-discover" title="יוצר פרויקט חדש מפתרון שכבר קיים ב-ArcGIS Online (פריטים, קשרים, שכבות ושדות). קריאה בלבד">ייבוא פתרון מ-AGOL…</button>
     <button id="b-import">ייבוא סכמה…</button>
     <div class="menu"><button id="b-menu">📤 ייצוא ושיתוף ▾</button>
       <div id="menu-pop" hidden>

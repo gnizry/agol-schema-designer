@@ -85,7 +85,7 @@
       '<h4>ישויות</h4>' + S.entities.map((e, i) => it('entity', i, esc(e.alias) + ' · ' + esc(e.name), e.fields.length)).join('') +
       '<h4>מבנה</h4>' + it('domains', 0, 'דומיינים', Object.keys(S.domains).length) + it('rels', 0, 'קשרים', S.relationships.length) +
       '<h4>ניהול</h4>' + it('decisions', 0, 'החלטות פתוחות', open) +
-      it('questions', 0, 'שאלות ללקוח', MG.q) + it('plan', 0, 'תוכנית יישום', MG.h == null ? null : MG.h + ' ש׳') + it('changes', 0, 'בקשות שינוי', MG.c) + (VIEWONLY ? '' : it('sync', 0, 'סנכרון מ-AGOL') + (window.Discover ? it('discover', 0, 'ייבוא פתרון קיים') : '')) +
+      it('questions', 0, 'שאלות ללקוח', MG.q) + it('plan', 0, 'תוכנית יישום', MG.h == null ? null : MG.h + ' ש׳') + it('changes', 0, 'בקשות שינוי', MG.c) + (VIEWONLY ? '' : it('sync', 0, 'סנכרון מ-AGOL')) +
       it('validate', 0, 'בדיקות', errs + warns, errs ? 'err' : '') +
       '<h4>תרשימים</h4>' + it('dg-erd', 0, 'ERD · ישויות וקשרים', S.relationships.length) + it('dg-comp', 0, 'רכיבי הפתרון', window.Diagrams ? Diagrams.count(S).nodes || null : null) + it('dg-flow', 0, 'תהליכים וזרימות', window.Diagrams ? Diagrams.count(S).flows || null : null) +
       '<h4>סימולציה</h4>' + it('sim', 0, 'סימולטור Survey123 / Field Maps') +
@@ -337,6 +337,7 @@
   };
 
   $('proj').onchange = (ev) => switchTo(ev.target.value);
+  if ($('b-discover')) $('b-discover').onclick = () => { if (window.Discover) Discover.DS.mode = 'new'; A.go('discover', 0); };
   $('b-new').onclick = () => {
     const key = (prompt('מפתח הפרויקט (אותיות קטנות באנגלית / ספרות / קו תחתון, למשל: thinning):') || '').trim().toLowerCase();
     if (!key) return;

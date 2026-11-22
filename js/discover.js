@@ -3,7 +3,7 @@
    ושכבות, טבלאות, שדות, דומיינים וקשרים מהשירותים המתארחים. קריאה בלבד מ-AGOL. */
 (function () {
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const DS = { sess: null, busy: false, err: '', log: [], res: null, portal: '', roots: '', q: '', folder: '', folders: null, depth: 3, max: 80, key: '', org: '', title: '' };
+  const DS = { mode: 'new', sess: null, busy: false, err: '', log: [], res: null, portal: '', roots: '', q: '', folder: '', folders: null, depth: 3, max: 80, key: '', org: '', title: '' };
   const today = () => new Date().toISOString().slice(0, 16).replace('T', ' ');
   const T2S = { esriFieldTypeString: 'TEXT', esriFieldTypeSmallInteger: 'SHORT', esriFieldTypeInteger: 'LONG', esriFieldTypeBigInteger: 'LONG', esriFieldTypeSingle: 'FLOAT', esriFieldTypeDouble: 'DOUBLE', esriFieldTypeDate: 'DATE', esriFieldTypeDateOnly: 'DATE', esriFieldTypeGUID: 'GUID' };
   const SKIP_T = ['esriFieldTypeOID', 'esriFieldTypeGlobalID', 'esriFieldTypeGeometry', 'esriFieldTypeBlob', 'esriFieldTypeRaster', 'esriFieldTypeXML'];
@@ -262,7 +262,9 @@
       <p style="font-size:13px;color:#475569;margin:6px 0">★ = נקודת התחלה. ${C.order.length > 25 ? 'הסריקה גדולה, ולכן מסומנות מראש רק נקודות ההתחלה. ' : ''}כדי להתמקד בשכבה אחת: מחפשים אותה בסינון, מסמנים אותה ולוחצים "+ עם הקשורים" כדי לצרף את התצוגה, הטופס והמפה שלה. שכבות ושדות נקראים רק מהשירותים שנבחרו.</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px"><input type="text" placeholder="סינון לפי שם או סוג" style="width:220px" value="${esc(sc.filter)}" onchange="Discover.filter(this.value)"><button class="mini" onclick="Discover.all(true)">סמן את המוצגים</button><button class="mini" onclick="Discover.all(false)">נקה את המוצגים</button></div>
       <div class="tbl-wrap" style="max-height:420px;overflow:auto"><table class="agt"><tbody>${rows || '<tr><td style="color:#64748b">אין פריטים בסינון הזה.</td></tr>'}</tbody></table></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="primary" ${b} onclick="Discover.run('new')">${DS.busy ? 'עובד…' : '3. צור פרויקט חדש מהנבחרים'}</button><button ${b} onclick="Discover.run('merge')" title="מוסיף לדיאגרמה של הפרויקט הנוכחי רק פריטים שעוד לא מקושרים. לא משנה ישויות">הוסף את הנבחרים לפרויקט הנוכחי (${esc((S.meta && S.meta.title) || '')})</button></div></div>`;
+      <div style="margin-top:8px">${DS.mode === 'merge'
+        ? `<button class="primary" ${b} onclick="Discover.run('merge')" title="מוסיף לדיאגרמה רק פריטים שעוד לא מקושרים. לא משנה ישויות">${DS.busy ? 'עובד…' : '3. הוסף את הנבחרים לפרויקט ' + esc((S.meta && S.meta.title) || '')}</button>`
+        : `<button class="primary" ${b} onclick="Discover.run('new')">${DS.busy ? 'עובד…' : '3. צור פרויקט חדש מהנבחרים'}</button>`}</div></div>`;
   }
   const keepY = (fn) => { const y = window.scrollY; fn(); redraw(); window.scrollTo(0, y); };
 
@@ -285,8 +287,10 @@
       <label>שאילתת חיפוש AGOL (למשל tags:signage או group:&lt;מזהה&gt;)</label><input type="text" dir="ltr" ${inp} value="${esc(DS.q)}" onchange="Discover.DS.q=this.value">
       ${fold}
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 10px"><div><label>עומק מעקב (צעדים)</label><input type="number" min="0" max="6" ${inp} value="${DS.depth}" onchange="Discover.DS.depth=+this.value||0"></div><div><label>מגבלת פריטים</label><input type="number" min="1" max="300" ${inp} value="${DS.max}" onchange="Discover.DS.max=+this.value||80"></div></div></div>
-      <div class="card" style="margin-top:10px"><b>יעד</b>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0 10px"><div><label>מפתח פרויקט חדש (לטינית, למשל fire_scars)</label><input type="text" dir="ltr" ${inp} value="${esc(DS.key)}" onchange="Discover.DS.key=this.value"></div><div><label>תיקיית ארגון (למשל kkl)</label><input type="text" dir="ltr" ${inp} value="${esc(DS.org || (S.meta && S.meta.org) || '')}" onchange="Discover.DS.org=this.value"></div><div><label>כותרת (ריק = שם פריט השורש)</label><input type="text" ${inp} value="${esc(DS.title)}" onchange="Discover.DS.title=this.value"></div></div>
+      <div class="card" style="margin-top:10px">${DS.mode === 'merge'
+        ? `<b>יעד: הוספת פריטים לפרויקט הפתוח, ${esc((S.meta && S.meta.title) || '')}</b> <a href="#" onclick="Discover.DS.mode='new';A.refresh();return false" style="font-size:13px">(במקום זה: פרויקט חדש)</a>`
+        : `<b>יעד: פרויקט חדש</b>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0 10px"><div><label>מפתח פרויקט חדש (לטינית, למשל fire_scars)</label><input type="text" dir="ltr" ${inp} value="${esc(DS.key)}" onchange="Discover.DS.key=this.value"></div><div><label>תיקיית ארגון (למשל kkl)</label><input type="text" dir="ltr" ${inp} value="${esc(DS.org || (S.meta && S.meta.org) || '')}" onchange="Discover.DS.org=this.value"></div><div><label>כותרת (ריק = שם פריט השורש)</label><input type="text" ${inp} value="${esc(DS.title)}" onchange="Discover.DS.title=this.value"></div></div>`}
       <button class="primary" ${b} onclick="Discover.scan()">${DS.busy && !DS.scan ? 'סורק…' : '1. סרוק'}</button> <span class="hint">אחרי הסריקה בוחרים אילו פריטים להכניס לפרויקט.</span>
       ${DS.err ? `<div class="iss error" style="margin-top:8px"><b>שגיאה</b><span>${esc(DS.err)}</span></div>` : ''}
       ${DS.log.length ? `<details style="margin-top:8px"><summary class="hint" style="cursor:pointer">יומן סריקה (${DS.log.length})</summary><p class="hint">${DS.log.map(esc).join('<br>')}</p></details>` : ''}</div>${pick(S)}${res}
