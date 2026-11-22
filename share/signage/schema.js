@@ -3565,6 +3565,48 @@ window.SCHEMAS["signage"] = {
       }
     ]
   },
+  "sim": {
+    "main": "Signs",
+    "child": "SignVisits",
+    "idField": "SignID",
+    "statusField": "SignStatus",
+    "titlePrefix": "שלט",
+    "colors": {
+      "תקין": "#35AC46",
+      "לא תקין": "#D83020",
+      "מתוכנן": "#9E559C",
+      "לפירוק": "#E8912E"
+    },
+    "survey123": {},
+    "chips": [
+      "SignModel",
+      "SafetyHazard"
+    ],
+    "kpis": [
+      {
+        "f": "ForestName",
+        "label": "יער"
+      },
+      {
+        "f": "RegionName",
+        "label": "אזור"
+      }
+    ],
+    "childTitle": "VisitDate",
+    "childCard": [
+      "VisitType",
+      "StatusAtVisit",
+      "VisitorName",
+      "VisitSummary"
+    ],
+    "auto": {
+      "VisitDate": "now",
+      "VisitorName": "user",
+      "MappingDate": "now",
+      "MapperName": "user"
+    },
+    "user": "קבלן דוגמה א׳"
+  },
   "demo": {
     "_note": "נתוני דוגמה לסימולטור בלבד. לא נכתבים לשירות ולא משמשים להסבה.",
     "Signs": [
@@ -3850,4 +3892,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "18.11.2026 08:14";
+window.__BUILT = "22.11.2026 07:37";
