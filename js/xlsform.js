@@ -71,23 +71,28 @@
     function entityRows(e, depth, isMain) {
       const cats = isMain && e.groupOrder ? e.groupOrder : null;
       const fields = e.fields;
-      if (cats) {
-        cats.forEach((c, gi) => {
-          const fr = fields.filter((f) => f.category === c).map((f) => fieldRow(e, f, depth)).filter(Boolean);
-          if (!fr.length) return;
-          row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: c });
-          fr.forEach(row);
-          row({ type: 'end_group', name: '', label: '' });
-        });
-        fields.filter((f) => cats.indexOf(f.category) < 0).map((f) => fieldRow(e, f, depth)).filter(Boolean).forEach(row);
-      } else fields.map((f) => fieldRow(e, f, depth)).filter(Boolean).forEach(row);
-      kids(e.name).forEach((k) => {
+      const after = e.repeatAfter || {}; // { ילד: קבוצה } - ה-Repeat מוצג מיד אחרי הקבוצה
+      const kidRows = (k) => {
         const visitLevel = !!kids(k.name).length || /Visit/i.test(k.name);
         row({ type: 'begin_repeat', name: k.name, label: k.alias || k.name, relevant: visitLevel ? EDIT_MODE : '' });
         if (visitLevel) rep.open.push(k.name + ': רמת הביקור מוצגת רק בעריכה (' + EDIT_MODE + '), כי במיפוי שלט חדש הביקור הראשון נוצר על ידי Make (D28). דורש אימות ש-pulldata("@property","mode") מחזיר edit בטופס.');
         entityRows(k, depth + 1, false);
         row({ type: 'end_repeat', name: '', label: '' });
-      });
+      };
+      const placed = new Set();
+      if (cats) {
+        cats.forEach((c, gi) => {
+          const fr = fields.filter((f) => f.category === c).map((f) => fieldRow(e, f, depth)).filter(Boolean);
+          if (fr.length) {
+            row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: c });
+            fr.forEach(row);
+            row({ type: 'end_group', name: '', label: '' });
+          }
+          kids(e.name).filter((k) => after[k.name] === c).forEach((k) => { kidRows(k); placed.add(k.name); });
+        });
+        fields.filter((f) => cats.indexOf(f.category) < 0).map((f) => fieldRow(e, f, depth)).filter(Boolean).forEach(row);
+      } else fields.map((f) => fieldRow(e, f, depth)).filter(Boolean).forEach(row);
+      kids(e.name).filter((k) => !placed.has(k.name)).forEach(kidRows);
     }
 
     row({ type: 'geopoint', name: 'location', label: 'מיקום ' + (main.alias || main.name), required: 'yes' });

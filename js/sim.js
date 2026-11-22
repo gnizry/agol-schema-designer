@@ -287,11 +287,11 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     return lab + inp + (bad ? '<div style="color:#C62828;font-size:12px;margin-top:3px">זהו שדה חובה</div>' : '') + warn;
   }
   const attach = (ent) => ent.attachments ? `<div style="font-size:16px;margin:18px 0 4px">${/Visit/i.test(ent.name) ? 'תמונות מהביקור' : 'תמונה/ות'}</div><div style="display:flex;gap:30px;justify-content:center;padding:8px 0">${IC.folder}${IC.camera}</div>` : '';
-  function mFields(S, ent, vals, up, onch, flat) {
+  function mFields(S, ent, vals, up, onch, flat, afterFn) {
     const vis = ent.fields.filter((f) => isShown(f, vals, up));
     if (flat) return `<div style="padding:0 10px 4px">${vis.map((f) => mControl(S, ent, f, vals, up, onch)).join('')}${attach(ent)}</div>`;
     const groups = {}; vis.forEach((f) => (groups[f.category || 'כללי'] = groups[f.category || 'כללי'] || []).push(f));
-    const ord = ent.groupOrder || []; return Object.keys(groups).sort((a, b) => (ord.indexOf(a) < 0 ? 99 : ord.indexOf(a)) - (ord.indexOf(b) < 0 ? 99 : ord.indexOf(b))).map((g) => { const k = ent.name + '|' + g; return band(esc(g), k, g === 'כתובת יערנית' ? vals.ForestName : '') + (isCol(k) ? '' : `<div style="padding:0 14px 8px">${groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`); }).join('') + `<div style="padding:0 14px">${attach(ent)}</div>`;
+    const ord = ent.groupOrder || []; return Object.keys(groups).sort((a, b) => (ord.indexOf(a) < 0 ? 99 : ord.indexOf(a)) - (ord.indexOf(b) < 0 ? 99 : ord.indexOf(b))).map((g) => { const k = ent.name + '|' + g; return band(esc(g), k, g === 'כתובת יערנית' ? vals.ForestName : '') + (isCol(k) ? '' : `<div style="padding:0 14px 8px">${groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`) + (afterFn ? afterFn(g) : ''); }).join('') + `<div style="padding:0 14px">${attach(ent)}</div>`;
   }
   const dms = (v, p, n) => { const a = Math.abs(v), d = Math.floor(a), m = Math.floor((a - d) * 60); return d + '°' + m + "'" + (v >= 0 ? p : n); };
   function s123Phone(S, M, title) {
@@ -313,11 +313,12 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
       return band(title, key) + (isCol(key) ? '' : `<div style="margin:0 8px;border:1px solid ${LINE};border-radius:4px;background:#DCE8DA;padding:0 4px 4px">${body}${bar}</div>` + sumNote);
     };
     const rep = repeat(esc(M.A.ent.alias), st.parts, st.pi, 'parts', M.A.ent, st.sign, 'SimA.pv');
+    const repG = (M.main.repeatAfter || {})[M.A.ent.name] || null; // קבוצה שאחריה מוצג ה-Repeat של הרכיבים
     const nOld = st.editId && M.B ? st.db.B.filter((v) => v.ParentGlobalID === st.editId).length : 0;
     const vis = M.B && st.variant === 'sign' ? (st.editId ? `<div style="padding:6px 16px;color:#5F6B5C;font-size:12px">קיימים ${nOld} ביקורים קודמים (לא מוצגים לעריכה; כאן מוסיפים ביקורים חדשים)</div>` : '') + repeat(esc(M.B.ent.alias), st.visits, st.vi, 'visits', M.B.ent, st.sign, 'SimA.vv') : '';
     const bottom = `<div dir="ltr" style="display:flex;justify-content:space-between;align-items:center;padding:6px 16px;border-top:1px solid #D0D5CE;background:#fff;box-shadow:0 -2px 6px rgba(0,0,0,.08)"><span onclick="SimA.dlg(true)" title="שליחה" style="font-size:30px;color:#444;cursor:pointer;padding:0 8px;line-height:1.3">✓</span><span style="color:#8A938A;font-size:12px">${st.editId ? 'עריכת רשומה' : 'רשומה חדשה'}</span></div>`;
     const dlg = st.dlg ? `<div dir="rtl" style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end"><div style="background:#fff;width:100%;border-radius:14px 14px 0 0;padding:6px 0"><div onclick="SimA.send()" style="padding:14px 18px;cursor:pointer">שלח עכשיו</div><div onclick="SimA.outbox()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בדואר יוצא</div><div onclick="SimA.draft()" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE">שמור בטיוטות</div><div onclick="SimA.dlg(false)" style="padding:14px 18px;cursor:pointer;border-top:1px solid #EEEEEE;color:#757575">המשך מילוי</div></div></div>` : '';
-    return sPhone(`<div style="padding-bottom:16px">${loc}${mFields(S, M.main, st.sign, {}, 'SimA.sv')}${rep}${vis}</div>`, { title: esc(S.meta.title || title), close: true, bg: BODY, bottom: (st.showReq && missing().length ? `<div style="background:#C62828;color:#fff;padding:7px 14px;font-size:13px">חסרים ${missing().length} שדות חובה: ${esc(missing().slice(0, 3).join(', '))}${missing().length > 3 ? '…' : ''}</div>` : '') + bottom, overlay: dlg });
+    return sPhone(`<div style="padding-bottom:16px">${loc}${mFields(S, M.main, st.sign, {}, 'SimA.sv', false, repG ? (g) => g === repG ? rep : '' : null)}${repG ? '' : rep}${vis}</div>`, { title: esc(S.meta.title || title), close: true, bg: BODY, bottom: (st.showReq && missing().length ? `<div style="background:#C62828;color:#fff;padding:7px 14px;font-size:13px">חסרים ${missing().length} שדות חובה: ${esc(missing().slice(0, 3).join(', '))}${missing().length > 3 ? '…' : ''}</div>` : '') + bottom, overlay: dlg });
   }
   const ent_fields = (S, ent, vals, up, onch) => mFields(S, ent, vals, up, onch);
   function s123(S, M) {

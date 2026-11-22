@@ -496,26 +496,43 @@ window.SCHEMAS["signage"] = {
     },
     "Level": {
       "name": "Level",
-      "desc": "רמת כנף (פ-6, פ-7) — מפתח חיצוני = קוד הרמה (אות)",
+      "desc": "רמת כנף (פ-6, פ-7): א׳ / ב׳ / ג׳ (לפי סיכום פגישה 17/11/2026). מפתח חיצוני = קוד הרמה (אות)",
       "fieldType": "TEXT",
       "values": [
         {
-          "code": "עליון",
-          "label": "עליון",
+          "code": "א׳",
+          "label": "א׳",
           "parent": "",
           "ext": "א"
         },
         {
-          "code": "אמצעי",
-          "label": "אמצעי",
+          "code": "ב׳",
+          "label": "ב׳",
           "parent": "",
           "ext": "ב"
         },
         {
-          "code": "תחתון",
-          "label": "תחתון",
+          "code": "ג׳",
+          "label": "ג׳",
           "parent": "",
           "ext": "ג"
+        }
+      ]
+    },
+    "Side": {
+      "name": "Side",
+      "desc": "צד בשלט הוריה (פ-8): א׳ / ב׳. הצדדים תמיד מנוגדים (לפי סיכום פגישה 17/11/2026)",
+      "fieldType": "TEXT",
+      "values": [
+        {
+          "code": "א׳",
+          "label": "א׳",
+          "parent": ""
+        },
+        {
+          "code": "ב׳",
+          "label": "ב׳",
+          "parent": ""
         }
       ]
     },
@@ -552,6 +569,11 @@ window.SCHEMAS["signage"] = {
         {
           "code": "אביזר",
           "label": "אביזר",
+          "parent": ""
+        },
+        {
+          "code": "בורג",
+          "label": "בורג",
           "parent": ""
         }
       ]
@@ -1102,11 +1124,14 @@ window.SCHEMAS["signage"] = {
         "כתובת יערנית",
         "זיהוי",
         "סיווג",
+        "מצב",
         "תוכן ומיקום",
         "החלפה והצבה",
-        "מצב",
         "QR"
-      ]
+      ],
+      "repeatAfter": {
+        "SignParts": "מצב"
+      }
     },
     {
       "name": "SignParts",
@@ -1226,6 +1251,23 @@ window.SCHEMAS["signage"] = {
                 "v": "כנף"
               }
             ]
+          }
+        },
+        {
+          "category": "רכיב",
+          "name": "Side",
+          "alias": "צד",
+          "type": "TEXT",
+          "length": "255",
+          "domain": "Side",
+          "mode": "רשימה",
+          "visible": "רק בפ-8 (שלט הוריה)",
+          "open": true,
+          "note": "צד א׳ / ב׳ של שלט הוריה; בכל צד מספר שונה של פיקטוגרמות (הקטלוג טרם נמסר). הצדדים תמיד מנוגדים, ללא חוקיות נוספת (סיכום פגישה 17/11/2026).",
+          "rel": {
+            "f": "^ModelFamily",
+            "op": "=",
+            "v": "פ-8: שלט הוריה (חיזוק / מידע / הוריה)"
           }
         },
         {
@@ -3707,7 +3749,7 @@ window.SCHEMAS["signage"] = {
         "ComponentType": "כנף",
         "WingNumber": 1,
         "Direction": "מזרח",
-        "Level": "עליון",
+        "Level": "א׳",
         "SupplierName": "ספק דוגמה א׳",
         "IssueDate": "2026-05-18"
       },
@@ -3716,7 +3758,7 @@ window.SCHEMAS["signage"] = {
         "ComponentType": "כנף",
         "WingNumber": 2,
         "Direction": "מערב",
-        "Level": "אמצעי",
+        "Level": "ב׳",
         "SupplierName": "ספק דוגמה א׳",
         "IssueDate": "2026-05-18"
       },
@@ -3769,7 +3811,7 @@ window.SCHEMAS["signage"] = {
         "ComponentType": "כנף",
         "WingNumber": 1,
         "Direction": "דרום",
-        "Level": "עליון"
+        "Level": "א׳"
       },
       {
         "s": 4,
@@ -3892,4 +3934,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "22.11.2026 07:37";
+window.__BUILT = "22.11.2026 08:00";
