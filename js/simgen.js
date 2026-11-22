@@ -10,6 +10,7 @@
      newValue, continueValue              "חדש" ו"המשך": המשך מקבל את המזהה של "חדש" הסמוך ומאוחד בסקריפט הלילי
      chips, kpis: [{f, label, unit}], childTitle, childCard   תוכן פופאפ מעוצב (כמו פופאפ Arcade). בלעדיהם: רשימת שדות כמו בפופאפ ברירת המחדל
      auto: { שדה: 'now' | 'user' | 'area' | 'id' | 'weekday:<שדה>' | 'parent:<שדה באב>' | 'script' }
+     survey123: { itemId }                הוספה ועריכה של ישות ראשית רק דרך Survey123 (למשל שילוט): ה-+ במפה לא פותח טופס Field Maps אלא מציג את קישור האיסוף, וכפתור העריכה בפופאפ הוא קישור Inbox. ביקורים (בן) ממשיכים להיפתח ב-Field Maps
      script: { title, desc, fill }, scenarios: [{ title, desc, near, main, child }], user, mapItemId
    בנוסף נקראים מהשדות עצמם: required / reqIf, rel, autoValue, readonlyOnEdit, pickFrom, fromVisit, derive, דומיינים מדורגים.
    נתוני דוגמה: S.demo (s = אינדקס השלט, v = אינדקס הביקור, p = אינדקס הרכיב, loc = {x,y} 0..1) או נתוני דמה מהשדות. */
@@ -45,6 +46,7 @@
       auto: sim.auto || {},
       title: sim.titlePrefix || '',
       custom: !!(sim.kpis || sim.chips),
+      s123: sim.survey123 || null,
     };
   }
   const show = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}))?/.exec(String(v == null ? '' : v)); return m ? `${m[3]}/${m[2]}/${m[1]}${m[4] ? ' ' + m[4] : ''}` : (v == null ? '' : v); };
@@ -101,8 +103,8 @@
     const S = K.S, isMain = ent.name === K.main.name;
     Object.entries(K.auto).forEach(([n, rule]) => {
       if (!ent.fields.some((f) => f.name === n)) return;
-      if (rule === 'now') { if (isNew || !vals[n]) vals[n] = now(); }
-      else if (rule === 'user') { if (isNew || !vals[n]) vals[n] = K.sim.user || 'משתמש מחובר'; }
+      if (rule === 'now') { if ((isNew && !g.seeding) || !vals[n]) vals[n] = now(); }
+      else if (rule === 'user') { if ((isNew && !g.seeding) || !vals[n]) vals[n] = K.sim.user || 'משתמש מחובר'; }
       else if (rule === 'area') vals[n] = area(vals);
       else if (rule === 'id') vals[n] = nextId(K, vals);
       else if (rule.startsWith('weekday:')) { const d = vals[rule.slice(8)]; vals[n] = d ? 'יום ' + DAYS[new Date(d).getDay()] : ''; }
@@ -198,7 +200,8 @@
   }
 
   /* ---------- נתוני דוגמה ---------- */
-  function seed(K) {
+  function seed(K) { g.seeding = true; try { seed0(K); } finally { g.seeding = false; } }
+  function seed0(K) {
     const S = K.S;
     g.db = {}; g.sel = null; g.log = []; g.nav = [{ s: 'map' }]; g.pending = 0; g.gopen = {}; g.sk = []; g.link = '';
     const kind = K.main.kind;
@@ -308,7 +311,7 @@
       + (K.kid ? `<div style="flex:1 1 80px;padding:6px 8px;border-radius:10px;background:${kids.length ? '#EFF6FF' : '#FEF3C7'};border:1px solid ${kids.length ? '#BFDBFE' : '#FDE68A'}"><div style="font-size:11px;color:#64748B">${esc(K.kid.alias)}</div><div style="font-size:17px;font-weight:700">${kids.length}</div></div>` : '');
     const warn = K.kid && !kids.length && rec[K.statusField] !== K.continueValue ? `<div style="margin-top:6px;padding:6px 10px;border-radius:8px;background:#FEF3C7;color:#92400E;font-size:12px">עדיין אין ${esc(K.kid.alias)}</div>` : '';
     const lbtn = (l, on, fill) => `<a href="javascript:void(0)" onclick="${on}" style="flex:1;text-decoration:none;text-align:center;padding:10px;border-radius:10px;font-weight:700;border:1px solid ${fill ? '#C2410C' : '#1E3A8A'};background:${fill ? '#C2410C' : '#fff'};color:${fill ? '#fff' : '#1E3A8A'}">${l}</a>`;
-    const acts = `<div style="display:flex;gap:6px;margin-top:8px">${rel ? lbtn('+ ' + esc(K.kid.alias), `SimG.addKid('${rel.name}','${rec.GlobalID}',true)`, true) : ''}${lbtn('עריכת ' + esc(K.main.alias), `SimG.edit('${K.main.name}','${rec.GlobalID}',true)`, false)}</div>`;
+    const acts = `<div style="display:flex;gap:6px;margin-top:8px">${rel ? lbtn('+ ' + esc(K.kid.alias), `SimG.addKid('${rel.name}','${rec.GlobalID}',true)`, true) : ''}${K.s123 ? lbtn('עריכת ' + esc(K.main.alias) + ' ב-Survey123', `SimG.s123Edit('${rec.GlobalID}')`, false) : lbtn('עריכת ' + esc(K.main.alias), `SimG.edit('${K.main.name}','${rec.GlobalID}',true)`, false)}</div>`;
     const cards = kids.slice().reverse().map((k) => `<div style="border:1px solid #E2E8F0;border-radius:10px;padding:6px 10px;margin-top:6px"><div style="display:flex;justify-content:space-between;gap:6px"><b style="font-size:13px">${esc(((K.F(K.kid, sim.childTitle) || {}).alias || '') + ' ' + display(K, K.kid.name, k))}</b><a href="javascript:void(0)" onclick="SimG.edit('${K.kid.name}','${k.GlobalID}',true)" style="font-size:12px;color:#1E3A8A">עריכה</a></div><div style="font-size:12px;color:#475569;margin-top:2px">${(sim.childCard || []).map((n) => k[n] ? esc((K.F(K.kid, n) || {}).alias || n) + ': ' + esc(show(k[n])) : '').filter(Boolean).join(' · ')}</div></div>`).join('');
     return `<div style="padding:12px 14px;font-family:Tahoma,sans-serif"><div style="display:flex;gap:4px;flex-wrap:wrap">${chips}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${kpis}</div>${warn}${acts}${cards}</div>`;
   }
@@ -357,7 +360,7 @@
       head = bar(iconBtn('back', "SimG.note('חזרה לרשימת המפות')", 'מפות', FM.blue), esc(S.meta.title || 'מפה'), iconBtn('search', "SimG.note('חיפוש')", 'חיפוש') + iconBtn('layers', "SimG.note('רשימת שכבות')", 'שכבות') + iconBtn('more', "SimG.note('תפריט: מפות לא מקוונות, סנכרון, מדידה')", 'עוד'));
       const offline = !g.online || g.pending ? `<div style="position:absolute;top:8px;right:8px;left:8px;z-index:2;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.3);padding:6px 10px;font-size:12px;display:flex;align-items:center;gap:8px">${ic('cloud', 18, g.online ? FM.blue : '#8F8F8F')}${g.online ? `${g.pending} עריכות ממתינות` : 'לא מקוון'}${g.online && g.pending ? `<button onclick="SimG.sync()" style="margin-inline-start:auto;border:0;background:${FM.blue};color:#fff;border-radius:4px;padding:3px 10px;cursor:pointer">סנכרן</button>` : g.pending ? ` · ${g.pending} עריכות ממתינות לסנכרון` : ''}</div>` : '';
       const peek = rec ? `<div onclick="SimG.push({s:'popup',ent:'${K.main.name}',gid:'${rec.GlobalID}'})" style="position:absolute;bottom:0;left:0;right:0;height:250px;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -2px 10px rgba(0,0,0,.25);z-index:4;overflow:hidden;cursor:pointer"><div style="padding:6px 16px 8px;border-bottom:1px solid ${FM.line}"><div style="width:36px;height:4px;border-radius:2px;background:#C8C8C8;margin:0 auto 8px"></div><div style="display:flex;align-items:center;gap:10px">${swatch(K, K.main.kind, color(K, rec))}<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:16px">${esc(display(K, K.main.name, rec))}</div><div style="font-size:12px;color:${FM.sub}">${esc(K.main.alias)}</div></div>${iconBtn('close', 'event.stopPropagation();SimG.closePopup()', 'סגור', FM.sub)}</div></div><div style="pointer-events:none">${popupBody(K, K.main.name, rec)}</div><div style="position:absolute;left:0;right:0;bottom:0;height:40px;background:linear-gradient(rgba(255,255,255,0),#fff)"></div></div>` : '';
-      body = `${mapSvg(K, false)}${offline}<div style="position:absolute;left:14px;bottom:${rec ? 266 : 24}px;z-index:3">${fab('plus', "SimG.push({s:'tpl'})")}</div><div dir="ltr" style="position:absolute;right:10px;bottom:${rec ? 256 : 10}px;font-size:10px;color:#fff;text-shadow:0 0 2px #000;z-index:1">0 ── 200 m · Esri, Maxar</div>${peek}`;
+      body = `${mapSvg(K, false)}${offline}<div style="position:absolute;left:14px;bottom:${rec ? 266 : 24}px;z-index:3">${fab('plus', K.s123 ? 'SimG.s123New()' : "SimG.push({s:'tpl'})")}</div><div dir="ltr" style="position:absolute;right:10px;bottom:${rec ? 256 : 10}px;font-size:10px;color:#fff;text-shadow:0 0 2px #000;z-index:1">0 ── 200 m · Esri, Maxar</div>${peek}`;
     }
     return `<div style="width:380px;max-width:100%;height:780px;border:10px solid #111;border-radius:44px;background:#111;box-shadow:0 8px 28px rgba(0,0,0,.25);overflow:hidden;flex:none"><div dir="rtl" style="height:100%;background:#fff;border-radius:34px;overflow:hidden;display:flex;flex-direction:column;font-family:${FM.font};color:${FM.text};text-align:right">${statusBar}${head}<div style="position:relative;flex:1;overflow:hidden">${body}${toast}</div><div style="height:18px;display:flex;justify-content:center;align-items:center;background:${top().s === 'map' ? '#fff' : FM.bg}"><span style="width:120px;height:4px;border-radius:2px;background:#151515"></span></div></div></div>`;
   }
@@ -455,6 +458,9 @@
       if (viaLink) { g.link = link(K, 'updateFeature', ent, r); toast('קישור עומק: פותח את טופס העריכה'); }
       openForm(K, ent, Object.assign({}, r), false, r, rel && ent !== K.main.name ? rel.origin : null, rel && ent !== K.main.name ? r[rel.destKey] : null); rr();
     },
+    s123Url(action, gid) { const K = K0(), id = (K.s123 && K.s123.itemId) || '<SURVEY_ITEM_ID>'; return 'arcgis-survey123://?itemID=' + id + (action === 'edit' ? '&action=edit&q:globalId=' + gid + '&folder=inbox&update=true' : '&action=collect') + '&callback=https://fieldmaps.arcgis.app'; },
+    s123New() { g.link = SimG.s123Url('collect'); toast('הוספת ' + K0().main.alias + ' חדש: רק ב-Survey123 (קישור איסוף)'); rr(); },
+    s123Edit(gid) { g.link = SimG.s123Url('edit', gid); toast('עריכה ב-Survey123: נפתחת הרשומה מה-Inbox'); rr(); },
     addKid(relName, pgid, viaLink) {
       const K = K0(), rel = K.S.relationships.find((x) => x.name === relName), par = findRec(rel.origin, pgid), ent = K.E(rel.destination);
       const v = { GlobalID: uid(), [rel.destKey]: pgid }; autoFill(K, ent, v, par, true);
