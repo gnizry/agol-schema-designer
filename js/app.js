@@ -449,8 +449,9 @@
   };
   /* פרויקט חדש מסכמה מוכנה (ייבוא פתרון קיים): נשמר כטיוטה עד "שמור לתיקייה" */
   function addProject(id, ns) {
-    if (allKeys().indexOf(id) >= 0) throw new Error('פרויקט ' + id + ' כבר קיים. בחר מפתח אחר.');
-    save(); LS.set(LIST_KEY, JSON.stringify(extraKeys().concat([id])));
+    if (window.SCHEMAS[id]) throw new Error('פרויקט ' + id + ' כבר שמור בתיקייה. בחר מפתח אחר.');
+    if (allKeys().indexOf(id) >= 0 && !confirm('קיימת טיוטה ' + id + ' שלא נשמרה לתיקייה. להחליף אותה בייבוא החדש?')) throw new Error('בוטל. בחר מפתח אחר.');
+    save(); if (extraKeys().indexOf(id) < 0) LS.set(LIST_KEY, JSON.stringify(extraKeys().concat([id])));
     LS.set(PREFIX + id, JSON.stringify({ base: 0, schema: ns }));
     cur = id; S = load(id); V = { page: 'discover', idx: 0, script: 'arcpy' }; LS.set('agol-schema-designer:current', cur); fillProjects();
   }

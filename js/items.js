@@ -136,7 +136,7 @@
       const l = link(S, n), vo = viewOnly(), st = { exists: ['pub', 'קיים'], missing: ['open', 'לא נמצא'], unknown: ['planned', 'לא נבדק'] };
       if (l) {
         const s = st[l.state] || st.unknown;
-        return `<a href="${esc(pageUrl(l))}" target="_blank" rel="noopener"><b>${esc(l.title || l.itemId)}</b> ↗</a> <span class="tag ${s[0]}" style="margin:0">${s[1]}</span><br><small style="color:#64748b">${esc(l.type || '')}${l.owner ? ' · ' + esc(l.owner) : ''}${l.modified ? ' · עודכן ' + esc(l.modified) : ''}${l.checked ? ' · נבדק ' + esc(l.checked) : ''}</small>${vo || l.derived ? '' : ` <a href="#" onclick="Items.unlink('${esc(n.id)}');return false" title="נתק">✕</a>`}`;
+        return `<a href="${esc(pageUrl(l))}" target="_blank" rel="noopener"><b>${esc(l.title || l.itemId)}</b> ↗</a> <span class="tag ${s[0]}" style="margin:0">${s[1]}</span><br><small style="color:#64748b">${esc(l.type || '')}${l.owner ? ' · ' + esc(l.owner) : ''}${l.modified ? ' · עודכן ' + esc(l.modified) : ''}${l.checked ? ' · נבדק ' + esc(l.checked) : ''}</small>${vo || l.derived ? '' : ` <a href="#" onclick="Items.unlink('${esc(n.id)}');return false" title="נתק את הקישור לפריט (הרכיב נשאר בתכנון)">✕</a> · <a href="#" onclick="Items.removeNode('${esc(n.id)}');return false" style="color:#b91c1c;font-size:12px">הסר רכיב</a>`}`;
       }
       if (vo) return '<span style="color:#94a3b8">טרם נוצר</span>';
       const c = IT.cands[n.id] || [];
@@ -160,6 +160,19 @@
       let l; try { l = await readItem(portal, ref, IT.sess ? IT.sess.token : ''); } catch (e) { l = { itemId: ref, portal, title: '', type: '', state: 'unknown', checked: today() }; IT.msg = 'הפריט נשמר אך לא נקרא (' + e.message + '). ייתכן שהוא פרטי: התחבר ורענן.'; }
       S.itemLinks = S.itemLinks || {}; S.itemLinks[nid] = l; delete IT.cands[nid]; save();
     }); },
+    /* הסרת רכיב מהפרויקט: הצומת, הקשרים אליו, הקישור לפריט, והישויות שיובאו ממנו (src.node) */
+    removeNode(nid) {
+      const S = S0(), its = nodes(S), n = its.find((x) => x.id === nid); if (!n) return;
+      const ents = (S.entities || []).filter((e) => e.src && e.src.node === nid).map((e) => e.name);
+      if (!confirm('להסיר את הרכיב "' + n.title + '" מהפרויקט?' + (ents.length ? '\nיוסרו גם ' + ents.length + ' שכבות/טבלאות שיובאו ממנו: ' + ents.join(', ') : '') + '\nבאונליין לא משתנה דבר.')) return;
+      S.diagrams.agolItems = its.filter((x) => x.id !== nid);
+      S.diagrams.agolItems.forEach((x) => { x.links = (x.links || []).filter((l) => l.to !== nid); });
+      if (S.itemLinks) delete S.itemLinks[nid];
+      Object.keys(S.itemEdges || {}).forEach((k) => { if (k.split('>').indexOf(nid) >= 0) delete S.itemEdges[k]; });
+      if (ents.length) { S.entities = S.entities.filter((e) => ents.indexOf(e.name) < 0); S.relationships = (S.relationships || []).filter((r) => ents.indexOf(r.origin) < 0 && ents.indexOf(r.destination) < 0); }
+      (S.changes || []).forEach((c) => { if (c.comp === nid) c.comp = ''; });
+      save(); redraw();
+    },
     unlink(nid) { const S = S0(); if (S.itemLinks) delete S.itemLinks[nid]; S.itemEdges = {}; save(); redraw(); }
   };
   window.Items = api;

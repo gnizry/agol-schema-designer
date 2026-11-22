@@ -176,7 +176,9 @@
       const it = n._it;
       ns.itemLinks[n.id] = { itemId: it.id, portal, title: it.title, type: it.type, owner: it.owner, modified: it.modified ? new Date(it.modified).toISOString().slice(0, 10) : '', url: it.url || '', state: 'exists', checked: today() };
       n.links.forEach((l) => { ns.itemEdges[n.id + '>' + l.to] = { ok: true, at: today() }; });
-      if (n._c.svc && withEnts) toSchema(ns, n.id, it, await readService(it, log));
+      /* השכבות והשדות נקראים מהשירות המקורי; מתצוגה רק כשהשירות המקורי שלה לא נבחר */
+      const srcPicked = n._c.view && C.edges.some(([a, b]) => b === it.id && C.items[a].type === 'Feature Service' && cls(C.items[a]).svc);
+      if (withEnts && (n._c.svc || (n._c.view && !srcPicked))) toSchema(ns, n.id, it, await readService(it, log));
       delete n._c; delete n._it;
     }
     /* קשרים מפריט קיים בפרויקט לפריט חדש */
@@ -186,15 +188,36 @@
     return nodes;
   }
 
-  async function run(mode) {
-    const D = D0(), log = (m) => DS.log.push(m);
-    DS.err = ''; DS.log = []; DS.res = null; DS.busy = true; DS._cache = {}; redraw();
+  /* שלב 1: סריקה. התוצאה נשמרת ב-DS.scan ומוצגת כרשימת בחירה; שום דבר לא נכתב לפרויקט */
+  async function scan() {
+    const log = (m) => DS.log.push(m);
+    DS.err = ''; DS.log = []; DS.res = null; DS.scan = null; DS.busy = true; DS._cache = {}; redraw();
     try {
       const portal = portalOf();
       const roots = await seeds(portal, log);
       if (!roots.length) throw new Error('לא הוגדרה נקודת התחלה: קישור או מזהה פריט, שאילתת חיפוש או תיקייה.');
       const C = await crawl(portal, roots, log);
       if (!C.order.length) throw new Error('לא נקרא אף פריט. אם הפריטים פרטיים: יש להתחבר.');
+      /* ברירת מחדל: סריקה קטנה נבחרת כולה; סריקה גדולה מתחילה מנקודות ההתחלה בלבד */
+      const sel = {}; C.order.forEach((id) => { if (C.order.length <= 25 || roots.indexOf(id) >= 0) sel[id] = 1; });
+      DS.scan = { portal, roots, C, sel, filter: '' };
+    } catch (e) { DS.err = e.message || String(e); }
+    DS.busy = false; redraw();
+  }
+  /* הפריטים שמחוברים ישירות לפריט (מקורות וצרכנים) */
+  const neighbors = (C, id) => C.edges.filter((p) => p[0] === id || p[1] === id).map((p) => (p[0] === id ? p[1] : p[0]));
+
+  /* שלב 2: יצירת פרויקט או הוספה לפרויקט הנוכחי, רק מהפריטים שנבחרו */
+  async function run(mode) {
+    const D = D0(), log = (m) => DS.log.push(m), sc = DS.scan;
+    if (!sc) return;
+    DS.err = ''; DS.res = null; DS.busy = true; redraw();
+    try {
+      const portal = sc.portal, all = sc.C, keep = (id) => !!sc.sel[id];
+      const C = { items: {}, order: all.order.filter(keep), edges: all.edges.filter((p) => keep(p[0]) && keep(p[1])) };
+      C.order.forEach((id) => { C.items[id] = all.items[id]; });
+      if (!C.order.length) throw new Error('לא נבחר אף פריט.');
+      const roots = sc.roots.filter(keep);
       const at = today(), imp = { portal, at, user: DS.sess ? DS.sess.user : '', roots: DS.roots.trim(), q: DS.q.trim(), folder: DS.folder, depth: DS.depth };
       if (mode === 'merge') {
         const S = D.S, taken = {}; Object.keys(S.itemLinks || {}).forEach((k) => { taken[S.itemLinks[k].itemId] = k; });
@@ -205,7 +228,7 @@
         const key = DS.key.trim().toLowerCase(), org = DS.org.trim().toLowerCase();
         if (!/^[a-z][a-z0-9_-]*$/.test(key)) throw new Error('מפתח פרויקט לא תקין (אותיות לטיניות קטנות, ספרות, קו תחתון או מקף).');
         if (org && !/^[a-z][a-z0-9_-]*$/.test(org)) throw new Error('שם ארגון לא תקין.');
-        const first = C.items[roots[0]] || C.items[C.order[0]];
+        const first = C.items[roots[0] || C.order[0]];
         const ns = { meta: { key, project: key, org, title: DS.title.trim() || first.title, version: 1, spatialRef: 2039, spatialRefName: 'Israel TM Grid (ITM)', source: 'ייבוא מ-AGOL ' + at.slice(0, 10), rules: { minTextLength: 255, domainCodeEqualsLabel: true }, imports: [imp] }, domains: {}, entities: [], relationships: [], decisions: [], questions: [], changes: [] };
         await build(portal, C, log, ns, {}, true);
         const sr = Object.values(C.items).filter((x) => x.type === 'Feature Service').map((x) => x.spatialReference).filter(Boolean)[0];
@@ -216,6 +239,32 @@
     } catch (e) { DS.err = e.message || String(e); }
     DS.busy = false; redraw();
   }
+
+  /* ---------- שלב הבחירה ---------- */
+  const nSel = () => (DS.scan ? DS.scan.C.order.filter((id) => DS.scan.sel[id]).length : 0);
+  function shown() {
+    const sc = DS.scan, f = sc.filter.trim().toLowerCase();
+    return sc.C.order.filter((id) => { const it = sc.C.items[id]; return !f || (it.title + ' ' + it.type + ' ' + cls(it).type + ' ' + (it.owner || '')).toLowerCase().indexOf(f) >= 0; });
+  }
+  function pick(S) {
+    const sc = DS.scan; if (!sc) return '';
+    const C = sc.C, b = DS.busy ? 'disabled' : '', ids = shown(), groups = [];
+    ids.forEach((id) => { const g = cls(C.items[id]).group; if (groups.indexOf(g) < 0) groups.push(g); });
+    const rows = groups.map((g) => `<tr class="g"><td colspan="5">${esc(g)}</td></tr>` + ids.filter((id) => cls(C.items[id]).group === g).map((id) => {
+      const it = C.items[id], nb = neighbors(C, id);
+      return `<tr><td style="width:28px"><input type="checkbox" ${sc.sel[id] ? 'checked' : ''} onchange="Discover.tick('${id}',this.checked)"></td>
+        <td>${sc.roots.indexOf(id) >= 0 ? '★ ' : ''}<b>${esc(it.title)}</b><br><small style="color:#64748b">${esc(cls(it).type)}${it.owner ? ' · ' + esc(it.owner) : ''}</small></td>
+        <td style="width:90px;font-size:12px;color:#475569">${nb.length} קשרים</td>
+        <td style="width:110px">${nb.length ? `<button class="mini" onclick="Discover.near('${id}')" title="מסמן את הפריט ואת הפריטים שמחוברים אליו ישירות: השירות שהשכבה מגיעה ממנו, התצוגה, הטופס והמפה">+ עם הקשורים</button>` : ''}</td>
+        <td style="width:70px"><a href="${esc(sc.portal + '/home/item.html?id=' + id)}" target="_blank" rel="noopener">פריט ↗</a></td></tr>`;
+    }).join('')).join('');
+    return `<div class="card" style="margin-top:10px"><b>2. בחירת הרכיבים</b> · נמצאו ${C.order.length} פריטים ו-${C.edges.length} קשרים · נבחרו <b id="ds-cnt">${nSel()}</b>
+      <p style="font-size:13px;color:#475569;margin:6px 0">★ = נקודת התחלה. ${C.order.length > 25 ? 'הסריקה גדולה, ולכן מסומנות מראש רק נקודות ההתחלה. ' : ''}כדי להתמקד בשכבה אחת: מחפשים אותה בסינון, מסמנים אותה ולוחצים "+ עם הקשורים" כדי לצרף את התצוגה, הטופס והמפה שלה. שכבות ושדות נקראים רק מהשירותים שנבחרו.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px"><input type="text" placeholder="סינון לפי שם או סוג" style="width:220px" value="${esc(sc.filter)}" onchange="Discover.filter(this.value)"><button class="mini" onclick="Discover.all(true)">סמן את המוצגים</button><button class="mini" onclick="Discover.all(false)">נקה את המוצגים</button></div>
+      <div class="tbl-wrap" style="max-height:420px;overflow:auto"><table class="agt"><tbody>${rows || '<tr><td style="color:#64748b">אין פריטים בסינון הזה.</td></tr>'}</tbody></table></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="primary" ${b} onclick="Discover.run('new')">${DS.busy ? 'עובד…' : '3. צור פרויקט חדש מהנבחרים'}</button><button ${b} onclick="Discover.run('merge')" title="מוסיף לדיאגרמה של הפרויקט הנוכחי רק פריטים שעוד לא מקושרים. לא משנה ישויות">הוסף את הנבחרים לפרויקט הנוכחי (${esc((S.meta && S.meta.title) || '')})</button></div></div>`;
+  }
+  const keepY = (fn) => { const y = window.scrollY; fn(); redraw(); window.scrollTo(0, y); };
 
   /* ---------- דף ---------- */
   function page(S) {
@@ -238,14 +287,18 @@
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 10px"><div><label>עומק מעקב (צעדים)</label><input type="number" min="0" max="6" ${inp} value="${DS.depth}" onchange="Discover.DS.depth=+this.value||0"></div><div><label>מגבלת פריטים</label><input type="number" min="1" max="300" ${inp} value="${DS.max}" onchange="Discover.DS.max=+this.value||80"></div></div></div>
       <div class="card" style="margin-top:10px"><b>יעד</b>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0 10px"><div><label>מפתח פרויקט חדש (לטינית, למשל fire_scars)</label><input type="text" dir="ltr" ${inp} value="${esc(DS.key)}" onchange="Discover.DS.key=this.value"></div><div><label>תיקיית ארגון (למשל kkl)</label><input type="text" dir="ltr" ${inp} value="${esc(DS.org || (S.meta && S.meta.org) || '')}" onchange="Discover.DS.org=this.value"></div><div><label>כותרת (ריק = שם פריט השורש)</label><input type="text" ${inp} value="${esc(DS.title)}" onchange="Discover.DS.title=this.value"></div></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" ${b} onclick="Discover.run('new')">${DS.busy ? 'סורק…' : 'סרוק וצור פרויקט חדש'}</button><button ${b} onclick="Discover.run('merge')" title="מוסיף לדיאגרמה של הפרויקט הנוכחי רק פריטים שעוד לא מקושרים. לא משנה ישויות">הוסף את הפריטים לפרויקט הנוכחי (${esc((S.meta && S.meta.title) || '')})</button></div>
+      <button class="primary" ${b} onclick="Discover.scan()">${DS.busy && !DS.scan ? 'סורק…' : '1. סרוק'}</button> <span class="hint">אחרי הסריקה בוחרים אילו פריטים להכניס לפרויקט.</span>
       ${DS.err ? `<div class="iss error" style="margin-top:8px"><b>שגיאה</b><span>${esc(DS.err)}</span></div>` : ''}
-      ${DS.log.length ? `<details style="margin-top:8px"><summary class="hint" style="cursor:pointer">יומן סריקה (${DS.log.length})</summary><p class="hint">${DS.log.map(esc).join('<br>')}</p></details>` : ''}</div>${res}
+      ${DS.log.length ? `<details style="margin-top:8px"><summary class="hint" style="cursor:pointer">יומן סריקה (${DS.log.length})</summary><p class="hint">${DS.log.map(esc).join('<br>')}</p></details>` : ''}</div>${pick(S)}${res}
       ${imps.length ? `<p class="hint">ייבואים קודמים לפרויקט הזה: ${imps.map((x) => esc(x.at + ' · ' + (x.roots || x.q || x.folder || '') )).join(' | ')}</p>` : ''}`;
   }
 
   window.Discover = {
-    DS, cls, label, page, run,
+    DS, cls, label, page, run, scan,
+    tick(id, on) { if (on) DS.scan.sel[id] = 1; else delete DS.scan.sel[id]; const c = document.getElementById('ds-cnt'); if (c) c.textContent = nSel(); },
+    near(id) { keepY(() => { DS.scan.sel[id] = 1; neighbors(DS.scan.C, id).forEach((x) => { DS.scan.sel[x] = 1; }); }); },
+    filter(v) { keepY(() => { DS.scan.filter = v; }); },
+    all(on) { keepY(() => shown().forEach((id) => { if (on) DS.scan.sel[id] = 1; else delete DS.scan.sel[id]; })); },
     login() {
       const u = document.getElementById('ds-u').value.trim(), w = document.getElementById('ds-w').value, p = document.getElementById('ds-p').value;
       DS.err = ''; DS.busy = true; redraw();
