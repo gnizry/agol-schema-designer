@@ -432,8 +432,8 @@
     push(n) { g.nav.push(n); rr(); },
     back() { if (g.nav.length > 1) g.nav.pop(); g.showReq = false; rr(); },
     grp(k, v) { g.gopen[k] = v; rr(); },
-    sel(i) { g.sel = i; g.nav = [{ s: 'map' }]; rr(); },
-    closePopup() { g.sel = null; g.nav = [{ s: 'map' }]; rr(); },
+    sel(i) { if (g.ext && g.ext.sel) { g.ext.sel(i); return; } g.sel = i; g.nav = [{ s: 'map' }]; rr(); },
+    closePopup() { if (g.ext && g.ext.close) { g.ext.close(); return; } g.sel = null; g.nav = [{ s: 'map' }]; rr(); },
     tpl(val) { const K = K0(); g.drawVal = val; g.sel = null; g.sk = K.main.kind === 'point' ? [GPS.slice()] : []; g.nav.push({ s: 'sketch' }); rr(); },
     mapClick(ev, svg) {
       if (top().s !== 'sketch') { if (g.sel != null) { g.sel = null; rr(); } return; }
@@ -454,14 +454,16 @@
     },
     fv(n, val) { const K = K0(), f = top(); f.vals[n] = val; const up = f.parent ? findRec(f.parentEnt, f.parent) : null; autoFill(K, K.E(f.ent), f.vals, up, false); rr(); },
     edit(ent, gid, viaLink) {
+      if (g.ext && g.ext.ro) { toast('בתרחיש הזה הפעולה אינה פעילה: עריכה נעשית בכפתור Survey123, וביקורים בתרחיש "ביקור"'); rr(); return; }
       const K = K0(), r = findRec(ent, gid), rel = K.relTo(ent);
       if (viaLink) { g.link = link(K, 'updateFeature', ent, r); toast('קישור עומק: פותח את טופס העריכה'); }
       openForm(K, ent, Object.assign({}, r), false, r, rel && ent !== K.main.name ? rel.origin : null, rel && ent !== K.main.name ? r[rel.destKey] : null); rr();
     },
     s123Url(action, gid) { const K = K0(), id = (K.s123 && K.s123.itemId) || '<SURVEY_ITEM_ID>'; return 'arcgis-survey123://?itemID=' + id + (action === 'edit' ? '&action=edit&q:globalId=' + gid + '&folder=inbox&update=true' : '&action=collect') + '&callback=https://fieldmaps.arcgis.app'; },
     s123New() { g.link = SimG.s123Url('collect'); toast('הוספת ' + K0().main.alias + ' חדש: רק ב-Survey123 (קישור איסוף)'); rr(); },
-    s123Edit(gid) { g.link = SimG.s123Url('edit', gid); toast('עריכה ב-Survey123: נפתחת הרשומה מה-Inbox'); rr(); },
+    s123Edit(gid) { if (g.ext && g.ext.s123) { g.ext.s123(); return; } g.link = SimG.s123Url('edit', gid); toast('עריכה ב-Survey123: נפתחת הרשומה מה-Inbox'); rr(); },
     addKid(relName, pgid, viaLink) {
+      if (g.ext && g.ext.ro) { toast('בתרחיש הזה הפעולה אינה פעילה: ביקורים בתרחיש "ביקור"'); rr(); return; }
       const K = K0(), rel = K.S.relationships.find((x) => x.name === relName), par = findRec(rel.origin, pgid), ent = K.E(rel.destination);
       const v = { GlobalID: uid(), [rel.destKey]: pgid }; autoFill(K, ent, v, par, true);
       if (viaLink) { g.link = link(K, 'addRelatedFeature', rel.origin, par, rel, parentPreset(K, rel, par)); toast('קישור עומק: טופס חדש, מקושר וממולא מראש'); }
@@ -499,5 +501,36 @@
       commit(); g.nav = [{ s: 'map' }]; toast('תרחיש: ' + x.title); rr();
     },
   };
-  window.SimGen = { render, applies, fmView(S) { return fmTab(ensure(S)); } };
+  /* תצוגה לשימוש מתוך זרימת Field Maps <> Survey123 של sim.js.
+     o.mode: 'map' | 'popup' (מסך אחד, הנתונים מסונכרנים מ-o.data) או 'auto' (טלפון אינטראקטיבי עצמאי).
+     o.data: { שם ישות: שורות }, o.sel: אינדקס הישות הראשית הנבחרת, o.step: מזהה שלב (בשינויו הניווט מתאפס).
+     o.ext: { sel, s123, close, ro } פעולות שמועברות חזרה לזרימה */
+  function flowView(S, o) {
+    const K = ensure(S), main = K.main.name;
+    g.ext = o.ext || null;
+    if (o.data) {
+      Object.entries(o.data).forEach(([name, list]) => {
+        if (!K.E(name)) return;
+        const old = {}; rows(name).forEach((r) => { old[r.GlobalID] = r; });
+        g.db[name] = (list || []).map((r, i) => {
+          const c = Object.assign({}, r), e = old[r.GlobalID]; delete c.__ps;
+          if (name === main) {
+            if (r.__loc) place(c, K.main.kind, r.__loc.x * W, 60 + r.__loc.y * (H - 140), i);
+            else if (e && (e.__pt || e.__shape)) { c.__pt = e.__pt; c.__shape = e.__shape; }
+            else place(c, K.main.kind, 60 + (i * 83) % 240, 120 + (i * 61) % 380, i);
+          }
+          return c;
+        });
+      });
+    }
+    const fresh = g.flowStep !== o.step; g.flowStep = o.step;
+    if (o.mode === 'auto') { if (fresh) { g.nav = [{ s: 'map' }]; g.sel = null; } }
+    else {
+      g.sel = o.sel == null ? null : o.sel;
+      const rec = g.sel != null ? rows(main)[g.sel] : null;
+      if (fresh || !rec) g.nav = o.mode === 'popup' && rec ? [{ s: 'map' }, { s: 'popup', ent: main, gid: rec.GlobalID }] : [{ s: 'map' }];
+    }
+    return screen(K);
+  }
+  window.SimGen = { render, applies, fmView(S) { g.ext = null; g.flowStep = null; return fmTab(ensure(S)); }, flowView, stepNote() { const K = cfg(window.__simS); return K.s123 && top().s === 'map' ? 'מסך המפה. הקשה על שלט פותחת את הכרטיס שלו, והקשה על הכרטיס פותחת את הפופאפ המלא. ה-+ לא מוסיף שלט ב-Field Maps: הוספה רק ב-Survey123.' : STEPS[top().s] || STEPS.map; } };
 })();
