@@ -31,6 +31,16 @@
     const used = new Set();
     const rows = [];
     const row = (r) => { rows.push(r); return r; };
+    /* עיצוב: צבע ואייקון לכל קבוצה/חזרה (S.sim.survey123.style): תווית HTML (span style) + body::esri:style (backgroundColor, borderColor). נתמך באפליקציית השדה; באפליקציית הווב עשוי להיות מוגבל */
+    const SY = (S.sim && S.sim.survey123 && S.sim.survey123.style) || null;
+    const tint = (c, a) => { const n = parseInt(String(c).slice(1), 16), m = (x) => Math.round(x + (255 - x) * a).toString(16).padStart(2, '0'); return '#' + m(n >> 16) + m((n >> 8) & 255) + m(n & 255); };
+    const NB = ' ';
+    let secN = 0;
+    const styled = (kind, name, label, sy) => {
+      if (!SY || !sy) return { label: label };
+      const no = ++secN, tag = kind === 'repeat' ? NB + '(חזרה)' : '';
+      return { label: '<span style="font-weight:bold;color:#ffffff;background-color:' + sy.c + '">' + NB + no + ' · ' + (sy.i || '') + NB + label + tag + NB + '</span>', style: 'backgroundColor=' + tint(sy.c, kind === 'repeat' ? 0.88 : 0.93) + ' borderColor=' + sy.c };
+    };
 
     const dep = (S.deployments || []).filter((d) => d && d.itemId).slice(-1)[0];
     const subUrl = o.submissionUrl || (dep ? 'https://www.arcgis.com/sharing/rest/content/items/' + dep.itemId : '<ITEM_ID_OF_FEATURE_SERVICE>');
@@ -74,7 +84,8 @@
       const after = e.repeatAfter || {}; // { ילד: קבוצה } - ה-Repeat מוצג מיד אחרי הקבוצה
       const kidRows = (k) => {
         const visitLevel = !!kids(k.name).length || /Visit/i.test(k.name);
-        row({ type: 'begin_repeat', name: k.name, label: k.alias || k.name, relevant: visitLevel ? EDIT_MODE : '' });
+        const st = styled('repeat', k.name, k.alias || k.name, SY && SY.repeats && SY.repeats[k.name]);
+        row({ type: 'begin_repeat', name: k.name, label: st.label, relevant: visitLevel ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
         if (visitLevel) rep.open.push(k.name + ': רמת הביקור מוצגת רק בעריכה (' + EDIT_MODE + '), כי במיפוי שלט חדש הביקור הראשון נוצר על ידי Make (D28). דורש אימות ש-pulldata("@property","mode") מחזיר edit בטופס.');
         entityRows(k, depth + 1, false);
         row({ type: 'end_repeat', name: '', label: '' });
@@ -84,7 +95,8 @@
         cats.forEach((c, gi) => {
           const fr = fields.filter((f) => f.category === c).map((f) => fieldRow(e, f, depth)).filter(Boolean);
           if (fr.length) {
-            row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: c });
+            const st = styled('group', c, c, SY && SY.groups && SY.groups[c]);
+            row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: st.label, 'body::esri:style': st.style || '' });
             fr.forEach(row);
             row({ type: 'end_group', name: '', label: '' });
           }
@@ -95,6 +107,13 @@
       kids(e.name).filter((k) => !placed.has(k.name)).forEach(kidRows);
     }
 
+    if (SY && SY.map) {
+      const seq = []; const after = main.repeatAfter || {};
+      (main.groupOrder || []).forEach((c) => { seq.push([c, SY.groups && SY.groups[c]]); kids(main.name).filter((k) => after[k.name] === c).forEach((k) => seq.push([k.name, SY.repeats && SY.repeats[k.name]])); });
+      kids(main.name).filter((k) => !Object.keys(after).includes(k.name)).forEach((k) => seq.push([k.name, SY.repeats && SY.repeats[k.name]]));
+      const chips = seq.filter((x) => x[1]).map((x, i) => '<span style="color:#ffffff;background-color:' + x[1].c + '">' + NB + (i + 1) + ' ' + (x[1].i || '') + ' ' + (x[1].t || x[0]) + NB + '</span>').join(' ');
+      row({ type: 'note', name: 'form_map', label: '<span style="font-weight:bold">מפת הטופס</span><br/>' + chips + '<br/><span style="font-size:small;color:#555555">גוון קר: קבוצה חד-פעמית. גוון חם: רשימה שחוזרת (+ להוספה)</span>' });
+    }
     row({ type: 'geopoint', name: 'location', label: 'מיקום ' + (main.alias || main.name), required: 'yes' });
     entityRows(main, 0, true);
     const inForm = new Set([main.name]); (function walk(n) { kids(n).forEach((k) => { inForm.add(k.name); walk(k.name); }); })(main.name);
@@ -113,12 +132,13 @@
     }));
     if (imgs) rep.open.push('תמונות דגמים (' + imgs + ' ערכים עם img בסכימה) לא נכללו: יש להוסיף עמודת media::image ולהעלות את הקבצים לתיקיית media של הטופס.');
     const settings = [{ form_title: (S.meta && S.meta.title) || 'סקר', form_id: (S.meta && S.meta.key) || 'survey', version: new Date().toISOString().slice(0, 10).replace(/-/g, ''), submission_url: subUrl }];
-    const cols = ['type', 'name', 'label', 'hint', 'required', 'relevant', 'calculation', 'constraint', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'repeat_count'];
+    const cols = ['type', 'name', 'label', 'hint', 'required', 'relevant', 'calculation', 'constraint', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count'];
     const sheets = [
       { name: 'survey', head: cols, rows: rows.map((r) => cols.map((c) => r[c] || '')) },
       { name: 'choices', head: ['list_name', 'name', 'label'].concat(anyParent ? ['parent'] : [], anyExt ? ['ext'] : []), rows: choices.map((c) => ['list_name', 'name', 'label'].concat(anyParent ? ['parent'] : [], anyExt ? ['ext'] : []).map((k) => c[k] || '')) },
       { name: 'settings', head: Object.keys(settings[0]), rows: [Object.values(settings[0])] }
     ];
+    if (SY) rep.open.push('עיצוב קבוצות וחזרות (צבע, אייקון, מספור): תוויות HTML ו-body::esri:style. מתועד כנתמך באפליקציית השדה; ב-Survey123 web דווח שסגנון עלול להתעלם, לבדוק בשני הערוצים.');
     rep.open.push('הגדרות עריכה (allowUpdates / inbox) והתנהגות חזרות מקוננות בעריכה (C2) לא הוגדרו ודורשות בדיקה בטופס אמיתי.');
     return { sheets, report: rep, submissionUrl: subUrl };
   }

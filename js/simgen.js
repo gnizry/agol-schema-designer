@@ -9,6 +9,7 @@
      colors: { ערך: צבע }
      newValue, continueValue              "חדש" ו"המשך": המשך מקבל את המזהה של "חדש" הסמוך ומאוחד בסקריפט הלילי
      rich {subtitle, image, hazard{f,notes,whenStatus}, typeField, typeColors, weakVisit, details[], parts{entity,title,meta[],status{entity,partField,stateField,notes}}, sections[{title,fields[]}]}   פופאפ עשיר במקום chips/kpis
+   survey123.style {map, groups{שם קבוצה:{c,i}}, repeats{ישות:{c,i,t}}}   צבע/אייקון/מספור לטופס Survey123 ולסימולטור
    editing (ברירת מחדל true: false = העריכה במפה כבויה, ללא כפתורי עריכה והעתקה), relatedList (ברירת מחדל true: false = ללא הרשומות הקשורות המובנות בפופאפ),
      chips, kpis: [{f, label, unit}], childTitle, childCard   תוכן פופאפ מעוצב (כמו פופאפ Arcade). בלעדיהם: רשימת שדות כמו בפופאפ ברירת המחדל
      auto: { שדה: 'now' | 'user' | 'area' | 'id' | 'weekday:<שדה>' | 'parent:<שדה באב>' | 'script' }
