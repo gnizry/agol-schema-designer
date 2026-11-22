@@ -3627,7 +3627,7 @@ window.SCHEMAS["signage"] = {
         "groupAppearance": "compact",
         "groups": {
           "כתובת יערנית": {
-            "c": "#475569"
+            "c": "#94A3B8"
           },
           "זיהוי": {
             "c": "#2563EB"
@@ -4036,4 +4036,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "22.11.2026 10:12";
+window.__BUILT = "22.11.2026 10:35";

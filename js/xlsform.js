@@ -95,7 +95,8 @@
         cats.forEach((c, gi) => {
           const fr = fields.filter((f) => f.category === c).map((f) => fieldRow(e, f, depth)).filter(Boolean);
           if (fr.length) {
-            const st = styled('group', c, c, SY && SY.groups && SY.groups[c]);
+            const vo = fr.every((r) => r.read_only === 'yes');
+            const st = styled('group', c, c + (SY && vo ? ' (לצפייה בלבד)' : ''), SY && SY.groups && SY.groups[c]);
             row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: st.label, 'body::esri:style': st.style || '', appearance: SY && SY.groupAppearance === 'compact' ? 'compact' : '' });
             fr.forEach(row);
             row({ type: 'end_group', name: '', label: '' });
@@ -140,6 +141,7 @@
     ];
     if (SY && SY.groupAppearance === 'compact') rep.open.push('קבוצות עם appearance=compact נפתחות מקופלות. לבדוק שהודעת שדה חובה חסר בתוך קבוצה מקופלת מוצגת למשתמש בשליחה (בשני הערוצים).');
     if (SY) rep.open.push('עיצוב קבוצות וחזרות (צבע, אייקון, מספור): תוויות HTML ו-body::esri:style. מתועד כנתמך באפליקציית השדה; ב-Survey123 web דווח שסגנון עלול להתעלם, לבדוק בשני הערוצים.');
+    rep.open.push('Survey123: לכבות את התיקייה "נשלח" (Sent) כשמפעילים Inbox, לפי המלצת Esri, כדי שלא יהיה בלבול עם רשומות קיימות שלא מתרעננות שם. זו הגדרה בסקר ולא ב-XLSForm; לאמת היכן היא מוגדרת.');
     rep.open.push('הגדרות עריכה (allowUpdates / inbox) והתנהגות חזרות מקוננות בעריכה (C2) לא הוגדרו ודורשות בדיקה בטופס אמיתי.');
     return { sheets, report: rep, submissionUrl: subUrl };
   }

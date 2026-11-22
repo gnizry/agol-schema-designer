@@ -223,23 +223,32 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
   };
   function sPhone(inner, o) {
     o = o || {};
-    const nav = o.close ? '✕' : o.back ? '›' : '';
+    const nav = o.close ? '✕' : o.back ? '<span dir="ltr">›</span>' : '';
     return `<div style="position:relative;width:390px;max-width:100%;border:8px solid #0F172A;border-radius:30px;background:#fff;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18);font-family:Roboto,'Segoe UI',Tahoma,sans-serif">
 <div dir="ltr" style="background:${GREEN};color:#fff;font-size:11px;display:flex;justify-content:space-between;padding:4px 14px"><span>9:41</span><span>▂▄▆ 100%</span></div>
 <div dir="rtl" style="background:${GREEN};color:#fff;display:flex;align-items:center;gap:14px;padding:12px 14px"><span style="font-size:${o.close ? 20 : 28}px;width:22px;text-align:center;line-height:1">${nav}</span><b style="flex:1;font-size:21px;font-weight:500">${o.title || ''}</b>${IC.gps()}${IC.menu}</div>
 <div data-sb="1" dir="rtl" style="max-height:min(86vh,1150px);overflow:auto;text-align:right;color:#212121;background:${o.bg || '#fff'}">${inner}</div>${o.bottom || ''}${o.overlay || ''}</div>`;
   }
   /* כפתור "פיל" של מסך הכניסה: עיגול צבעוני מימין, כותרת, מונה וחץ משמאל */
-  const pill = (bg, icon, t, cnt, onc) => `<div ${onc ? `onclick="${onc}"` : ''} dir="rtl" style="display:flex;align-items:center;gap:14px;background:#fff;border-radius:40px;box-shadow:0 1px 6px rgba(0,0,0,.2);padding:6px 8px 6px 18px;margin:0 10px 10px;cursor:${onc ? 'pointer' : 'default'}"><span style="width:56px;height:56px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-size:38px;line-height:1">${icon}</span><b style="flex:1;font-size:22px">${t}</b>${cnt != null ? `<span style="font-size:17px;font-weight:600;color:#333;margin-left:6px">${cnt}</span>` : ''}<span style="color:#777;font-size:26px">‹</span></div>`;
+  const pill = (bg, icon, t, cnt, onc) => `<div ${onc ? `onclick="${onc}"` : ''} dir="rtl" style="display:flex;align-items:center;gap:14px;background:#fff;border-radius:40px;box-shadow:0 1px 6px rgba(0,0,0,.2);padding:6px 8px 6px 18px;margin:0 10px 10px;cursor:${onc ? 'pointer' : 'default'}"><span style="width:56px;height:56px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;color:#fff;font-size:38px;line-height:1">${icon}</span><b style="flex:1;font-size:22px">${t}</b>${cnt != null ? `<span style="font-size:17px;font-weight:600;color:#333;margin-left:6px">${cnt}</span>` : ''}<span dir="ltr" style="color:#777;font-size:26px">‹</span></div>`;
   function s123Home(S, M) {
     const dt = new Date(), fd = (x) => `${x.getDate()}.${x.getMonth() + 1}.${x.getFullYear()}`, ft = (x) => `${x.getHours()}:${String(x.getMinutes()).padStart(2, '0')}`;
     const card = `<div dir="rtl" style="display:flex;gap:12px;padding:14px 12px;align-items:flex-start"><div style="flex:none;width:130px;height:72px;border-radius:6px;background:linear-gradient(135deg,#6FA86B,#2E5E2A);display:flex;align-items:center;justify-content:center;font-size:40px">🌲</div><div style="flex:1;line-height:1.35"><div style="font-weight:700;font-size:19px;margin-bottom:4px">${esc(S.meta.title || 'סקר שילוט')}</div><div style="font-size:14px;color:#444">בעלים: ${esc(S.meta.owner || '—')}</div><div style="font-size:14px;color:#444">נוצר: ${fd(dt)} ${ft(dt)}</div><div style="font-size:14px;color:#444">תאריך שינוי: ${fd(dt)} ${ft(dt)}</div></div></div>`;
     const pills = pill('#3B78B5', '+', 'איסוף', null, 'SimA.startNew()')
-      + (st.inbox ? pill('#12B5EC', IC.inbox, 'דואר נכנס', st.db ? st.db.main.length : 0, 'SimA.step(2)') : '')
+      + (st.inbox ? pill('#12B5EC', IC.inbox, 'דואר נכנס', st.db ? st.db.main.length : 0, 'SimA.ibox(\'list\')') : '')
       + (st.drafts ? pill('#F28E2B', IC.pen, 'טיוטות', st.drafts) : '')
-      + (st.outbox ? pill('#2E7D32', IC.send, 'דואר יוצא', st.outbox) : '')
-      + pill('#7F7F7F', IC.send, 'נשלח', st.sent);
+      + (st.outbox ? pill('#2E7D32', IC.send, 'דואר יוצא', st.outbox) : '');
     return sPhone(`<div style="min-height:540px;display:flex;flex-direction:column;background:#F2F2F2">${card}<div style="margin-top:auto;padding-top:20px">${pills}</div></div>`, { title: esc(S.meta.title || 'סקר שילוט'), back: true, bg: '#F2F2F2' });
+  }
+  /* דף Inbox של Survey123 (פתיחה ידנית מהמסך הראשי): רשימת הרשומות הקיימות, ובתחתית בורר בין רשימה למפה */
+  function s123InboxList(S, M) {
+    const all = (st.db && st.db.main) || [], mode = st.ibox === 'map' ? 'map' : 'list';
+    const card = (sg, i) => `<div onclick="SimA.ibEdit(${i})" style="margin:8px 12px;border-radius:8px;padding:12px;cursor:pointer;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2)"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:17px">${esc(sg.SignID || 'שלט')}</b>${chipHtml(sg.SignStatus)}</div><div style="color:#757575;font-size:13px;margin-top:2px">${esc(sg.SignModel || '')}${sg.ForestName ? ' · ' + esc(sg.ForestName) : ''}</div></div>`;
+    const sel = st.sel != null ? all[st.sel] : null;
+    const body = mode === 'list' ? all.map(card).join('') || '<div style="padding:16px;color:#757575">אין רשומות</div>' : `<div style="margin:10px 12px">${mapBox(dots('SimA.ibPick'))}</div>${sel ? card(sel, st.sel) : '<div style="padding:8px 16px;color:#757575;font-size:13px">הקש על נקודה במפה</div>'}`;
+    const seg = (m, t) => `<span onclick="SimA.ibox('${m}')" style="flex:1;text-align:center;padding:9px 0;cursor:pointer;font-size:14px;font-weight:600;background:${mode === m ? '#12B5EC' : '#fff'};color:${mode === m ? '#fff' : '#555'}">${t}</span>`;
+    const bottom = `<div dir="rtl" style="display:flex;border-top:1px solid #D0D5CE;background:#fff;padding:8px 14px"><div style="display:flex;flex:1;border:1px solid #12B5EC;border-radius:20px;overflow:hidden">${seg('list', 'רשימה')}${seg('map', 'מפה')}</div></div>`;
+    return sPhone(`<div style="min-height:520px;background:#F2F2F2;padding-bottom:8px"><div style="padding:8px 12px;color:#757575;font-size:12px">${all.length} רשומות</div>${body}</div>`, { title: 'דואר נכנס', back: true, bg: '#F2F2F2', bottom });
   }
   function s123Inbox(S, M) {
     const sg = st.sel != null ? st.db.main[st.sel] : null;
@@ -303,7 +312,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     const vis = ent.fields.filter((f) => isShown(f, vals, up));
     if (flat) return `<div style="padding:0 10px 4px">${vis.map((f) => mControl(S, ent, f, vals, up, onch)).join('')}${attach(ent)}</div>`;
     const groups = {}; vis.forEach((f) => (groups[f.category || 'כללי'] = groups[f.category || 'כללי'] || []).push(f));
-    const ord = ent.groupOrder || []; return Object.keys(groups).sort((a, b) => (ord.indexOf(a) < 0 ? 99 : ord.indexOf(a)) - (ord.indexOf(b) < 0 ? 99 : ord.indexOf(b))).map((g) => { const k = ent.name + '|' + g; const sy = gsty(S, g); return band(esc(g), k, g === 'כתובת יערנית' ? vals.ForestName : '', sy, sy ? secNo(S, g) : '') + (isCol(k) ? '' : `<div style="padding:0 14px 8px;${sy ? 'background:' + tint(sy.c, 0.93) + ';border-right:5px solid ' + sy.c + ';border-bottom:1px solid ' + tint(sy.c, 0.6) : ''}">${groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`) + (afterFn ? afterFn(g) : ''); }).join('') + `<div style="padding:0 14px">${attach(ent)}</div>`;
+    const ord = ent.groupOrder || []; return Object.keys(groups).sort((a, b) => (ord.indexOf(a) < 0 ? 99 : ord.indexOf(a)) - (ord.indexOf(b) < 0 ? 99 : ord.indexOf(b))).map((g) => { const k = ent.name + '|' + g; const sy = gsty(S, g), vo = sy && groups[g].every((f) => readonly(f) && !/בעריכה|במיפוי|בשלט חדש/.test(f.visible || '')); return band(esc(g), k, g === 'כתובת יערנית' ? vals.ForestName : '', sy, sy ? secNo(S, g) : '', vo ? 'לצפייה בלבד' : '') + (isCol(k) ? '' : `<div style="padding:0 14px 8px;${sy ? 'background:' + tint(sy.c, 0.93) + ';border-right:5px solid ' + sy.c + ';border-bottom:1px solid ' + tint(sy.c, 0.6) : ''}">${groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`) + (afterFn ? afterFn(g) : ''); }).join('') + `<div style="padding:0 14px">${attach(ent)}</div>`;
   }
   const dms = (v, p, n) => { const a = Math.abs(v), d = Math.floor(a), m = Math.floor((a - d) * 60); return d + '°' + m + "'" + (v >= 0 ? p : n); };
   function s123Phone(S, M, title) {
@@ -453,7 +462,9 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
       }
       else { screen = phone('Field Maps · פופאפ', `<div style="position:relative">${signPopup(S, M, st.db.main[st.sel])}${editModal(S, M)}</div>`); note = 'הביקור נשמר כשורה אחת ומתחתיה שורות מצב לרכיבים שדווחו. מצב השלט הנוכחי התעדכן אוטומטית מהביקור (אם האפשרות מסומנת למעלה), ומצב כל רכיב מוצג מהשורה האחרונה שדיווחה עליו.'; }
     } else {
-      if (cur === 0) {
+      if (cur === 0 && st.ibox === 'form') { screen = s123Phone(S, M, 'Survey123 · עריכת שלט'); note = 'נפתח הטופס של הרשומה שנבחרה מתוך Inbox (פתיחה ידנית, ללא קישור).'; }
+      else if (cur === 0 && st.ibox) { screen = s123InboxList(S, M); note = 'דואר נכנס: כל הרשומות הקיימות בטופס. בתחתית בורר בין תצוגת רשימה לתצוגת מפה. הקשה על רשומה פותחת אותה לעריכה. הנשלחו כבוי (המלצת Esri כשמפעילים Inbox): הרשומות שנשלחו לא מופיעות שם ולכן אין תיקיית נשלח.'; }
+      else if (cur === 0) {
         screen = s123Home(S, M);
         note = 'המשתמש פותח בעצמו את Survey123 ובוחר את הסקר: אין דרך להציב כפתור פתיחה על מפת Field Maps. מסך הסקר: כפתור איסוף ותיקיות.';
       }
@@ -461,7 +472,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
       else { screen = fmv('map') || resultPhone(M); note = 'השלט נשמר ב-Survey123. כדי לראות אותו במפה, המשתמש עובר ל-Field Maps ידנית (אין callback במסלול זה).'; }
     }
     if (autoFM) note = SimGen.stepNote();
-    const back = cur > 0 ? `<button onclick="SimA.step(${kind === 'visitfm' && cur >= 3 ? 1 : cur - 1})">‹ חזרה</button>` : '';
+    const back = kind === 'new' && cur === 0 && st.ibox ? `<button onclick="SimA.ibBack()">‹ חזרה</button>` : cur > 0 ? `<button onclick="SimA.step(${kind === 'visitfm' && cur >= 3 ? 1 : cur - 1})">‹ חזרה</button>` : '';
     const chk = (ok, t) => `<li style="color:${ok ? '#166534' : '#991B1B'}">${ok ? '✓' : '✗'} ${t}</li>`;
     const arcade = `var params = {\n  itemID: '${ITEM}',\n  action: 'edit',\n  'q:globalId': StandardizeGuid($feature.GlobalID, 'digits-hyphen'),\n  folder: 'inbox',\n  update: 'true',\n  callback: 'https://fieldmaps.arcgis.app'\n};\nreturn 'arcgis-survey123://?' + UrlEncode(params);`;
     const urlV = `https://fieldmaps.arcgis.app/?referenceContext=addRelatedFeature&itemID=<FM_MAP_ITEM_ID>&featureSourceURL=<SIGNS_LAYER_URL>&featureID=${gid}&relationshipID=<REL_ID_VISITS>&featureAttributes=${encodeURIComponent(JSON.stringify({ VisitType: st.vform && st.vform.VisitType || 'מעקב' }))}&callback=<ENCODED_RETURN_URL>`;
@@ -711,13 +722,15 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     outbox() { st.dlg = false; st.outbox += 1; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 1; rr(); },
     draft() { st.dlg = false; st.drafts += 1; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 1; rr(); },
     flowSet(f) { st.loc = null; st.pendingGeo = false; st.flow = f; st.step = 0; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; rr(); },
-    step(n) { const ed = st.flow === 'edit' || (st.flow === 'visit' && st.vch === 's123'); if (n === 2 && ed && st.inbox && st.sel != null && st.db.main[st.sel] && st.editId !== st.db.main[st.sel].GlobalID) { SimA.startEdit(); return; } st.step = n; rr(); }, inboxSet(c) { st.inbox = c; rr(); },
+    step(n) { st.ibox = null; const ed = st.flow === 'edit' || (st.flow === 'visit' && st.vch === 's123'); if (n === 2 && ed && st.inbox && st.sel != null && st.db.main[st.sel] && st.editId !== st.db.main[st.sel].GlobalID) { SimA.startEdit(); return; } st.step = n; rr(); }, inboxSet(c) { st.inbox = c; rr(); },
     pick(i) { st.sel = i; st.step = 1; rr(); }, sel0(i) { st.sel = i; rr(); },
     startEdit() {
       const sg = st.db.main[st.sel]; if (!sg) return;
-      st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visits = [newRow(model(st.S).B ? model(st.S).B.ent : { fields: [] })]; st.pi = 0; st.vi = 0; st.showReq = false; st.step = 2; allDerive(); rr();
+      st.col = {}; st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visits = [newRow(model(st.S).B ? model(st.S).B.ent : { fields: [] })]; st.pi = 0; st.vi = 0; st.showReq = false; st.step = 2; allDerive(); rr();
     },
-    startNew() { st.loc = null; st.pendingGeo = false; st.editId = null; st.sign = { SignID: newId() }; st.parts = []; st.visits = [newRow(model(st.S).B ? model(st.S).B.ent : { fields: [] })]; st.pi = 0; st.vi = 0; st.showReq = false; st.step = 1; allDerive(); rr(); },
+    ibox(m) { st.ibox = m; rr(); }, ibPick(i) { st.sel = i; rr(); }, ibBack() { st.ibox = st.ibox === 'form' ? 'list' : null; rr(); },
+    ibEdit(i) { st.sel = i; const was = st.step; SimA.startEdit(); st.step = was; st.ibox = 'form'; rr(); },
+    startNew() { st.col = {}; st.ibox = null; st.loc = null; st.pendingGeo = false; st.editId = null; st.sign = { SignID: newId() }; st.parts = []; st.visits = [newRow(model(st.S).B ? model(st.S).B.ent : { fields: [] })]; st.pi = 0; st.vi = 0; st.showReq = false; st.step = 1; allDerive(); rr(); },
     seed() { seed(st.S); st.sel = null; rr(); }, sel(i) { st.sel = i; st.modal = null; st.vview = false; st.psform = null; rr(); },
     addv() { st.modal = { v: newRow(model(st.S).B.ent), part: '' }; rr(); }, mv(n, v) { st.modal.v[n] = v; derive(model(st.S).B.ent, st.modal.v, st.db.main[st.sel]); rr(); }, mp(id) { st.modal.part = id; rr(); }, cancel() { st.modal = null; st.emod = null; rr(); },
     savev() {
