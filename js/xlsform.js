@@ -36,10 +36,10 @@
     const tint = (c, a) => { const n = parseInt(String(c).slice(1), 16), m = (x) => Math.round(x + (255 - x) * a).toString(16).padStart(2, '0'); return '#' + m(n >> 16) + m((n >> 8) & 255) + m(n & 255); };
     const NB = ' ';
     let secN = 0;
-    const styled = (kind, name, label, sy) => {
+    const styled = (kind, name, label, sy, dyn) => {
       if (!SY || !sy) return { label: label };
       const no = ++secN, tag = kind === 'repeat' ? NB + '(חזרה)' : '';
-      return { label: '<span style="font-weight:bold;color:#ffffff;background-color:' + sy.c + '">' + NB + no + ' · ' + (sy.i ? sy.i + NB : '') + label + tag + NB + '</span>', style: 'backgroundColor=' + tint(sy.c, kind === 'repeat' ? 0.88 : 0.93) + ' borderColor=' + sy.c };
+      return { label: '<span style="font-weight:bold;color:#ffffff;background-color:' + sy.c + '">' + NB + no + ' · ' + (sy.i ? sy.i + NB : '') + label + (dyn ? '${ro_tag}' : '') + tag + NB + '</span>', style: 'backgroundColor=' + tint(sy.c, kind === 'repeat' ? 0.88 : 0.93) + ' borderColor=' + sy.c };
     };
 
     const dep = (S.deployments || []).filter((d) => d && d.itemId).slice(-1)[0];
@@ -54,7 +54,7 @@
       const d = f.domain && dom[f.domain] && dom[f.domain].values && dom[f.domain].values.length ? dom[f.domain] : null;
       if (f.domain && !d) rep.lookups.push(where + ': הרשימה ' + f.domain + ' ריקה בסכימה (מקור חיצוני). השדה נוצר כטקסט.');
       const r = { type: d ? 'select_one ' + f.domain : t[0], name: f.name, label: f.alias || f.name, hint: '', required: '', relevant: '', calculation: '', constraint: '', appearance: '', read_only: '', default: '', choice_filter: '', 'bind::esri:fieldType': t[1], 'bind::esri:fieldLength': f.type === 'TEXT' ? (f.length || '255') : '', 'bind::esri:parameters': '', repeat_count: '' };
-      if (d) { used.add(f.domain); if (f.appearance === 'autocomplete') { r.appearance = 'autocomplete'; rep.open.push(where + ': appearance=autocomplete (חיפוש בהקלדה). תמונות לערכי הרשימה לא נתמכות בווב עם autocomplete.'); } else if (d.values.length > 6) r.appearance = 'minimal'; }
+      if (d) { used.add(f.domain); if (f.appearance === 'autocomplete') { r.appearance = 'autocomplete'; } else if (d.values.length > 6) r.appearance = 'minimal'; }
       if (f.type === 'GUID') { r.type = 'text'; rep.open.push(where + ': שדה GUID שמולא מקישור לרכיב (' + (f.pickFrom || '') + '). נוצר כטקסט; בחירת הרכיב בטופס טעונה בדיקה (B2/C2).'); }
       if (f.calc) r.calculation = f.calc;
       else if (f.autoValue === 'today') r.calculation = f.autoOnCreate ? 'once(today())' : 'today()';
@@ -73,6 +73,22 @@
         const parents = new Set(d.values.map((v) => v.parent).filter(Boolean));
         const pf = e.fields.find((x) => x.domain && x.domain !== f.domain && dom[x.domain] && dom[x.domain].values.some((v) => parents.has(v.code)));
         if (pf) r.choice_filter = 'parent=${' + pf.name + '}'; else rep.open.push(where + ': רשימה מדורגת ללא שדה אב באותה ישות; choice_filter לא הוגדר.');
+      }
+      if (d && d.values.some((v) => v.notIn && v.notIn.length)) {
+        const pf2 = f.notInParent || 'ModelFamily';
+        r.choice_filter = (r.choice_filter ? r.choice_filter + ' and ' : '') + "(${" + pf2 + "}='' or not(contains(excl, ${" + pf2 + "})))";
+        rep.open.push(where + ': סינון ערכים לפי משפחת הדגם (עמודת excl, choice_filter). הוגדר רק לפי הדרישה המפורשת של הלקוח (פ-1 ללא כנף); שאר הקטלוג חסר. לאמת שהפניה למשפחה מתוך Repeat עובדת.');
+      }
+      if (f.autoIncrement) {
+        const path = '/data/' + e.name + '/' + f.name;
+        r.default = 'if(count(' + path + "[.!=''])=0, 1, max(" + path + "[.!=''])+1)";
+        rep.open.push(where + ': ברירת מחדל max+1 (' + r.default + '). הנתיב המלא /data/... מניח ששורש הטופס הוא data. לאמת בטופס אמיתי, כולל התנהגות בעריכה של שלט עם כנפיים קיימות.');
+      }
+      if (f.uniqueInParent) {
+        const path = '/data/' + e.name + '/' + f.name;
+        r.constraint = 'count(' + path + '[.=current()])=1';
+        r.constraint_message = f.constraintMsg || 'הערך כבר קיים';
+        rep.open.push(where + ': בדיקת כפילות (constraint עם current()) בתוך השלט. לאמת בטופס אמיתי.');
       }
       rep.included.push(where);
       return r;
@@ -96,7 +112,9 @@
           const fr = fields.filter((f) => f.category === c).map((f) => fieldRow(e, f, depth)).filter(Boolean);
           if (fr.length) {
             const vo = fr.every((r) => r.read_only === 'yes');
-            const st = styled('group', c, c + (SY && vo ? ' (לצפייה בלבד)' : ''), SY && SY.groups && SY.groups[c]);
+            const nm = new Set(fr.map((r) => r.name)), sf = fields.filter((f) => f.category === c && nm.has(f.name));
+            const dyn = !vo && sf.length > 0 && sf.every((f) => f.mode === 'אוטומטי' || /קריאה בלבד/.test(f.visible || '') && !/במיפוי: למילוי/.test(f.visible || '') || f.readonlyOnEdit || /בעריכה: קריאה בלבד/.test(f.visible || ''));
+            const st = styled('group', c, c + (SY && vo ? ' (לצפייה בלבד)' : ''), SY && SY.groups && SY.groups[c], SY && dyn);
             row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: st.label, 'body::esri:style': st.style || '', appearance: SY && SY.groupAppearance === 'compact' ? 'compact' : '' });
             fr.forEach(row);
             row({ type: 'end_group', name: '', label: '' });
@@ -113,9 +131,10 @@
       (main.groupOrder || []).forEach((c) => { seq.push([c, SY.groups && SY.groups[c]]); kids(main.name).filter((k) => after[k.name] === c).forEach((k) => seq.push([k.name, SY.repeats && SY.repeats[k.name]])); });
       kids(main.name).filter((k) => !Object.keys(after).includes(k.name)).forEach((k) => seq.push([k.name, SY.repeats && SY.repeats[k.name]]));
       const chips = seq.filter((x) => x[1]).map((x, i) => '<span style="color:#ffffff;background-color:' + x[1].c + '">' + NB + (i + 1) + ' ' + (x[1].i ? x[1].i + ' ' : '') + (x[1].t || x[0]) + NB + '</span>').join(' ');
-      row({ type: 'note', name: 'form_map', label: '<span style="font-weight:bold">מפת הטופס</span><br/>' + chips + '<br/><span style="font-size:small;color:#555555">גוון קר: קבוצה חד-פעמית. גוון חם: רשימה שחוזרת (+ להוספה)</span>' });
+      row({ type: 'note', name: 'form_map', label: '<span style="font-weight:bold">צבעי הטופס</span><br/>' + chips + '<br/><span style="font-size:small;color:#555555">גוון קר: קבוצה חד-פעמית. גוון חם: רשימה שחוזרת (+ להוספה)</span>' });
     }
     row({ type: 'geopoint', name: 'location', label: 'מיקום ' + (main.alias || main.name), required: 'yes' });
+    if (SY) row({ type: 'calculate', name: 'ro_tag', label: '', calculation: "if(" + EDIT_MODE + ", ' (לצפייה בלבד)', '')" });
     entityRows(main, 0, true);
     const inForm = new Set([main.name]); (function walk(n) { kids(n).forEach((k) => { inForm.add(k.name); walk(k.name); }); })(main.name);
     S.entities.forEach((e) => { if (!inForm.has(e.name)) rep.lookups.push(e.name + ': לא נכללה בטופס (טבלת עזר).'); });
@@ -126,17 +145,21 @@
     const anyParent = [...used].some((k) => dom[k].values.some((v) => v.parent));
     [...used].forEach((k) => dom[k].values.forEach((v) => {
       const c = { list_name: k, name: v.code, label: v.label || v.code };
+      if (v.img) c['media::image'] = String(v.img).split('/').pop();
+      if (v.notIn && v.notIn.length) c.excl = v.notIn.join('|');
       if (anyParent) c.parent = v.parent || '';
       if (anyExt) c.ext = v.ext || '';
       choices.push(c);
       if (v.img) imgs++;
     }));
-    if (imgs) rep.open.push('תמונות דגמים (' + imgs + ' ערכים עם img בסכימה) לא נכללו: יש להוסיף עמודת media::image ולהעלות את הקבצים לתיקיית media של הטופס.');
+    if (imgs) rep.open.push('תמונות דגמים: ' + imgs + ' ערכים עם תמונה (עמודת media::image בגיליון choices, שם הקובץ בלבד). יש להעתיק את הקבצים לתיקיית media של פרויקט הטופס. הצגת תמונות ברשימת autocomplete/minimal נתמכת באפליקציית השדה; ב-Survey123 web אינה נתמכת.');
+    const anyExcl = choices.some((c) => c.excl), anyImg = choices.some((c) => c['media::image']);
+    const cext = (anyParent ? ['parent'] : []).concat(anyExt ? ['ext'] : [], anyImg ? ['media::image'] : [], anyExcl ? ['excl'] : []);
     const settings = [{ form_title: (S.meta && S.meta.title) || 'סקר', form_id: (S.meta && S.meta.key) || 'survey', version: new Date().toISOString().slice(0, 10).replace(/-/g, ''), submission_url: subUrl }];
-    const cols = ['type', 'name', 'label', 'hint', 'required', 'relevant', 'calculation', 'constraint', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count'];
+    const cols = ['type', 'name', 'label', 'hint', 'required', 'relevant', 'calculation', 'constraint', 'constraint_message', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count'];
     const sheets = [
       { name: 'survey', head: cols, rows: rows.map((r) => cols.map((c) => r[c] || '')) },
-      { name: 'choices', head: ['list_name', 'name', 'label'].concat(anyParent ? ['parent'] : [], anyExt ? ['ext'] : []), rows: choices.map((c) => ['list_name', 'name', 'label'].concat(anyParent ? ['parent'] : [], anyExt ? ['ext'] : []).map((k) => c[k] || '')) },
+      { name: 'choices', head: ['list_name', 'name', 'label'].concat(cext), rows: choices.map((c) => ['list_name', 'name', 'label'].concat(cext).map((k) => c[k] || '')) },
       { name: 'settings', head: Object.keys(settings[0]), rows: [Object.values(settings[0])] }
     ];
     if (SY && SY.groupAppearance === 'compact') rep.open.push('קבוצות עם appearance=compact נפתחות מקופלות. לבדוק שהודעת שדה חובה חסר בתוך קבוצה מקופלת מוצגת למשתמש בשליחה (בשני הערוצים).');

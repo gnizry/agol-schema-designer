@@ -549,7 +549,10 @@ window.SCHEMAS["signage"] = {
         {
           "code": "כנף",
           "label": "כנף",
-          "parent": ""
+          "parent": "",
+          "notIn": [
+            "פ-1: שלט כניסה ליער"
+          ]
         },
         {
           "code": "עמוד",
@@ -791,7 +794,7 @@ window.SCHEMAS["signage"] = {
           "length": "255",
           "domain": "",
           "mode": "ידני",
-          "visible": "תמיד",
+          "visible": "מוסתר: ממתין להגדרת ערכים (לא בטופס)",
           "open": true,
           "note": "ערכים ואופן סימון טעונים אישור; אין להניח כן/לא."
         },
@@ -1172,6 +1175,9 @@ window.SCHEMAS["signage"] = {
           "category": "רכיב",
           "name": "WingNumber",
           "alias": "מספר כנף",
+          "autoIncrement": true,
+          "uniqueInParent": true,
+          "constraintMsg": "מספר הכנף כבר קיים בשלט",
           "type": "SHORT",
           "length": "",
           "domain": "",
@@ -3688,8 +3694,7 @@ window.SCHEMAS["signage"] = {
         "RoadColor",
         "PlacementDate",
         "MappingDate",
-        "MapperName",
-        "NewSignageTheory"
+        "MapperName"
       ],
       "parts": {
         "entity": "SignParts",
@@ -4036,4 +4041,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "22.11.2026 10:35";
+window.__BUILT = "22.11.2026 11:25";
