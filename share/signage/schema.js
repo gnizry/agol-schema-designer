@@ -727,6 +727,7 @@ window.SCHEMAS["signage"] = {
           "type": "TEXT",
           "length": "255",
           "domain": "ModelFamily",
+          "appearance": "autocomplete",
           "mode": "רשימה",
           "visible": "תמיד",
           "open": false,
@@ -740,6 +741,7 @@ window.SCHEMAS["signage"] = {
           "type": "TEXT",
           "length": "255",
           "domain": "SignSubModel",
+          "appearance": "autocomplete",
           "mode": "רשימה",
           "visible": "לפי משפחה",
           "open": false,
@@ -3622,50 +3624,41 @@ window.SCHEMAS["signage"] = {
     "survey123": {
       "style": {
         "map": true,
+        "groupAppearance": "compact",
         "groups": {
           "כתובת יערנית": {
-            "c": "#475569",
-            "i": "📍"
+            "c": "#475569"
           },
           "זיהוי": {
-            "c": "#2563EB",
-            "i": "🏷️"
+            "c": "#2563EB"
           },
           "סיווג": {
-            "c": "#7C3AED",
-            "i": "🧩"
+            "c": "#7C3AED"
           },
           "מצב": {
-            "c": "#0891B2",
-            "i": "🩺"
+            "c": "#0891B2"
           },
           "תוכן ומיקום": {
-            "c": "#4F46E5",
-            "i": "📝"
+            "c": "#4F46E5"
           },
           "החלפה והצבה": {
-            "c": "#0D9488",
-            "i": "🔄"
+            "c": "#0D9488"
           },
           "QR": {
-            "c": "#64748B",
-            "i": "🔳"
+            "c": "#64748B"
           }
         },
         "repeats": {
           "SignParts": {
             "c": "#D97706",
-            "i": "🔩",
             "t": "רכיבים"
           },
           "SignVisits": {
             "c": "#EA580C",
-            "i": "📋",
             "t": "ביקורים"
           },
           "SignPartStatus": {
             "c": "#B91C1C",
-            "i": "🔧",
             "t": "מצב רכיב"
           }
         }
@@ -4043,4 +4036,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "22.11.2026 09:58";
+window.__BUILT = "22.11.2026 10:12";

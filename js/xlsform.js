@@ -39,7 +39,7 @@
     const styled = (kind, name, label, sy) => {
       if (!SY || !sy) return { label: label };
       const no = ++secN, tag = kind === 'repeat' ? NB + '(חזרה)' : '';
-      return { label: '<span style="font-weight:bold;color:#ffffff;background-color:' + sy.c + '">' + NB + no + ' · ' + (sy.i || '') + NB + label + tag + NB + '</span>', style: 'backgroundColor=' + tint(sy.c, kind === 'repeat' ? 0.88 : 0.93) + ' borderColor=' + sy.c };
+      return { label: '<span style="font-weight:bold;color:#ffffff;background-color:' + sy.c + '">' + NB + no + ' · ' + (sy.i ? sy.i + NB : '') + label + tag + NB + '</span>', style: 'backgroundColor=' + tint(sy.c, kind === 'repeat' ? 0.88 : 0.93) + ' borderColor=' + sy.c };
     };
 
     const dep = (S.deployments || []).filter((d) => d && d.itemId).slice(-1)[0];
@@ -54,7 +54,7 @@
       const d = f.domain && dom[f.domain] && dom[f.domain].values && dom[f.domain].values.length ? dom[f.domain] : null;
       if (f.domain && !d) rep.lookups.push(where + ': הרשימה ' + f.domain + ' ריקה בסכימה (מקור חיצוני). השדה נוצר כטקסט.');
       const r = { type: d ? 'select_one ' + f.domain : t[0], name: f.name, label: f.alias || f.name, hint: '', required: '', relevant: '', calculation: '', constraint: '', appearance: '', read_only: '', default: '', choice_filter: '', 'bind::esri:fieldType': t[1], 'bind::esri:fieldLength': f.type === 'TEXT' ? (f.length || '255') : '', 'bind::esri:parameters': '', repeat_count: '' };
-      if (d) { used.add(f.domain); if (d.values.length > 6) r.appearance = 'minimal'; }
+      if (d) { used.add(f.domain); if (f.appearance === 'autocomplete') { r.appearance = 'autocomplete'; rep.open.push(where + ': appearance=autocomplete (חיפוש בהקלדה). תמונות לערכי הרשימה לא נתמכות בווב עם autocomplete.'); } else if (d.values.length > 6) r.appearance = 'minimal'; }
       if (f.type === 'GUID') { r.type = 'text'; rep.open.push(where + ': שדה GUID שמולא מקישור לרכיב (' + (f.pickFrom || '') + '). נוצר כטקסט; בחירת הרכיב בטופס טעונה בדיקה (B2/C2).'); }
       if (f.calc) r.calculation = f.calc;
       else if (f.autoValue === 'today') r.calculation = f.autoOnCreate ? 'once(today())' : 'today()';
@@ -96,7 +96,7 @@
           const fr = fields.filter((f) => f.category === c).map((f) => fieldRow(e, f, depth)).filter(Boolean);
           if (fr.length) {
             const st = styled('group', c, c, SY && SY.groups && SY.groups[c]);
-            row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: st.label, 'body::esri:style': st.style || '' });
+            row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: st.label, 'body::esri:style': st.style || '', appearance: SY && SY.groupAppearance === 'compact' ? 'compact' : '' });
             fr.forEach(row);
             row({ type: 'end_group', name: '', label: '' });
           }
@@ -111,7 +111,7 @@
       const seq = []; const after = main.repeatAfter || {};
       (main.groupOrder || []).forEach((c) => { seq.push([c, SY.groups && SY.groups[c]]); kids(main.name).filter((k) => after[k.name] === c).forEach((k) => seq.push([k.name, SY.repeats && SY.repeats[k.name]])); });
       kids(main.name).filter((k) => !Object.keys(after).includes(k.name)).forEach((k) => seq.push([k.name, SY.repeats && SY.repeats[k.name]]));
-      const chips = seq.filter((x) => x[1]).map((x, i) => '<span style="color:#ffffff;background-color:' + x[1].c + '">' + NB + (i + 1) + ' ' + (x[1].i || '') + ' ' + (x[1].t || x[0]) + NB + '</span>').join(' ');
+      const chips = seq.filter((x) => x[1]).map((x, i) => '<span style="color:#ffffff;background-color:' + x[1].c + '">' + NB + (i + 1) + ' ' + (x[1].i ? x[1].i + ' ' : '') + (x[1].t || x[0]) + NB + '</span>').join(' ');
       row({ type: 'note', name: 'form_map', label: '<span style="font-weight:bold">מפת הטופס</span><br/>' + chips + '<br/><span style="font-size:small;color:#555555">גוון קר: קבוצה חד-פעמית. גוון חם: רשימה שחוזרת (+ להוספה)</span>' });
     }
     row({ type: 'geopoint', name: 'location', label: 'מיקום ' + (main.alias || main.name), required: 'yes' });
@@ -138,6 +138,7 @@
       { name: 'choices', head: ['list_name', 'name', 'label'].concat(anyParent ? ['parent'] : [], anyExt ? ['ext'] : []), rows: choices.map((c) => ['list_name', 'name', 'label'].concat(anyParent ? ['parent'] : [], anyExt ? ['ext'] : []).map((k) => c[k] || '')) },
       { name: 'settings', head: Object.keys(settings[0]), rows: [Object.values(settings[0])] }
     ];
+    if (SY && SY.groupAppearance === 'compact') rep.open.push('קבוצות עם appearance=compact נפתחות מקופלות. לבדוק שהודעת שדה חובה חסר בתוך קבוצה מקופלת מוצגת למשתמש בשליחה (בשני הערוצים).');
     if (SY) rep.open.push('עיצוב קבוצות וחזרות (צבע, אייקון, מספור): תוויות HTML ו-body::esri:style. מתועד כנתמך באפליקציית השדה; ב-Survey123 web דווח שסגנון עלול להתעלם, לבדוק בשני הערוצים.');
     rep.open.push('הגדרות עריכה (allowUpdates / inbox) והתנהגות חזרות מקוננות בעריכה (C2) לא הוגדרו ודורשות בדיקה בטופס אמיתי.');
     return { sheets, report: rep, submissionUrl: subUrl };
