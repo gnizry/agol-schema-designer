@@ -78,12 +78,14 @@
     const errs = issues.filter((i) => i.level === 'error').length;
     const warns = issues.filter((i) => i.level === 'warn').length;
     const open = S.decisions.filter((d) => d.status === 'open').length;
+    const MG = window.Mgmt ? Mgmt.counts(S) : { q: null, c: null, h: null };
     const it = (page, idx, label, count, cls) =>
       `<a class="${V.page === page && V.idx === idx ? 'on' : ''}" onclick="A.go('${page}',${idx})"><span>${label}</span>${count == null ? '' : `<span class="cnt ${cls || ''}">${count}</span>`}</a>`;
     $('nav').innerHTML =
       '<h4>ישויות</h4>' + S.entities.map((e, i) => it('entity', i, esc(e.alias) + ' · ' + esc(e.name), e.fields.length)).join('') +
       '<h4>מבנה</h4>' + it('domains', 0, 'דומיינים', Object.keys(S.domains).length) + it('rels', 0, 'קשרים', S.relationships.length) +
       '<h4>ניהול</h4>' + it('decisions', 0, 'החלטות פתוחות', open) +
+      it('questions', 0, 'שאלות ללקוח', MG.q) + it('plan', 0, 'תוכנית יישום', MG.h == null ? null : MG.h + ' ש׳') + it('changes', 0, 'בקשות שינוי', MG.c) +
       it('validate', 0, 'בדיקות', errs + warns, errs ? 'err' : '') +
       '<h4>תרשימים</h4>' + it('dg-erd', 0, 'ERD · ישויות וקשרים', S.relationships.length) + it('dg-comp', 0, 'רכיבי הפתרון', window.Diagrams ? Diagrams.count(S).nodes || null : null) + it('dg-flow', 0, 'תהליכים וזרימות', window.Diagrams ? Diagrams.count(S).flows || null : null) +
       '<h4>סימולציה</h4>' + it('sim', 0, 'סימולטור Survey123 / Field Maps') +
@@ -197,15 +199,15 @@
       <p class="hint">בריפו, הקבצים נוצרים גם משורת פקודה: <code dir="ltr">node tools/generate.js</code> → תיקיית generated/.</p>`;
   }
 
-  const TITLES = { 'dg-erd': 'ERD: ישויות וקשרים', 'dg-comp': 'רכיבי הפתרון והקשרים ביניהם', 'dg-flow': 'תהליכים: זרימת משתמש וזרימת נתונים', entity: null, domains: 'דומיינים (Coded Value Domains)', rels: 'קשרים בין ישויות', decisions: 'החלטות פתוחות מול הלקוח', validate: 'בדיקות תקינות', output: 'תוצרים', sim: 'סימולטור חוויית משתמש' };
+  const TITLES = { 'dg-erd': 'ERD: ישויות וקשרים', 'dg-comp': 'רכיבי הפתרון והקשרים ביניהם', 'dg-flow': 'תהליכים: זרימת משתמש וזרימת נתונים', entity: null, domains: 'דומיינים (Coded Value Domains)', rels: 'קשרים בין ישויות', decisions: 'החלטות פתוחות מול הלקוח', questions: 'שאלות לדיון עם הלקוח', plan: 'תוכנית יישום והערכת זמן', changes: 'בקשות שינוי ושיפורים', validate: 'בדיקות תקינות', output: 'תוצרים', sim: 'סימולטור חוויית משתמש' };
   function render() {
     renderNav();
     const t = V.page === 'entity' ? esc(S.entities[V.idx].alias) + ' — ' + esc(S.entities[V.idx].name) : TITLES[V.page];
-    let body; try { body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, validate: validatePage, output: outputPage, sim: () => (window.Sim ? Sim.render(S) : ''), 'dg-erd': () => Diagrams.page(S, 'erd'), 'dg-comp': () => Diagrams.page(S, 'comp'), 'dg-flow': () => Diagrams.page(S, 'flow') }[V.page](); } catch (err) { console.error(err); body = '<div style="background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:10px;padding:12px;direction:ltr;text-align:left;white-space:pre-wrap;font:12px monospace"><b>שגיאה בהצגת העמוד</b>\n' + esc(String(err && err.stack || err)) + '</div>'; }
+    let body; try { body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, questions: () => Mgmt.questions(S), plan: () => Mgmt.plan(S), changes: () => Mgmt.changes(S), validate: validatePage, output: outputPage, sim: () => (window.Sim ? Sim.render(S) : ''), 'dg-erd': () => Diagrams.page(S, 'erd'), 'dg-comp': () => Diagrams.page(S, 'comp'), 'dg-flow': () => Diagrams.page(S, 'flow') }[V.page](); } catch (err) { console.error(err); body = '<div style="background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:10px;padding:12px;direction:ltr;text-align:left;white-space:pre-wrap;font:12px monospace"><b>שגיאה בהצגת העמוד</b>\n' + esc(String(err && err.stack || err)) + '</div>'; }
     $('main').innerHTML = `<h2 style="margin:0 0 10px">${t}</h2>` + body;
-    if (VIEWONLY && ['entity', 'domains', 'rels', 'decisions', 'validate'].indexOf(V.page) >= 0) { // מצב צפייה: ללא עריכה
+    if (VIEWONLY && ['entity', 'domains', 'rels', 'decisions', 'questions', 'plan', 'changes', 'validate'].indexOf(V.page) >= 0) { // מצב צפייה: ללא עריכה
       $('main').querySelectorAll('input,select,textarea').forEach((el) => { el.disabled = true; });
-      $('main').querySelectorAll('button').forEach((b) => { if (!/A\.(go|refresh|script|copy|dl)\b/.test(b.getAttribute('onclick') || '')) b.disabled = true; });
+      $('main').querySelectorAll('button').forEach((b) => { if (!/A\.(go|refresh|script|copy|dl|mset|mmd)\b/.test(b.getAttribute('onclick') || '')) b.disabled = true; });
     }
     if (window.Diagrams && /^dg-/.test(V.page)) requestAnimationFrame(() => Diagrams.after());
   }
@@ -256,7 +258,20 @@
     r(i, p, v) { S.relationships[i][p] = v; commit(); },
     rd(i) { S.relationships.splice(i, 1); commit(); },
     addRel() { const n = S.entities.map((e) => e.name); S.relationships.push({ name: 'NewRel', origin: n[0], destination: n[1] || n[0], originKey: 'GlobalID', destKey: 'ParentGlobalID', type: 'SIMPLE', forward: '', backward: '' }); commit(); },
-    x(i, p, v) { S.decisions[i][p] = v; commit(); }
+    x(i, p, v) { S.decisions[i][p] = v; commit(); },
+    /* ניהול: שאלות, תוכנית, בקשות שינוי */
+    mset(k, v) { Mgmt.F[k] = v; render(); },
+    ls(list, i, p, v) { S[list][i][p] = v; if (list === 'questions' && p === 'status' && v === 'answered' && !S[list][i].date) S[list][i].date = Mgmt.today(); commit(); },
+    lsAdd(list) { S[list] = S[list] || []; const r = Mgmt.blank[list](); r.id = Mgmt.nextId(S[list], list === 'questions' ? 'Q' : 'CR'); if (list === 'changes') r.version = String((S.meta && S.meta.version) || ''); S[list].push(r); commit(); },
+    lsDel(list, i) { if (confirm('למחוק את הרשומה ' + (S[list][i].id || '') + '?')) { S[list].splice(i, 1); commit(); } },
+    pset(k, v) { S.plan[k] = k === 'hoursPerDay' ? (+v || 6) : v; commit(); },
+    ph(p, k, v) { S.plan.phases[p][k] = v; commit(); },
+    phAdd() { S.plan = S.plan || { hoursPerDay: 6, assumptions: '', phases: [] }; S.plan.phases.push({ name: 'שלב חדש', items: [] }); commit(); },
+    phDel(p) { if (confirm('למחוק את השלב וכל משימותיו?')) { S.plan.phases.splice(p, 1); commit(); } },
+    pi(p, i, k, v) { S.plan.phases[p].items[i][k] = (k === 'min' || k === 'max') ? (v === '' ? '' : +v) : v; commit(); },
+    pAdd(p) { S.plan.phases[p].items.push({ name: '', area: 'כללי', min: 0, max: 0, owner: '', status: 'todo', dep: '', note: '' }); commit(); },
+    pDel(p, i) { S.plan.phases[p].items.splice(i, 1); commit(); },
+    mmd(kind) { const t = Mgmt.toMd(S, kind); (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => toast('הועתק'), () => download(kind + '.md', t, 'text/markdown')); }
   };
 
   /* ---------- כפתורי כותרת ---------- */
