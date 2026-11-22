@@ -328,7 +328,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
   /* ---------- זרימה: Field Maps ↔ Survey123 ---------- */
   const ITEM = '<SURVEY_ITEM_ID>';
   const FLOWS = {
-    edit: ['Field Maps: בחירת שלט', 'Field Maps: פופאפ וקישור', 'Survey123: Inbox', 'Survey123: טופס עריכה', 'חזרה ל-Field Maps'],
+    edit: ['Field Maps: בחירת שלט', 'Field Maps: פופאפ וקישור', 'Survey123: טופס העריכה (נפתח ישירות)', 'חזרה ל-Field Maps'],
     new: ['Survey123: מסך הסקר (איסוף)', 'Survey123: טופס חדש', 'בדיקה ב-Field Maps'],
     visitfm: ['Field Maps: בחירת שלט', 'Field Maps: פופאפ וסוג ביקור', 'Field Maps: טופס ביקור (רמה 2)', 'Field Maps: חזרה לפופאפ, כרטיס ביקור פתוח וכפתורי רכיב (רמה 3)', 'תוצאה במפה'],
   };
@@ -414,12 +414,11 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     let screen = '', note = '';
     if (kind === 'edit') {
       if (cur === 0) { screen = fmv('map') || phone('Field Maps · מפה', mapBox(dots('SimA.pick')) + `<div style="padding:8px;color:#64748B">${sg ? 'נבחר: ' + esc(sg.SignID || '') : 'הקש על שלט במפה'}</div>`); note = 'הקשה 1: בחירת השלט במפה.'; }
-      else if (cur === 1 && sg) { screen = fmv('popup') || phone('Field Maps · פופאפ', `${signPopup(S, M, sg)}<a style="display:block;background:#1E3A8A;color:#fff;text-align:center;border-radius:8px;padding:10px;margin-top:8px;cursor:pointer" onclick="SimA.step(2)">ערוך ב-Survey123 ›</a>`); note = 'הקשה 2: קישור בפופאפ (ביטוי Arcade). הקישור פותח את Survey123 ישירות על הרשומה.'; }
+      else if (cur === 1 && sg) { screen = fmv('popup') || phone('Field Maps · פופאפ', `${signPopup(S, M, sg)}<a style="display:block;background:#1E3A8A;color:#fff;text-align:center;border-radius:8px;padding:10px;margin-top:8px;cursor:pointer" onclick="SimA.step(2)">ערוך ב-Survey123 ›</a>`); note = 'הקשה 2: קישור בפופאפ (ביטוי Arcade). הקישור פותח את Survey123 ישירות בטופס העריכה של השלט.'; }
       else if (cur === 2) {
-        screen = s123Inbox(S, M);
-        note = st.inbox ? 'ללא הקשות נוספות: רשומה אחת מסוננת נפתחת בעצמה.' : 'כשInbox כבוי הקישור לא מצליח לפתוח את הרשומה לעריכה.';
+        if (st.inbox) { screen = s123Phone(S, M, 'Survey123 · עריכת שלט'); note = 'הקישור (q:globalId + update=true) מסנן את ה-Inbox לרשומה אחת, ו-Survey123 פותח אותה ישירות בטופס העריכה: אין מסך Inbox ואין הקשה נוספת. הרשומה והרכיבים הקיימים נטענו; הוספת ביקור חדש מעדכנת את מצב השלט אחרי שמירה.'; }
+        else { screen = s123Inbox(S, M); note = 'כש-Inbox כבוי הקישור לא מצליח לפתוח את הרשומה לעריכה.'; }
       }
-      else if (cur === 3) { screen = s123Phone(S, M, 'Survey123 · עריכת שלט'); note = 'הרשומה והרכיבים הקיימים נטענו. הוספת ביקור חדש מעדכנת את מצב השלט אחרי שמירה.'; }
       else { screen = fmv('map') || resultPhone(M); note = 'חזרה אוטומטית ל-Field Maps (callback). הצבע בנקודה משקף את המצב המעודכן.'; }
     } else if (kind === 'visitfm') {
       const vt = M.B ? (M.B.ent.fields.find((f) => f.name === 'VisitType') && dom(S, M.B.ent.fields.find((f) => f.name === 'VisitType'))) : null;
@@ -649,7 +648,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     mgrow(i, k, v) { const r = st.mg.rows.find((x) => x.id === i); r[k] = v; if (k === 'model') r.mc = false; st.mg.cur = i; rr(); }, mgreset() { st.mg = null; rr(); },
     vch(c) { st.vch = c; st.step = 0; st.sel = null; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; rr(); },
     applySc(i) { const S = st.S, M = model(S), sg = st.db.main[st.sel], sc = scenarios(M)[i], parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID); const v = newRow(M.B.ent); derive(M.B.ent, Object.assign(v, sc.visit), sg); Object.assign(v, sc.visit); v.__ps = sc.ps.map((r) => { const o = newRow(M.C.ent); o.RelatedPartGlobalID = parts[r.part].GlobalID; derive(M.C.ent, Object.assign(o, { PartStatusAtVisit: r.PartStatusAtVisit, PartNotes: r.PartNotes || '' }), sg); return Object.assign(o, { PartStatusAtVisit: r.PartStatusAtVisit, PartNotes: r.PartNotes || '' }); }); addVisit(S, M, sg, sg, v); st.cv = st.db.B[st.db.B.length - 1]; st.step = 3; rr(); },
-    toS123() { st.tab = 'flow'; st.flow = 'visit'; st.vch = 's123'; st.step = 2; st.modal = null; rr(); },
+    toS123() { st.tab = 'flow'; st.flow = 'visit'; st.vch = 's123'; st.editId = null; st.modal = null; SimA.step(2); },
     vstart(t, gid) { const M = model(st.S), sg = st.db.main[st.sel], v = newRow(M.B.ent); v.VisitType = t; derive(M.B.ent, v, sg); if (st.tab === 'flow') { st.vform = v; st.cv = null; st.psform = null; st.step = 2; } else { st.modal = { v, part: '' }; } rr(); },
     editSign() { st.emod = Object.assign({}, st.db.main[st.sel]); rr(); }, es(n, v) { st.emod[n] = v; derive(model(st.S).main, st.emod, {}); rr(); }, esave() { Object.assign(st.db.main[st.sel], st.emod); st.emod = null; rr(); }, ecancel() { st.emod = null; rr(); },
     vtype(t) { const M = model(st.S); st.vform = newRow(M.B.ent); st.vform.VisitType = t; derive(M.B.ent, st.vform, st.db.main[st.sel]); st.step = 2; rr(); },
@@ -686,7 +685,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
       }
       if (M.B && st.variant === 'sign') st.visits.forEach((v) => { if (v.VisitType || v.StatusAtVisit) { const c = Object.assign({}, v); c.__ps = (v.__ps || []).map((r) => Object.assign({}, r, { RelatedPartGlobalID: kmap[r.RelatedPartGlobalID] || r.RelatedPartGlobalID })); addVisit(S, M, s, s, c); } });
       st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; st.loc = null; st.pendingGeo = false; st.editId = null; st.sent += 1; st.sel = st.db.main.indexOf(s);
-      if (st.tab === 'flow') st.step = FLOWS[st.flow].length - 1; else st.tab = 'fm';
+      if (st.tab === 'flow') st.step = FLOWS[st.flow === 'visit' ? (st.vch === 's123' ? 'edit' : 'visitfm') : st.flow].length - 1; else st.tab = 'fm';
       rr();
     },
     pinAt(e, el) { const r = el.getBoundingClientRect(); st.loc = { x: Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), y: Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) }; applyGeo(); rr(); },
@@ -694,14 +693,14 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     online(c) { st.online = c; applyGeo(); rr(); },
     sync() { const M = model(st.S); st.db.main.forEach((sg) => { if (sg.__pending && sg.__loc) { geoFields(M).forEach((f) => { sg[f.name] = zoneVal(f, zoneOf(sg.__loc)); }); sg.__pending = false; } }); rr(); },
     dlg(v) { if (v && missing().length) { st.showReq = true; rr(); return; } st.dlg = v; rr(); },
-    outbox() { st.dlg = false; st.outbox += 1; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
-    draft() { st.dlg = false; st.drafts += 1; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 2; rr(); },
+    outbox() { st.dlg = false; st.outbox += 1; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 1; rr(); },
+    draft() { st.dlg = false; st.drafts += 1; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; st.editId = null; st.step = st.flow === 'new' ? 0 : 1; rr(); },
     flowSet(f) { st.loc = null; st.pendingGeo = false; st.flow = f; st.step = 0; st.editId = null; st.sign = {}; st.parts = []; st.visits = []; st.showReq = false; st.pi = 0; st.vi = 0; rr(); },
-    step(n) { st.step = n; rr(); }, inboxSet(c) { st.inbox = c; rr(); },
+    step(n) { const ed = st.flow === 'edit' || (st.flow === 'visit' && st.vch === 's123'); if (n === 2 && ed && st.inbox && st.sel != null && st.db.main[st.sel] && st.editId !== st.db.main[st.sel].GlobalID) { SimA.startEdit(); return; } st.step = n; rr(); }, inboxSet(c) { st.inbox = c; rr(); },
     pick(i) { st.sel = i; st.step = 1; rr(); }, sel0(i) { st.sel = i; rr(); },
     startEdit() {
       const sg = st.db.main[st.sel]; if (!sg) return;
-      st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visits = [newRow(model(st.S).B ? model(st.S).B.ent : { fields: [] })]; st.pi = 0; st.vi = 0; st.showReq = false; st.step = 3; allDerive(); rr();
+      st.editId = sg.GlobalID; st.sign = Object.assign({}, sg); st.parts = st.db.A.filter((p) => p.ParentGlobalID === sg.GlobalID).map((p) => Object.assign({}, p)); st.visits = [newRow(model(st.S).B ? model(st.S).B.ent : { fields: [] })]; st.pi = 0; st.vi = 0; st.showReq = false; st.step = 2; allDerive(); rr();
     },
     startNew() { st.loc = null; st.pendingGeo = false; st.editId = null; st.sign = { SignID: newId() }; st.parts = []; st.visits = [newRow(model(st.S).B ? model(st.S).B.ent : { fields: [] })]; st.pi = 0; st.vi = 0; st.showReq = false; st.step = 1; allDerive(); rr(); },
     seed() { seed(st.S); st.sel = null; rr(); }, sel(i) { st.sel = i; st.modal = null; st.vview = false; st.psform = null; rr(); },

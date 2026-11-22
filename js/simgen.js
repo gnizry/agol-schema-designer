@@ -312,7 +312,28 @@
     const warn = K.kid && !kids.length && rec[K.statusField] !== K.continueValue ? `<div style="margin-top:6px;padding:6px 10px;border-radius:8px;background:#FEF3C7;color:#92400E;font-size:12px">עדיין אין ${esc(K.kid.alias)}</div>` : '';
     const lbtn = (l, on, fill) => `<a href="javascript:void(0)" onclick="${on}" style="flex:1;text-decoration:none;text-align:center;padding:10px;border-radius:10px;font-weight:700;border:1px solid ${fill ? '#C2410C' : '#1E3A8A'};background:${fill ? '#C2410C' : '#fff'};color:${fill ? '#fff' : '#1E3A8A'}">${l}</a>`;
     const acts = `<div style="display:flex;gap:6px;margin-top:8px">${rel ? lbtn('+ ' + esc(K.kid.alias), `SimG.addKid('${rel.name}','${rec.GlobalID}',true)`, true) : ''}${K.s123 ? lbtn('עריכת ' + esc(K.main.alias) + ' ב-Survey123', `SimG.s123Edit('${rec.GlobalID}')`, false) : lbtn('עריכת ' + esc(K.main.alias), `SimG.edit('${K.main.name}','${rec.GlobalID}',true)`, false)}</div>`;
-    const cards = kids.slice().reverse().map((k) => `<div style="border:1px solid #E2E8F0;border-radius:10px;padding:6px 10px;margin-top:6px"><div style="display:flex;justify-content:space-between;gap:6px"><b style="font-size:13px">${esc(((K.F(K.kid, sim.childTitle) || {}).alias || '') + ' ' + display(K, K.kid.name, k))}</b><a href="javascript:void(0)" onclick="SimG.edit('${K.kid.name}','${k.GlobalID}',true)" style="font-size:12px;color:#1E3A8A">עריכה</a></div><div style="font-size:12px;color:#475569;margin-top:2px">${(sim.childCard || []).map((n) => k[n] ? esc((K.F(K.kid, n) || {}).alias || n) + ': ' + esc(show(k[n])) : '').filter(Boolean).join(' · ')}</div></div>`).join('');
+    /* רשומות בן: כרטיס מתקפל. כותרת = תאריך + שני שדות ראשונים של childCard (צ'יפים); גוף = כל שאר השדות מעוצבים, ושורות הבן שלהן (למשל מצב רכיב). ללא קישור עריכה: ביקור קודם אינו נערך */
+    const KC = sim.childCard || [], hf = KC.slice(0, 2);
+    const lab = (t) => `<div style="font-size:11px;color:#64748B;margin-bottom:1px">${esc(t)}</div>`;
+    const kidChip = (t) => { const c = K.colors[t]; return `<span style="display:inline-block;padding:1px 9px;border-radius:999px;font-size:11px;font-weight:600;background:${c || '#EEF2FF'};color:${c ? '#fff' : '#3730A3'}">${esc(show(t))}</span>`; };
+    const detail = (k) => {
+      const used = [sim.childTitle, 'ParentGlobalID'].concat(hf);
+      const fl = K.kid.fields.filter((f) => used.indexOf(f.name) < 0 && !C().hidden(f) && f.type !== 'GUID' && !f.pickFrom && k[f.name] !== '' && k[f.name] != null);
+      const grid = fl.map((f) => { const long = Number(f.length) >= 500 || String(show(k[f.name])).length > 28; return `<div style="grid-column:${long ? '1/-1' : 'auto'}">${lab(f.alias || f.name)}<div style="font-size:13px;color:#0F172A;line-height:1.45">${esc(show(k[f.name]))}</div></div>`; }).join('');
+      const sub = K.relsOf(K.kid.name).map((r2) => {
+        const ks = kidsOf(r2, k); if (!ks.length) return '';
+        const E2 = K.E(r2.destination), pf = E2.fields.find((f) => f.pickFrom);
+        const lines = ks.map((x) => {
+          const part = pf && x[pf.name] ? findRec(pf.pickFrom, x[pf.name]) : null;
+          const rest = E2.fields.filter((f) => f.name !== (pf && pf.name) && !C().hidden(f) && f.type !== 'GUID' && x[f.name] !== '' && x[f.name] != null);
+          const st1 = rest[0], more = rest.slice(1).map((f) => esc(show(x[f.name]))).join(' · ');
+          return `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-top:1px solid #E2E8F0"><div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(part ? display(K, pf.pickFrom, part) : (E2.alias || ''))}</div>${more ? `<div style="font-size:12px;color:#475569;margin-top:1px">${more}</div>` : ''}</div>${st1 ? kidChip(x[st1.name]) : ''}</div>`;
+        }).join('');
+        return `<div style="margin-top:10px;padding:8px 10px;border-radius:8px;background:#F8FAFC;border:1px solid #E2E8F0"><div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:2px">${esc(E2.alias)} (${ks.length})</div>${lines}</div>`;
+      }).join('');
+      return `<div style="padding:4px 12px 12px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px">${grid}</div>${sub}</div>`;
+    };
+    const cards = '<style>.sg-v>summary{display:flex;list-style:none;cursor:pointer}.sg-v>summary::-webkit-details-marker{display:none}.sg-v[open]>summary .sg-ch{transform:rotate(180deg)}.sg-v[open]{border-color:#93C5FD;box-shadow:0 1px 6px rgba(30,58,138,.12)}</style>' + kids.slice().reverse().map((k) => `<details class="sg-v" style="border:1px solid #E2E8F0;border-radius:12px;margin-top:8px;background:#fff;overflow:hidden"><summary style="align-items:center;gap:8px;padding:10px 12px;background:#F8FAFC"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:#0F172A">${esc(show(k[sim.childTitle]) || display(K, K.kid.name, k))}</div><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">${hf.map((n) => k[n] ? kidChip(k[n]) : '').join('')}</div></div><span class="sg-ch" style="color:#64748B;font-size:12px;transition:transform .15s">▼</span></summary>${detail(k)}</details>`).join('');
     return `<div style="padding:12px 14px;font-family:Tahoma,sans-serif"><div style="display:flex;gap:4px;flex-wrap:wrap">${chips}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${kpis}</div>${warn}${acts}${cards}</div>`;
   }
   /* פופאפ ברירת מחדל של Field Maps: רשימת שדות (כינוי מעל ערך) */
