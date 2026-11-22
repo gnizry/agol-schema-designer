@@ -49,12 +49,12 @@
     if (r.op === '!=') return !arr.includes(v);
     return v === r.v;
   }
-  function isShown(f, vals, up) { return !hidden(f) && relOk(f, vals, up) !== false; }
+  function isShown(f, vals, up) { return !hidden(f) && !(f.editOnly && !st.editId) && relOk(f, vals, up) !== false; }
 
   /* ---------- בקרי טופס ---------- */
   function control(S, ent, f, vals, up, onch) {
     const d = dom(S, f), v = vals[f.name] == null ? '' : vals[f.name], ro = readonly(f);
-    const label = `<label style="display:block;font-weight:600;margin:10px 0 3px">${esc(f.alias || f.name)}${f.open ? ' <small style="color:#b45309">(פתוח)</small>' : ''}${ro ? ' <small style="color:#64748B">(אוטומטי)</small>' : ''}</label>`;
+    const label = `<label style="display:block;font-weight:600;margin:10px 0 3px">${esc(f.alias || f.name)}${f.open ? ' <small style="color:#b45309">(פתוח)</small>' : ''}${ro ? ' <small style="color:#64748B">(אוטומטי)</small>' : ''}</label>${f.hint ? `<div style="font-size:12px;color:#64748B;margin:-2px 0 4px">${esc(f.hint)}</div>` : ''}`;
     const base = 'width:100%;padding:8px;border:1px solid #CBD5E1;border-radius:6px;font:inherit;box-sizing:border-box';
     let inp;
     if (f.pickFrom && !ro) { const ps = st.db.A.filter((p) => p.ParentGlobalID === (up || {}).GlobalID); inp = `<select style="${base}" onchange="${onch}('${f.name}',this.value)"><option value="">בחר רכיב…</option>${ps.map((p) => `<option value="${p.GlobalID}" ${p.GlobalID === v ? 'selected' : ''}>${esc((p.ComponentType || 'רכיב') + (p.Direction ? ' · ' + p.Direction : ''))}</option>`).join('')}</select>`; }
@@ -123,7 +123,8 @@
   function addVisit(S, M, signRec, parentRec, v) {
     const ps = v.__ps || []; delete v.__ps;
     v.GlobalID = uid(); v.ParentGlobalID = parentRec.GlobalID; st.db.B.push(v); applyAuto(S, M, signRec, v);
-    if (M.C) ps.forEach((r) => { if (!r.RelatedPartGlobalID && !r.PartStatusAtVisit) return; st.db.C.push(Object.assign({}, r, { GlobalID: uid(), ParentGlobalID: v.GlobalID })); });
+    if (M.C) ps.forEach((r) => { if (!r.RelatedPartGlobalID && !r.PartStatusAtVisit) return; st.db.C.push(Object.assign({}, r, { GlobalID: uid(), ParentGlobalID: v.GlobalID }));
+      M.A.ent.fields.filter((f) => f.fromPartStatus).forEach((f) => { const pt = st.db.A.find((p) => p.GlobalID === r.RelatedPartGlobalID); if (pt && r[f.fromPartStatus]) pt[f.name] = r[f.fromPartStatus]; }); });
   }
   const psOf = (vg) => (st.db.C || []).filter((r) => r.ParentGlobalID === vg);
   /* מצב נוכחי של רכיב = השורה האחרונה שדיווחה עליו (ב-Arcade: שאילתה בשתי רמות) */
@@ -272,7 +273,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
   function mControl(S, ent, f, vals, up, onch) {
     const d = dom(S, f), v = vals[f.name] == null ? '' : vals[f.name], ro = readonly(f) || lockEdit(f);
     const req = !ro && isReq(f, vals, up), bad = req && st.showReq && (v === '' || v == null);
-    const lab = `<div style="font-size:16px;margin:16px 0 5px;color:#222">${esc(f.alias || f.name)}${req ? ' <span style="color:#C62828">*</span>' : ''}</div>`;
+    const lab = `<div style="font-size:16px;margin:16px 0 5px;color:#222">${esc(f.alias || f.name)}${req ? ' <span style="color:#C62828">*</span>' : ''}</div>${f.hint ? `<div style="font-size:13px;color:#6B7280;margin:-2px 0 6px">${esc(f.hint)}</div>` : ''}`;
     const box = `position:relative;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid ${bad ? '#C62828' : LINE};border-radius:3px;min-height:42px;padding:0 10px;box-sizing:border-box`;
     const clr = (has) => has && !ro ? `<span onclick="${onch}('${f.name}','')" style="position:relative;z-index:2;color:#5F6B5C;font-size:17px;cursor:pointer;line-height:1">⊗</span>` : '';
     const val = (t, ph) => `<span style="flex:1;color:${t ? BLUE : '#9AA39A'};min-height:20px">${t ? esc(t) : esc(ph || '')}</span>`;

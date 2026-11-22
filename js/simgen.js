@@ -122,6 +122,8 @@
   }
   /* שדות בשכבה הראשית שמתעדכנים מהרשומה הקשורה האחרונה (fromVisit) */
   function fromKid(K, kidEnt, kid) {
+    /* מצב נוכחי של רכיב: מועתק מהדיווח האחרון עליו (fromPartStatus) */
+    kidEnt.fields.filter((pf) => pf.pickFrom && kid[pf.name]).forEach((pf) => { const pe = K.E(pf.pickFrom), pr = pe && findRec(pf.pickFrom, kid[pf.name]); if (pr) pe.fields.filter((f) => f.fromPartStatus && kid[f.fromPartStatus]).forEach((f) => { pr[f.name] = kid[f.fromPartStatus]; }); });
     const m = mainOf(K, kidEnt.name, kid); if (!m || kidEnt.name === K.main.name) return;
     K.main.fields.filter((f) => f.fromVisit && kidEnt.fields.some((x) => x.name === f.fromVisit)).forEach((f) => {
       if (kid[f.fromVisit] && (!f.fromVisitWhen || kid[f.fromVisitWhen.f] === f.fromVisitWhen.v)) m[f.name] = kid[f.fromVisit];

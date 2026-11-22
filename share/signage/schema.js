@@ -1240,6 +1240,7 @@ window.SCHEMAS["signage"] = {
           "length": "255",
           "domain": "Level",
           "mode": "רשימה",
+          "hint": "א׳ = הכנף העליונה בשלט, ב׳ = האמצעית, ג׳ = התחתונה (סופרים מלמעלה למטה).",
           "visible": "רק בפ-6 / פ-7 וכשהרכיב הוא כנף",
           "open": false,
           "note": "ערך טקסטואלי; הקוד בשדה LevelCode.",
@@ -1311,6 +1312,21 @@ window.SCHEMAS["signage"] = {
             "op": "=",
             "v": "כן"
           }
+        },
+        {
+          "category": "רכיב",
+          "name": "PartStatusCurrent",
+          "alias": "מצב נוכחי",
+          "type": "TEXT",
+          "length": "255",
+          "domain": "PartStatus",
+          "mode": "אוטומטי",
+          "visible": "בעריכה בלבד, קריאה בלבד (Make)",
+          "open": false,
+          "editOnly": true,
+          "fromPartStatus": "PartStatusAtVisit",
+          "hint": "לדיווח על תקלה או החלפה של הרכיב: הוסף ביקור בקבוצה \"ביקורים בשלט\" ובחר את הרכיב ב\"מצב רכיבים שנבדקו\".",
+          "note": "עותק נוכחי של מצב הרכיב, מתעדכן אוטומטית מהדיווח האחרון עליו (מקור האמת: SignPartStatus.PartStatusAtVisit), באותו מנגנון של SignStatus בשלט (Make B, D28; טעון הרחבה לרכיבים). נשאר שדה פיזי כדי שיוצג בטופס העריכה של Survey123, שלא מסוגל לשאול טבלה אחרת. לא נאסף במיפוי חדש (אין עדיין ביקור). רכיב שלא דווח עליו נשאר ריק, כלומר 'לא דווח' ולא 'תקין' (שאלה 8 לדיון עם הלקוח)."
         },
         {
           "category": "רכיב",
@@ -3665,7 +3681,7 @@ window.SCHEMAS["signage"] = {
           },
           "SignPartStatus": {
             "c": "#B91C1C",
-            "t": "מצב רכיב"
+            "t": "מצב רכיבים שנבדקו"
           }
         }
       }
@@ -4041,4 +4057,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "22.11.2026 11:25";
+window.__BUILT = "22.11.2026 11:15";

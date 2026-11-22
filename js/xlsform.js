@@ -67,6 +67,8 @@
       if (rl) r.relevant = rl;
       if (f.visible === 'קריאה בלבד' || /^תמיד \(קריאה בלבד\)/.test(f.visible || '')) r.read_only = 'yes';
       if (f.readonlyExpr || /בעריכה: קריאה בלבד/.test(f.visible || '')) rep.open.push(where + ': נדרש קריאה בלבד בעריכה בלבד (' + (f.readonlyExpr || 'mode = edit') + '). לא הוגדר בטופס עד אימות שעמודת read_only תומכת בביטוי.');
+      if (f.hint) r.hint = f.hint;
+      if (f.editOnly) { r.relevant = r.relevant ? '(' + r.relevant + ') and ' + EDIT_MODE : EDIT_MODE; r.read_only = 'yes'; rep.open.push(where + ': מוצג רק בעריכה (' + EDIT_MODE + ') וקריאה בלבד; מתעדכן על ידי Make מהדיווח האחרון על הרכיב. דורש אימות ש-pulldata("@property","mode") עובד ב-relevant בתוך Repeat.'); }
       if (f.fromVisit) rep.open.push(where + ': מתעדכן על ידי Make (D28) מהביקור האחרון, לא מהטופס.');
       // רשימה מדורגת (ערכי הדומיין כוללים parent): choice_filter לפי שדה האב באותה ישות
       if (d && d.values.some((v) => v.parent)) {
