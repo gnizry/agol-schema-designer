@@ -197,6 +197,27 @@
         });
       });
     }
+    /* ניהול: שאלות פתוחות, תוכנית יישום (פנימי בלבד), יומן בקשות שינוי */
+    const mq = (S.questions || []).filter((q) => q.status === 'open');
+    if (mq.length) {
+      B.push({ t: 'h1', text: secNo++ + '. שאלות פתוחות לדיון' });
+      B.push({ t: 'p', text: 'שאלות שמחכות להכרעה מול הלקוח, כל אחת עם הצעת פיתוח. מקור הנתונים: הכלי (דף "שאלות ללקוח").' });
+      B.push({ t: 'table', head: ['#', 'נושא', 'שאלה', 'הצעה'], w: [7, 13, 45, 35], rows: mq.map((q) => [q.id || '', q.topic || '', q.q || '', q.proposal || '']) });
+    }
+    const pl = S.plan && (S.plan.phases || []).length ? S.plan : null;
+    if (pl && !cl) {
+      const hpd = +pl.hoursPerDay || 6, ps = { todo: 'לא התחיל', doing: 'בעבודה', done: 'הושלם', blocked: 'חסום' };
+      let tmin = 0, tmax = 0; pl.phases.forEach((ph) => ph.items.forEach((x) => { tmin += +x.min || 0; tmax += +x.max || 0; }));
+      B.push({ t: 'h1', text: secNo++ + '. תוכנית יישום והערכת זמן' });
+      B.push({ t: 'p', text: 'סה"כ הערכה: ' + tmin + '–' + tmax + ' שעות (כ-' + Math.round(tmin / hpd * 10) / 10 + '–' + Math.round(tmax / hpd * 10) / 10 + ' ימי עבודה של ' + hpd + ' שעות). ' + (pl.assumptions || '') });
+      pl.phases.forEach((ph, k) => { B.push({ t: 'h2', text: (k + 1) + '. ' + ph.name }); B.push({ t: 'table', head: ['משימה', 'תחום', 'שעות', 'אחראי', 'סטטוס', 'תלוי ב'], w: [38, 12, 9, 12, 11, 18], rows: ph.items.map((x) => [x.name || '', x.area || '', (x.min || 0) + '–' + (x.max || 0), x.owner || '', ps[x.status] || '', x.dep || '']) }); });
+    }
+    const cr = S.changes || [];
+    if (cr.length) {
+      const cs = { new: 'חדש', review: 'בבדיקה', waiting: 'ממתין ללקוח', approved: 'אושר', doing: 'בעבודה', done: 'הושלם', rejected: 'נדחה' }, ct = { req: 'דרישה', enh: 'שיפור', bug: 'תיקון' };
+      B.push({ t: 'h1', text: secNo++ + '. יומן בקשות שינוי' });
+      B.push({ t: 'table', head: ['#', 'תאריך', 'בקשה', 'סוג', 'סטטוס', 'גרסה'], w: [8, 12, 50, 10, 12, 8], rows: cr.map((c) => [c.id || '', c.date || '', c.title || '', ct[c.type] || '', cs[c.status] || '', c.version || '']) });
+    }
     return B;
   }
 

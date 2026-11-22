@@ -85,7 +85,7 @@
       '<h4>ישויות</h4>' + S.entities.map((e, i) => it('entity', i, esc(e.alias) + ' · ' + esc(e.name), e.fields.length)).join('') +
       '<h4>מבנה</h4>' + it('domains', 0, 'דומיינים', Object.keys(S.domains).length) + it('rels', 0, 'קשרים', S.relationships.length) +
       '<h4>ניהול</h4>' + it('decisions', 0, 'החלטות פתוחות', open) +
-      it('questions', 0, 'שאלות ללקוח', MG.q) + it('plan', 0, 'תוכנית יישום', MG.h == null ? null : MG.h + ' ש׳') + it('changes', 0, 'בקשות שינוי', MG.c) +
+      it('questions', 0, 'שאלות ללקוח', MG.q) + it('plan', 0, 'תוכנית יישום', MG.h == null ? null : MG.h + ' ש׳') + it('changes', 0, 'בקשות שינוי', MG.c) + (VIEWONLY ? '' : it('sync', 0, 'סנכרון מ-AGOL')) +
       it('validate', 0, 'בדיקות', errs + warns, errs ? 'err' : '') +
       '<h4>תרשימים</h4>' + it('dg-erd', 0, 'ERD · ישויות וקשרים', S.relationships.length) + it('dg-comp', 0, 'רכיבי הפתרון', window.Diagrams ? Diagrams.count(S).nodes || null : null) + it('dg-flow', 0, 'תהליכים וזרימות', window.Diagrams ? Diagrams.count(S).flows || null : null) +
       '<h4>סימולציה</h4>' + it('sim', 0, 'סימולטור Survey123 / Field Maps') +
@@ -199,13 +199,13 @@
       <p class="hint">בריפו, הקבצים נוצרים גם משורת פקודה: <code dir="ltr">node tools/generate.js</code> → תיקיית generated/.</p>`;
   }
 
-  const TITLES = { 'dg-erd': 'ERD: ישויות וקשרים', 'dg-comp': 'רכיבי הפתרון והקשרים ביניהם', 'dg-flow': 'תהליכים: זרימת משתמש וזרימת נתונים', entity: null, domains: 'דומיינים (Coded Value Domains)', rels: 'קשרים בין ישויות', decisions: 'החלטות פתוחות מול הלקוח', questions: 'שאלות לדיון עם הלקוח', plan: 'תוכנית יישום והערכת זמן', changes: 'בקשות שינוי ושיפורים', validate: 'בדיקות תקינות', output: 'תוצרים', sim: 'סימולטור חוויית משתמש' };
+  const TITLES = { 'dg-erd': 'ERD: ישויות וקשרים', 'dg-comp': 'רכיבי הפתרון והקשרים ביניהם', 'dg-flow': 'תהליכים: זרימת משתמש וזרימת נתונים', entity: null, domains: 'דומיינים (Coded Value Domains)', rels: 'קשרים בין ישויות', decisions: 'החלטות פתוחות מול הלקוח', questions: 'שאלות לדיון עם הלקוח', plan: 'תוכנית יישום והערכת זמן', changes: 'בקשות שינוי ושיפורים', sync: 'סנכרון מהאונליין לכלי', validate: 'בדיקות תקינות', output: 'תוצרים', sim: 'סימולטור חוויית משתמש' };
   function render() {
     renderNav();
     const t = V.page === 'entity' ? esc(S.entities[V.idx].alias) + ' — ' + esc(S.entities[V.idx].name) : TITLES[V.page];
-    let body; try { body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, questions: () => Mgmt.questions(S), plan: () => Mgmt.plan(S), changes: () => Mgmt.changes(S), validate: validatePage, output: outputPage, sim: () => (window.Sim ? Sim.render(S) : ''), 'dg-erd': () => Diagrams.page(S, 'erd'), 'dg-comp': () => Diagrams.page(S, 'comp'), 'dg-flow': () => Diagrams.page(S, 'flow') }[V.page](); } catch (err) { console.error(err); body = '<div style="background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:10px;padding:12px;direction:ltr;text-align:left;white-space:pre-wrap;font:12px monospace"><b>שגיאה בהצגת העמוד</b>\n' + esc(String(err && err.stack || err)) + '</div>'; }
+    let body; try { body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, questions: () => Mgmt.questions(S), plan: () => Mgmt.plan(S), changes: () => Mgmt.changes(S), sync: () => Sync.page(S), validate: validatePage, output: outputPage, sim: () => (window.Sim ? Sim.render(S) : ''), 'dg-erd': () => Diagrams.page(S, 'erd'), 'dg-comp': () => Diagrams.page(S, 'comp'), 'dg-flow': () => Diagrams.page(S, 'flow') }[V.page](); } catch (err) { console.error(err); body = '<div style="background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:10px;padding:12px;direction:ltr;text-align:left;white-space:pre-wrap;font:12px monospace"><b>שגיאה בהצגת העמוד</b>\n' + esc(String(err && err.stack || err)) + '</div>'; }
     $('main').innerHTML = `<h2 style="margin:0 0 10px">${t}</h2>` + body;
-    if (VIEWONLY && ['entity', 'domains', 'rels', 'decisions', 'questions', 'plan', 'changes', 'validate'].indexOf(V.page) >= 0) { // מצב צפייה: ללא עריכה
+    if (VIEWONLY && ['entity', 'domains', 'rels', 'decisions', 'questions', 'plan', 'changes', 'sync', 'validate'].indexOf(V.page) >= 0) { // מצב צפייה: ללא עריכה
       $('main').querySelectorAll('input,select,textarea').forEach((el) => { el.disabled = true; });
       $('main').querySelectorAll('button').forEach((b) => { if (!/A\.(go|refresh|script|copy|dl|mset|mmd)\b/.test(b.getAttribute('onclick') || '')) b.disabled = true; });
     }
@@ -261,6 +261,40 @@
     x(i, p, v) { S.decisions[i][p] = v; commit(); },
     /* ניהול: שאלות, תוכנית, בקשות שינוי */
     mset(k, v) { Mgmt.F[k] = v; render(); },
+    render() { render(); },
+    async syncRun() { await Sync.run(S); render(); },
+    syncApply() {
+      const ids = Array.from(document.querySelectorAll('.sy-ck:checked')).map((x) => +x.value), sel = Sync.ST.items.filter((x) => ids.indexOf(x.id) >= 0 && x.adopt);
+      if (!sel.length) { toast('לא נבחרו פריטים'); return; }
+      const tasks = [], seen = {}, push = (x) => { const k = x.comp + '|' + x.what; if (!seen[k]) { seen[k] = 1; tasks.push({ comp: x.comp, t: x.what, h: x.h, done: !!x.auto }); } };
+      const descs = [];
+      sel.forEach((it) => {
+        let R = null;
+        if (it.k === 'field+') R = Impact.analyze(S, { type: 'field', entity: it.ent, name: it.f.name, alias: it.f.alias || it.f.name, ftype: 'TEXT', length: '255', domain: it.f.domain ? it.f.domain.name : '' }, { fromOnline: true });
+        else if (it.k === 'val+') R = Impact.analyze(S, { type: 'domainValue', domName: it.dom, code: String(it.v.code) }, { fromOnline: true });
+        if (R && R.ok) R.items.forEach(push); else push({ comp: 'Survey123', what: 'ייצור XLSForm מחדש ופרסום (' + it.text + ')', h: [0.5, 1] });
+      });
+      sel.forEach((it) => { const d = Sync.adopt(S, it); if (d) descs.push(d); });
+      const ver = String(Impact.bump(S)); S.changes = S.changes || []; const id = Mgmt.nextId(S.changes, 'CR');
+      S.changes.push({ id, date: Mgmt.today(), source: 'סנכרון מ-AGOL', title: 'אימוץ ' + descs.length + ' שינויים שבוצעו באונליין', desc: descs.join('; '), type: 'enh', status: 'doing', areas: tasks.map((x) => x.comp).filter((x, i, a) => a.indexOf(x) === i).join(', '), est: Math.round(tasks.reduce((s, x) => s + (x.h[0] + x.h[1]) / 2, 0)), ref: '', version: ver, note: 'השינוי כבר בוצע באונליין; המשימות הן עדכון שאר הרכיבים.', tasks });
+      S.sync = { last: new Date().toLocaleString('he-IL'), note: descs.length + ' שינויים אומצו (בקשה ' + id + ')' };
+      Sync.ST.items = Sync.ST.items.filter((x) => ids.indexOf(x.id) < 0); Sync.ST.done = { n: descs.length, cr: id };
+      commit(); toast('אומצו ' + descs.length + ' שינויים');
+    },
+    wz(k, v) { const W = Impact.W; W[k] = v; if (k === 'type') { W.result = null; } if (k === 'domain' && v) W.mode = 'רשימה'; W.open = true; render(); },
+    wzGo() { const W = Impact.W; if (W.domain === '' && W.type === 'field') W.mode = 'ידני'; W.result = Impact.analyze(S, W); W.open = true; render(); },
+    wzCreate(doApply) {
+      const W = Impact.W, R = W.result; if (!R || !R.ok) return;
+      S.changes = S.changes || []; const id = Mgmt.nextId(S.changes, 'CR'); W.crId = id; let ver = '';
+      let applied = '';
+      if (doApply && R.apply) { applied = Impact.apply(S, W); ver = String(Impact.bump(S)); }
+      const typeLbl = Impact.TYPES[W.type];
+      S.changes.push({ id, date: Mgmt.today(), source: W.source || '', title: R.summary.slice(0, 110), desc: R.summary + ' דרך מענה: ' + R.approach, type: 'req', status: doApply && R.apply ? 'doing' : 'approved', areas: R.items.map((x) => x.comp).filter((x, i, a) => a.indexOf(x) === i).join(', '), est: Math.round((R.hours[0] + R.hours[1]) / 2), ref: R.related.map((x) => x.split(' ')[0]).join(', '), version: ver, note: applied ? 'הוחל על הסכמה (' + applied + ') בגרסה ' + ver + '. ' + typeLbl : typeLbl,
+        tasks: R.items.map((x) => ({ comp: x.comp, t: x.what, h: x.h, done: !!(x.auto && doApply && R.apply) })) });
+      Impact.W.result = null; Impact.W.open = false; ['name', 'alias', 'code', 'parent', 'title', 'desc', 'domain', 'domName'].forEach((k) => { Impact.W[k] = ''; });
+      Mgmt.F.c = 'active'; commit(); toast(doApply && R.apply ? 'הסכמה עודכנה, נפתחה בקשה ' + id : 'נפתחה בקשה ' + id);
+    },
+    task(i, j, v) { const c = S.changes[i]; c.tasks[j].done = !!v; if (c.tasks.every((x) => x.done) && c.status !== 'done') { c.status = 'done'; toast('כל המשימות הושלמו: הבקשה סומנה כהושלמה'); } else if (!c.tasks.every((x) => x.done) && c.status === 'done') c.status = 'doing'; commit(); },
     ls(list, i, p, v) { S[list][i][p] = v; if (list === 'questions' && p === 'status' && v === 'answered' && !S[list][i].date) S[list][i].date = Mgmt.today(); commit(); },
     lsAdd(list) { S[list] = S[list] || []; const r = Mgmt.blank[list](); r.id = Mgmt.nextId(S[list], list === 'questions' ? 'Q' : 'CR'); if (list === 'changes') r.version = String((S.meta && S.meta.version) || ''); S[list].push(r); commit(); },
     lsDel(list, i) { if (confirm('למחוק את הרשומה ' + (S[list][i].id || '') + '?')) { S[list].splice(i, 1); commit(); } },

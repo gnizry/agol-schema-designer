@@ -16,6 +16,9 @@
   const tabs = (key, opts) => `<div class="tabs">${opts.map((o) => `<button class="${F[key] === o[0] ? 'on' : ''}" onclick="A.mset('${key}','${o[0]}')">${esc(o[1])}</button>`).join('')}</div>`;
   const chip = (t, c) => `<span style="display:inline-block;background:${c || '#EEF2FF'};border-radius:12px;padding:2px 10px;margin:0 0 4px 6px;font-size:13px">${t}</span>`;
 
+
+  const taskList = (c, i) => { const T = c.tasks || []; if (!T.length) return ''; const d = T.filter((x) => x.done).length; return `<details style="margin-top:4px"><summary style="cursor:pointer;font-size:13px;color:#1E3A8A">משימות ${d}/${T.length}</summary>${T.map((x, j) => `<label style="display:block;font-size:13px;margin:3px 0"><input type="checkbox" ${x.done ? 'checked' : ''} onchange="A.task(${i},${j},this.checked)"> <b>${esc(x.comp)}</b>: ${esc(x.t)}${x.h ? ` <span dir="ltr" style="color:#64748B">(${x.h[0]}–${x.h[1]} ש׳)</span>` : ''}</label>`).join('')}</details>`; };
+
   /* ---------- שאלות ללקוח ---------- */
   function questions(S) {
     const L = S.questions || (S.questions = []);
@@ -83,16 +86,63 @@
       const f = (k) => `A.ls('changes',${i},'${k}',`;
       return `<tr><td style="width:60px"><b>${esc(c.id)}</b><div style="font-size:11px;color:#64748B">${inp(c.date, f('date'), '88px')}</div></td>
       <td style="width:110px">${inp(c.source, f('source'), '100%')}</td>
-      <td>${inp(c.title, f('title'), '100%')}${ta(c.desc, f('desc'), 2)}</td>
+      <td>${inp(c.title, f('title'), '100%')}${ta(c.desc, f('desc'), 2)}${taskList(c, i)}</td>
       <td style="width:90px">${sel(C_TY, c.type, f('type'))}</td>
       <td style="width:110px">${sel(C_ST, c.status, f('status'))}</td>
       <td>${inp(c.areas, f('areas'), '100%')}<div style="font-size:12px;color:#64748B;margin-top:2px">הערכה (ש׳): ${num(c.est, f('est'))} · קשר: ${inp(c.ref, f('ref'), '70px')} · גרסה: ${inp(c.version, f('version'), '60px')}</div></td>
       <td>${ta(c.note, f('note'), 3)}</td><td><button class="mini danger" onclick="A.lsDel('changes',${i})">מחק</button></td></tr>`;
     }).join('');
     return `<div class="card" style="margin-bottom:10px"><b>יומן בקשות שינוי ושיפורים.</b> כל בקשה מהלקוח (פגישה, מייל, שיחה) נרשמת כאן עם מקור, תחום מושפע, הערכה וסטטוס, כדי שאפשר יהיה לדעת מה אושר, מה בעבודה ובאיזו גרסת סכמה (${esc((S.meta || {}).version || '')}) זה נכנס. עלות שעות באישור או בעבודה: <b>${est}</b>.</div>
+      ${window.Impact ? wizard(S) : ''}
       ${tabs('c', [['active', 'פעילות'], ['new', 'חדשות (' + cnt('new') + ')'], ['waiting', 'ממתינות ללקוח (' + cnt('waiting') + ')'], ['done', 'הושלמו (' + cnt('done') + ')'], ['rejected', 'נדחו (' + cnt('rejected') + ')'], ['all', 'הכל (' + L.length + ')']])}
       <div style="margin:8px 0"><button onclick="A.lsAdd('changes')">+ בקשה חדשה</button> <button class="mini" onclick="A.mmd('changes')">העתק כ-Markdown (סיכום ללקוח)</button></div>
       <div class="tbl-wrap"><table style="min-width:1100px"><thead><tr><th>#</th><th>מקור</th><th>בקשה</th><th>סוג</th><th>סטטוס</th><th>תחום, הערכה וקישורים</th><th>הערות / החלטה</th><th></th></tr></thead><tbody>${rows || '<tr><td colspan="8" style="color:#64748B">אין בקשות בסינון הזה.</td></tr>'}</tbody></table></div>`;
+  }
+
+
+  /* ---------- אשף בקשה חדשה עם ניתוח השפעה ---------- */
+  function wizard(S) {
+    const I = window.Impact, W = I.W, ents = S.entities, e = I.ent(S, W.entity);
+    const o = (arr, v, f) => arr.map((x) => `<option value="${esc(x[0])}" ${x[0] === v ? 'selected' : ''}>${esc(x[1])}</option>`).join('');
+    const row = (lab, html) => `<label style="display:block;font-size:13px;color:#475569;margin:6px 0 2px">${lab}</label>${html}`;
+    const t = (k, ph, w) => `<input type="text" placeholder="${esc(ph || '')}" style="width:${w || '100%'};box-sizing:border-box" value="${esc(W[k])}" onchange="A.wz('${k}',this.value)">`;
+    const s_ = (k, arr) => `<select style="width:100%" onchange="A.wz('${k}',this.value)">${o(arr, W[k])}</select>`;
+    const cats = e ? Array.from(new Set(e.fields.map((f) => f.category).filter(Boolean))) : [];
+    let form = '';
+    if (W.type === 'field') {
+      form = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 12px">
+        <div>${row('ישות (טבלה / שכבה)', s_('entity', [['', 'בחר…']].concat(ents.map((x) => [x.name, (x.alias || x.name) + ' · ' + x.name]))))}</div>
+        <div>${row('שם השדה (אנגלית)', t('name', 'למשל InspectorName'))}</div>
+        <div>${row('כינוי (עברית)', t('alias', 'כפי שיופיע בטופס'))}</div>
+        <div>${row('סוג', s_('ftype', Object.keys(I.FT).map((k) => [k, I.FT[k]])))}</div>
+        <div>${row('אורך (טקסט)', t('length', '255'))}</div>
+        <div>${row('רשימת בחירה (דומיין)', s_('domain', [['', 'ללא']].concat(Object.keys(S.domains).map((k) => [k, k]))))}</div>
+        <div>${row('קבוצה בטופס', `<input list="wz-cats" style="width:100%;box-sizing:border-box" value="${esc(W.category)}" onchange="A.wz('category',this.value)"><datalist id="wz-cats">${cats.map((c) => `<option value="${esc(c)}">`).join('')}</datalist>`)}</div>
+        <div>${row('הערה / הסבר', t('desc', 'מה השדה מתעד'))}</div></div>`;
+    } else if (W.type === 'domainValue') {
+      form = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 12px">
+        <div>${row('דומיין', s_('domName', [['', 'בחר…']].concat(Object.keys(S.domains).map((k) => [k, k + (S.domains[k].desc ? ' · ' + S.domains[k].desc : '')]))))}</div>
+        <div>${row('הערך החדש (קוד = תווית)', t('code'))}</div>
+        <div>${row('ערך הורה (ברשימה מדורגת)', t('parent'))}</div></div>`;
+    } else form = row(W.type === 'entity' ? 'תיאור הטבלה או השכבה הנדרשת' : 'תיאור הבקשה', t('title', '', '100%')) + row('פרטים', `<textarea rows="3" style="width:100%;box-sizing:border-box" onchange="A.wz('desc',this.value)">${esc(W.desc)}</textarea>`);
+    const R = W.result;
+    let out = '';
+    if (R && !R.ok) out = `<div class="iss error"><b>חסר</b><span>${R.errs.map(esc).join(' · ')}</span></div>`;
+    else if (R) {
+      const rows2 = R.items.map((x) => `<tr><td><b>${esc(x.comp)}</b></td><td>${esc(x.what)}${x.auto ? ' <span style="color:#166534">(אוטומטי בכלי)</span>' : ''}</td><td style="white-space:nowrap" dir="ltr">${x.h[0]}–${x.h[1]}</td></tr>`).join('');
+      out = `<div class="card" style="margin-top:10px"><b>מה כרוך בבקשה</b><p>${esc(R.summary)}</p><b>דרך מענה מוצעת</b><p>${esc(R.approach)}</p>
+        ${(R.warn || []).map((w) => `<div class="iss warn"><b>שים לב</b><span>${esc(w)}</span></div>`).join('')}
+        ${R.related.length ? `<p>קשור לנושאים פתוחים או החלטות: <b>${R.related.map(esc).join(', ')}</b></p>` : ''}
+        <div class="tbl-wrap"><table style="min-width:600px"><thead><tr><th>רכיב</th><th>מה צריך לעדכן</th><th>שעות</th></tr></thead><tbody>${rows2}</tbody></table></div>
+        <p><b>הערכה: <span dir="ltr">${R.hours[0]}–${R.hours[1]}</span> שעות</b></p>
+        <div>${R.apply ? '<button class="primary" onclick="A.wzCreate(true)">אשר והחל על הסכמה (ופתח בקשה עם משימות)</button> ' : ''}<button onclick="A.wzCreate(false)">פתח בקשה בלבד (בלי להחיל)</button></div>
+        ${R.apply ? '<p class="hint">ההחלה משנה את הסכמה בלבד (שדה / ערך) ומעלה את מספר הגרסה. עדכון השירות המתארח, הטופס ושאר הרכיבים נעשה לפי רשימת המשימות שתיפתח בבקשה.</p>' : ''}</div>`;
+    }
+    return `<details class="card" style="margin-bottom:10px" ${W.result || W.open ? 'open' : ''}><summary style="cursor:pointer;font-weight:700">+ בקשה חדשה עם ניתוח השפעה (אשף)</summary>
+      ${row('סוג השינוי', s_('type', Object.keys(I.TYPES).map((k) => [k, I.TYPES[k]])))}
+      ${row('מקור הבקשה', t('source', 'למשל: אבי קיי, פגישה 25/11'))}
+      ${form}
+      <div style="margin-top:10px"><button class="primary" onclick="A.wzGo()">נתח השפעה</button></div>${out}</details>`;
   }
 
   /* ---------- Markdown ---------- */
@@ -117,7 +167,7 @@
   /* ---------- עדכוני נתונים (נקרא מ-A ב-app.js) ---------- */
   const nextId = (L, pre) => pre + '-' + String(L.reduce((m, x) => Math.max(m, parseInt(String(x.id || '').replace(/\D/g, ''), 10) || 0), 0) + 1).padStart(3, '0');
   window.Mgmt = {
-    F, questions, plan, changes, toMd, today, nextId, Q_ST, C_ST, P_ST,
+    F, questions, plan, changes, wizard, toMd, today, nextId, Q_ST, C_ST, P_ST,
     counts(S) { return { q: (S.questions || []).filter((x) => x.status === 'open').length, c: (S.changes || []).filter((x) => ['new', 'review', 'waiting', 'approved', 'doing'].indexOf(x.status) >= 0).length, h: S.plan ? Math.round(planTotals(S.plan).max) : null }; },
     blank: {
       questions: () => ({ topic: '', q: '', proposal: '', status: 'open', answer: '', date: '', ref: '' }),
