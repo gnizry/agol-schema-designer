@@ -1325,7 +1325,7 @@ window.SCHEMAS["signage"] = {
           "open": false,
           "editOnly": true,
           "fromPartStatus": "PartStatusAtVisit",
-          "hint": "לדיווח על תקלה או החלפה של הרכיב: הוסף ביקור בקבוצה \"ביקורים בשלט\" ובחר את הרכיב ב\"מצב רכיבים שנבדקו\".",
+          "hint": "לדיווח על תקלה או החלפה של הרכיב: הוסף ביקור בקבוצה \"ביקורים בשלט\" ובחר את הרכיב ב\"מצב רכיב בביקור\".",
           "note": "עותק נוכחי של מצב הרכיב, מתעדכן אוטומטית מהדיווח האחרון עליו (מקור האמת: SignPartStatus.PartStatusAtVisit), באותו מנגנון של SignStatus בשלט (Make B, D28; טעון הרחבה לרכיבים). נשאר שדה פיזי כדי שיוצג בטופס העריכה של Survey123, שלא מסוגל לשאול טבלה אחרת. לא נאסף במיפוי חדש (אין עדיין ביקור). רכיב שלא דווח עליו נשאר ריק, כלומר 'לא דווח' ולא 'תקין' (שאלה 8 לדיון עם הלקוח)."
         },
         {
@@ -1898,7 +1898,7 @@ window.SCHEMAS["signage"] = {
       "id": "D28",
       "title": "עדכון אוטומטי בין ביקורים לשלט באמצעות Make (תרחישי A ו-B), ולא Attribute Rules או ביטוי ב-Field Maps",
       "status": "decided",
-      "note": "בעיה 1: אי אפשר ליצור שורת ביקור אוטומטית בטופס. בעיה 2: ב-Field Maps שורת בן לא מעדכנת את רשומת האב. Attribute Rules אינם נתמכים בשכבות מתארחות ב-AGOL, וביטוי מחושב ב-Field Maps כותב רק לרשומה שבטופס. החלטה: תרחיש A (Make, Watch Features על Signs, אירוע Created בלבד) יוצר שורת ביקור ראשונה (VisitDate, VisitType, VisitorName, StatusAtVisit, SafetyHazardAtVisit, VisitSummary) מערכי השלט. תרחיש B (Watch Features על SignVisits, Created ו-Updated) בודק אם השורה היא הביקור האחרון (לפי VisitDate) ואם כן מעתיק ל-Signs: SignStatus, SafetyHazard, FaultNotes (מ-VisitSummary כשהמצב לא תקין, אחרת ריק). גיבוי: מחברת לילית שמתקנת פערים. חסרונות: עיכוב של דקות (לא נמדד), תלות בחיבור Make (פג אחרי 90 יום ללא שימוש), נדרש Keep track of changes בשתי השכבות. כיבוי התרחישים בזמן הסבת הנתונים. לא נבדק בשטח. הוכרע: במיפוי חדש מצב, סיווג בטיחותי ומה נמצא נאספים ישירות בשדות Signs (SignStatus, SafetyHazard, FaultNotes), ו-Make A מעתיק אותם לשורת הביקור הראשונה. פתוח: סוג הביקור הראשון (מוצע: מעקב) ומניעת כפילות אם Survey123 יוצר שורת ביקור. פירוט: SignageSurvey/Docs/תרחישי-Make-עדכון-שלט-מביקור.md האפיון לבנייה ב-Make (רייצ׳ל): SignageSurvey/Docs/אפיון-תרחישי-Make-לרייצל.md"
+      "note": "בעיה 1: אי אפשר ליצור שורת ביקור אוטומטית בטופס. בעיה 2: ב-Field Maps שורת בן לא מעדכנת את רשומת האב. Attribute Rules אינם נתמכים בשכבות מתארחות ב-AGOL, וביטוי מחושב ב-Field Maps כותב רק לרשומה שבטופס. החלטה: תרחיש A (Make, Watch Features על Signs, אירוע Created בלבד) יוצר שורת ביקור ראשונה (VisitDate, VisitType, VisitorName, StatusAtVisit, SafetyHazardAtVisit, VisitSummary) מערכי השלט. תרחיש B (Watch Features על SignVisits, Created ו-Updated) בודק אם השורה היא הביקור האחרון (לפי VisitDate) ואם כן מעתיק ל-Signs: SignStatus, SafetyHazard, FaultNotes (מ-VisitSummary כשהמצב לא תקין, אחרת ריק). גיבוי: מחברת לילית שמתקנת פערים. חסרונות: עיכוב של דקות (לא נמדד), תלות בחיבור Make (פג אחרי 90 יום ללא שימוש), נדרש Keep track of changes בשתי השכבות. כיבוי התרחישים בזמן הסבת הנתונים. לא נבדק בשטח. הוכרע: במיפוי חדש מצב, סיווג בטיחותי ומה נמצא נאספים ישירות בשדות Signs (SignStatus, SafetyHazard, FaultNotes), ו-Make A מעתיק אותם לשורת הביקור הראשונה. פתוח: סוג הביקור הראשון (מוצע: מעקב) ומניעת כפילות אם Survey123 יוצר שורת ביקור. פירוט: SignageSurvey/Docs/תרחישי-Make-עדכון-שלט-מביקור.md האפיון לבנייה ב-Make (רייצ׳ל): SignageSurvey/Docs/אפיון-תרחישי-Make-לרייצל.md הרחבה (22/11/2026): גם מצב הרכיב. Watch Features על SignPartStatus (Created ו-Updated) מעתיק PartStatusAtVisit אל SignParts.PartStatusCurrent של הרכיב ב-RelatedPartGlobalID, אם זה הדיווח האחרון עליו (לפי VisitDate של הביקור האב). רכיב שלא דווח עליו נשאר ריק. טעון: הוספה לתרחיש B או תרחיש C נפרד (להכריע עם רייצ׳ל), ועדכון המסמך אפיון-תרחישי-Make-לרייצל.md."
     },
     {
       "id": "D27",
@@ -3681,7 +3681,7 @@ window.SCHEMAS["signage"] = {
           },
           "SignPartStatus": {
             "c": "#B91C1C",
-            "t": "מצב רכיבים שנבדקו"
+            "t": "מצב רכיב בביקור"
           }
         }
       }
@@ -4057,4 +4057,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "22.11.2026 11:15";
+window.__BUILT = "22.11.2026 11:32";
