@@ -201,7 +201,7 @@
   function render() {
     renderNav();
     const t = V.page === 'entity' ? esc(S.entities[V.idx].alias) + ' — ' + esc(S.entities[V.idx].name) : TITLES[V.page];
-    const body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, validate: validatePage, output: outputPage, sim: () => (window.Sim ? Sim.render(S) : ''), 'dg-erd': () => Diagrams.page(S, 'erd'), 'dg-comp': () => Diagrams.page(S, 'comp'), 'dg-flow': () => Diagrams.page(S, 'flow') }[V.page]();
+    let body; try { body = { entity: () => entityPage(V.idx), domains: domainsPage, rels: relsPage, decisions: decisionsPage, validate: validatePage, output: outputPage, sim: () => (window.Sim ? Sim.render(S) : ''), 'dg-erd': () => Diagrams.page(S, 'erd'), 'dg-comp': () => Diagrams.page(S, 'comp'), 'dg-flow': () => Diagrams.page(S, 'flow') }[V.page](); } catch (err) { console.error(err); body = '<div style="background:#FEF2F2;border:1px solid #FCA5A5;color:#991B1B;border-radius:10px;padding:12px;direction:ltr;text-align:left;white-space:pre-wrap;font:12px monospace"><b>שגיאה בהצגת העמוד</b>\n' + esc(String(err && err.stack || err)) + '</div>'; }
     $('main').innerHTML = `<h2 style="margin:0 0 10px">${t}</h2>` + body;
     if (VIEWONLY && ['entity', 'domains', 'rels', 'decisions', 'validate'].indexOf(V.page) >= 0) { // מצב צפייה: ללא עריכה
       $('main').querySelectorAll('input,select,textarea').forEach((el) => { el.disabled = true; });
