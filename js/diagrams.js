@@ -35,6 +35,7 @@
   .agt{border-collapse:collapse;width:100%;min-width:0;margin-top:14px;font-size:12px}.agt th,.agt td{border:1px solid var(--s7);padding:4px 8px;text-align:right;vertical-align:top;position:static;text-transform:none;letter-spacing:0;font-size:12px}.agt th{background:var(--s1);color:inherit}.agt tr.g td{background:#f1f5f9;font-weight:700}
   .tag.exists{background:#16a34a}.tag.pub{background:#2563eb}
   .dgn.planned,.dgn.open,.st.planned,.st.open{border-style:dashed}
+  .dgn.live{border-color:#16a34a;box-shadow:0 0 0 3px #bbf7d0}.dgn.gone{border-color:#dc2626;box-shadow:0 0 0 3px #fecaca}.dgn .itb{font-size:11px;margin-top:4px}.dgn .itb a{color:#1d4ed8}
   .dgn .chip{display:inline-block;margin:2px 2px 0 0;background:#fff;border:1px solid var(--g7);border-radius:9px;padding:0 6px;font-size:10px}
   .tag{display:inline-block;font-size:9px;border-radius:3px;padding:0 4px;margin-right:4px;vertical-align:middle;color:#fff}
   .tag.planned{background:#64748b}.tag.open{background:#d97706}
@@ -104,15 +105,15 @@
     const its = D(S).agolItems || []; if (!its.length || !its[0].id) return '';
     const dep = (S.deployments || []).some((d) => d && d.serviceUrl);
     const grid = its.every((x) => Array.isArray(x.pos));
-    const nodeHtml = (n) => { const stt = n.deploy && dep ? '' : n.status === 'planned' || n.status === 'open' ? n.status : ''; return `<div class="dgn ${esc(n.kind || 'app')} ${stt}" data-id="ag_${esc(n.id)}" title="${esc(n.role || '')}"${grid ? ' style="width:190px"' : ''}><b>${tag(stt)}${esc(n.title)}</b><small>${esc(n.type)}</small></div>`; };
-    const edges = []; its.forEach((n) => (n.links || []).forEach((l) => edges.push({ from: 'ag_' + n.id, to: 'ag_' + l.to, label: l.label || '', cls: l.status === 'planned' || l.status === 'open' ? 'dash' : 'solid' })));
-    const head = '<h3 style="margin:16px 0 6px">פריטי ArcGIS Online והקשרים ביניהם</h3>';
+    const IX = window.Items, nodeHtml = (n) => { const lv = IX ? IX.nodeCls(S, n) : ''; const stt = (n.deploy && dep) || lv === 'live' ? '' : n.status === 'planned' || n.status === 'open' ? n.status : ''; return `<div class="dgn ${esc(n.kind || 'app')} ${stt} ${lv}" data-id="ag_${esc(n.id)}" title="${esc(n.role || '')}"${grid ? ' style="width:190px"' : ''}><b>${tag(stt)}${esc(n.title)}</b><small>${esc(n.type)}</small>${IX ? IX.badge(S, n) : ''}</div>`; };
+    const edges = []; its.forEach((n) => (n.links || []).forEach((l) => { const v = window.Items ? window.Items.edge(S, n.id, l.to) : ''; edges.push({ from: 'ag_' + n.id, to: 'ag_' + l.to, label: (l.label || '') + (v === 'ok' ? ' ✓' : v === 'no' ? ' (לא נמצא באונליין)' : ''), cls: v === 'ok' ? 'solid' : v === 'no' ? 'dash' : l.status === 'planned' || l.status === 'open' ? 'dash' : 'solid' }); }));
+    const head = '<h3 style="margin:16px 0 6px">פריטי ArcGIS Online והקשרים ביניהם</h3>' + (window.Items ? window.Items.panel(S) : '');
     if (grid) {
       /* פריסה קבועה (pos: [עמודה, שורה]) שנבחרה כך שאין קווים החוצים תיבות או קווים אחרים; העמודות מהופכות לקריאה מימין לשמאל */
       const CW = 270, CH = 135, cols = Math.max(...its.map((x) => x.pos[0])) + 1, rows = Math.max(...its.map((x) => x.pos[1])) + 1;
       const cells = its.map((n) => `<div style="position:absolute;left:${(cols - 1 - n.pos[0]) * CW}px;top:${n.pos[1] * CH}px;width:${CW}px;height:${CH}px;display:flex;align-items:center;justify-content:center">${nodeHtml(n)}</div>`).join('');
       return `${head}<div class="dgwrap"><div class="dgroot" data-edges='${esc(JSON.stringify(edges)).replace(/'/g, '&#39;')}' data-mode="grid"><div style="position:relative;width:${cols * CW}px;height:${rows * CH}px;margin:0 auto">${cells}</div><svg class="dge"></svg></div></div>
-      <div class="lg"><span><i style="background:#fef3c7"></i>משתמשים</span><span><i style="background:#dbeafe"></i>אפליקציות</span><span><i style="background:#d1fae5"></i>נתונים</span><span><i style="background:#ede9fe"></i>לוגיקה ואוטומציה</span><span><i style="background:#cffafe"></i>דוחות</span><span><i style="background:var(--s1)"></i>חיצוני / קיים</span><span><i style="border-style:dashed"></i>מתוכנן או פתוח (קו מקווקו)</span><span>ריחוף על פריט מציג את תפקידו</span></div>`;
+      <div class="lg"><span><i style="background:#fef3c7"></i>משתמשים</span><span><i style="background:#dbeafe"></i>אפליקציות</span><span><i style="background:#d1fae5"></i>נתונים</span><span><i style="background:#ede9fe"></i>לוגיקה ואוטומציה</span><span><i style="background:#cffafe"></i>דוחות</span><span><i style="background:var(--s1)"></i>חיצוני / קיים</span><span><i style="border-style:dashed"></i>מתוכנן או פתוח (קו מקווקו)</span><span><i style="border-color:#16a34a"></i>קיים באונליין</span><span><i style="border-color:#dc2626"></i>מקושר אך לא נמצא</span><span>✓ ליד קשר = אומת מול האונליין</span><span>ריחוף על פריט מציג את תפקידו</span></div>`;
     }
     const groups = []; its.forEach((x) => { if (!groups.includes(x.group)) groups.push(x.group); });
     const lay = groups.map((g) => `<div class="lay"><div class="lt">${esc(g)}</div><div class="ln">${its.filter((n) => n.group === g).map(nodeHtml).join('')}</div></div>`).join('');
@@ -124,12 +125,12 @@
     const lab = { exists: ['exists', 'קיים'], planned: ['planned', 'מתוכנן'], open: ['open', 'פתוח'] };
     let last = '', rows = '';
     its.forEach((x) => {
-      if (x.group !== last) { last = x.group; rows += `<tr class="g"><td colspan="4">${esc(x.group)}</td></tr>`; }
+      if (x.group !== last) { last = x.group; rows += `<tr class="g"><td colspan="5">${esc(x.group)}</td></tr>`; }
       let st2 = lab[x.status] || lab.planned, link = '';
       if (x.deploy && dep.length) { st2 = ['pub', 'פורסם']; link = dep.map((d) => d.itemPage ? `<br><a href="${esc(d.itemPage)}" target="_blank" rel="noopener">${esc(d.title || d.service || 'פריט')}${d.org ? ' · ' + esc(d.org) : ''}</a>` : '').join(''); }
-      rows += `<tr><td>${esc(x.type)}</td><td><b>${esc(x.title)}</b>${link}</td><td>${esc(x.role || '')}</td><td><span class="tag ${st2[0]}" style="margin:0">${st2[1]}</span></td></tr>`;
+      rows += `<tr><td>${esc(x.type)}</td><td><b>${esc(x.title)}</b>${link}</td><td>${esc(x.role || '')}</td><td><span class="tag ${st2[0]}" style="margin:0">${st2[1]}</span></td><td>${window.Items ? window.Items.cell(S, x) : ''}</td></tr>`;
     });
-    return `<h3 style="margin:16px 0 0">פריטי ArcGIS Online התומכים בפתרון</h3><table class="agt"><thead><tr><th>סוג פריט</th><th>פריט</th><th>תפקיד</th><th>סטטוס</th></tr></thead><tbody>${rows}</tbody></table>`;
+    return `<h3 style="margin:16px 0 0">פריטי ArcGIS Online התומכים בפתרון</h3><table class="agt"><thead><tr><th>סוג פריט</th><th>פריט</th><th>תפקיד</th><th>סטטוס בתכנון</th><th>הפריט באונליין</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
   function compPage(S) {
     const c = compData(S), nodes = c.nodes || [];
