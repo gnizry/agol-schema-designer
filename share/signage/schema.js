@@ -3620,6 +3620,8 @@ window.SCHEMAS["signage"] = {
       "לפירוק": "#E8912E"
     },
     "survey123": {},
+    "editing": false,
+    "relatedList": false,
     "chips": [
       "SignModel",
       "SafetyHazard"
@@ -3934,4 +3936,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "22.11.2026 08:00";
+window.__BUILT = "22.11.2026 08:35";

@@ -8,6 +8,7 @@
      templateField                        שדה שערכיו הם התבניות ב"בחר סוג" (ברירת מחדל: statusField כשהוגדר)
      colors: { ערך: צבע }
      newValue, continueValue              "חדש" ו"המשך": המשך מקבל את המזהה של "חדש" הסמוך ומאוחד בסקריפט הלילי
+     editing (ברירת מחדל true: false = העריכה במפה כבויה, ללא כפתורי עריכה והעתקה), relatedList (ברירת מחדל true: false = ללא הרשומות הקשורות המובנות בפופאפ),
      chips, kpis: [{f, label, unit}], childTitle, childCard   תוכן פופאפ מעוצב (כמו פופאפ Arcade). בלעדיהם: רשימת שדות כמו בפופאפ ברירת המחדל
      auto: { שדה: 'now' | 'user' | 'area' | 'id' | 'weekday:<שדה>' | 'parent:<שדה באב>' | 'script' }
      survey123: { itemId }                הוספה ועריכה של ישות ראשית רק דרך Survey123 (למשל שילוט): ה-+ במפה לא פותח טופס Field Maps אלא מציג את קישור האיסוף, וכפתור העריכה בפופאפ הוא קישור Inbox. ביקורים (בן) ממשיכים להיפתח ב-Field Maps
@@ -46,7 +47,7 @@
       auto: sim.auto || {},
       title: sim.titlePrefix || '',
       custom: !!(sim.kpis || sim.chips),
-      s123: sim.survey123 || null,
+      s123: sim.survey123 || null, editing: sim.editing !== false, showRel: sim.relatedList !== false,
     };
   }
   const show = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}:\d{2}))?/.exec(String(v == null ? '' : v)); return m ? `${m[3]}/${m[2]}/${m[1]}${m[4] ? ' ' + m[4] : ''}` : (v == null ? '' : v); };
@@ -134,6 +135,8 @@
   const isReq = (f, vals, up) => f.required === true || (f.reqIf ? C().relOk({ rel: f.reqIf }, vals, up) : false);
   const FM = { blue: '#007AC2', text: '#151515', sub: '#6A6A6A', line: '#DFDFDF', bg: '#F3F3F3', red: '#D83020', font: "'Avenir Next', 'Segoe UI', Arial, sans-serif" };
   const ICON = {
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" fill="none" stroke="currentColor" stroke-width="1.9"/>',
+    link: '<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>',
     back: '<path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
     close: '<path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
     search: '<circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
@@ -346,7 +349,12 @@
     if (!rels.length) return '';
     return `<div style="padding:14px 16px 6px;font-size:13px;font-weight:600;color:${FM.sub}">רשומות קשורות</div>` + rels.map((rel) => { const n = kidsOf(rel, rec).length; return `<div onclick="SimG.push({s:'list',rel:'${rel.name}',gid:'${rec.GlobalID}'})" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid ${FM.line};cursor:pointer;background:#fff"><span style="color:${FM.sub}">${ic('table', 22)}</span><div style="flex:1"><div style="font-size:15px">${esc(K.E(rel.destination).alias)}</div><div style="font-size:12px;color:${FM.sub}">${n} רשומות</div></div><span style="color:${FM.sub}">${ic('chev', 20)}</span></div>`; }).join('') + `<div style="border-top:1px solid ${FM.line}"></div>`;
   }
-  const popupBody = (K, ent, rec) => (ent === K.main.name && K.custom ? customContent(K, rec) : fieldList(K, K.E(ent), rec)) + relRows(K, ent, rec);
+  const popupBody = (K, ent, rec) => (ent === K.main.name && K.custom ? customContent(K, rec) : fieldList(K, K.E(ent), rec)) + (ent === K.main.name && !K.showRel ? '' : relRows(K, ent, rec));
+  /* כפתורי הפעולה בראש הפופאפ ב-Field Maps (אין עיפרון בכותרת): עריכה והעתקה רק כשהעריכה במפה מופעלת. הפריסה גמישה: אופקית או אנכית לפי גודל הטקסט במכשיר */
+  const popupActs = (K, ent, gid) => {
+    const b = (icn, l, on) => `<button onclick="${on}" style="flex:1 1 150px;display:flex;align-items:center;justify-content:space-between;gap:8px;background:#EBEBEC;border:0;border-radius:10px;padding:12px 14px;font:inherit;font-size:15px;color:${FM.blue};cursor:pointer"><span>${l}</span>${ic(icn, 20, FM.blue)}</button>`;
+    return `<div style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;background:#F3F3F3;border-bottom:1px solid ${FM.line}">${K.editing ? b('edit', 'עריכה', `SimG.edit('${ent}','${gid}')`) + (ent === K.main.name ? b('copy', 'העתקה', "SimG.note('העתקה: יוצר ישות חדשה עם אותם ערכים')") : '') : ''}${b('link', 'קישור', "SimG.note('קישור: העתקת קישור עומק לישות')")}${b('more', 'עוד', "SimG.note('עוד: ניווט, מצפן, מחיקה')")}</div>`;
+  };
 
   /* ---------- מסכים ---------- */
   const top = () => g.nav[g.nav.length - 1];
@@ -370,8 +378,8 @@
       body = `<div data-sb style="position:absolute;inset:0;overflow:auto;background:${FM.bg};padding-top:8px">${miss.length ? `<div style="margin:0 12px 8px;padding:10px 12px;border-radius:4px;background:#FCE9E7;color:${FM.red};font-size:13px">יש ${miss.length} שדות חובה ריקים: ${esc(miss.join(', '))}</div>` : ''}${formGroups(K, ent, n.vals, up || {}, n.isNew)}${!n.isNew ? `<div style="background:#fff;border-top:1px solid ${FM.line};border-bottom:1px solid ${FM.line};margin-top:8px"><button onclick="SimG.del()" style="width:100%;background:none;border:0;color:${FM.red};font:inherit;font-size:15px;padding:14px;cursor:pointer">מחק</button></div>` : ''}<div style="height:30px"></div></div>`;
     } else if (n.s === 'popup' && findRec(n.ent, n.gid)) {
       const r = findRec(n.ent, n.gid), isMain = n.ent === K.main.name;
-      head = bar(isMain ? iconBtn('close', 'SimG.closePopup()', 'סגור') : iconBtn('back', 'SimG.back()', 'חזרה'), esc(display(K, n.ent, r)), iconBtn('edit', `SimG.edit('${n.ent}','${n.gid}')`, 'עריכה', FM.blue) + iconBtn('more', "SimG.note('תפריט: ניווט, העתקה, מצפן, מחיקה')", 'עוד'), esc(K.E(n.ent).alias));
-      body = `<div data-sb style="position:absolute;inset:0;overflow:auto;background:#fff">${popupBody(K, n.ent, r)}<div style="height:24px"></div></div>`;
+      head = bar(isMain ? iconBtn('close', 'SimG.closePopup()', 'סגור') : iconBtn('back', 'SimG.back()', 'חזרה'), esc(display(K, n.ent, r)), '', esc(K.E(n.ent).alias));
+      body = `<div data-sb style="position:absolute;inset:0;overflow:auto;background:#fff">${popupActs(K, n.ent, n.gid)}${popupBody(K, n.ent, r)}<div style="height:24px"></div></div>`;
     } else if (n.s === 'list') {
       const rel = K.S.relationships.find((x) => x.name === n.rel), par = findRec(rel.origin, n.gid), list = par ? kidsOf(rel, par).slice().reverse() : [];
       head = bar(iconBtn('back', 'SimG.back()', 'חזרה'), esc(K.E(rel.destination).alias), '', par ? esc(display(K, rel.origin, par)) : '');
@@ -392,7 +400,7 @@
     tpl: 'בחירת סוג (תבנית). התבנית קובעת ערכי ברירת מחדל ואת הסמל במפה.',
     sketch: 'מיקום הישות: נקודה מתחילה במיקום ה-GPS. קו ופוליגון: כל הקשה מוסיפה קודקוד. "הבא" פותח את הטופס.',
     form: 'טופס Field Maps: קבוצות שנפתחות ונסגרות, ⚡ לשדה מחושב (Arcade), כוכבית לשדה חובה. אי אפשר לשלוח כשחסר שדה חובה.',
-    popup: 'פופאפ: עריכה מהעיפרון בסרגל העליון, תוכן הפופאפ, ורשומות קשורות בתחתית.',
+    popup: 'פופאפ: כפתורי פעולה בראש הפופאפ (עריכה והעתקה רק כשהעריכה במפה מופעלת; הפריסה אופקית או אנכית לפי גודל הטקסט במכשיר), תוכן הפופאפ, ורשומות קשורות בתחתית (אפשר להסתיר).',
     list: 'רשימת הרשומות הקשורות. ה-+ מוסיף רשומה שכבר מקושרת לרשומת האב.',
   };
   function fmTab(K) {
