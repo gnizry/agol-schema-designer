@@ -36,7 +36,8 @@
     const kids = (n) => (S.relationships || []).filter((r) => r.origin === n).map((r) => ent(r.destination)).filter(Boolean);
     const used = new Set();
     const rows = [];
-    const row = (r) => { rows.push(r); if (r._after) rows.push(r._after); return r; }; // _after: שורת note נלווית (שומר מקום) מיד אחרי השדה
+    const keyed = {};
+    const row = (r) => { if (r._before) rows.push(r._before); rows.push(r); if (r._after) rows.push(r._after); return r; }; // _after: שורת note נלווית (שומר מקום) מיד אחרי השדה
     const S123 = (S.sim && S.sim.survey123) || {};
     const OPT = S123.options || {};
     const FL = S123.forestLayer || null; // { itemId | url, fields: { שם שדה בסכימה: שם שדה בשכבת עומדי היער } }
@@ -77,6 +78,13 @@
         const RL = S123.roadLayer || null, rsrc = RL && RL.url, rfld = RL && RL.fields && RL.fields[f.name], dist = (RL && RL.distanceM) || 30;
         if (rsrc && rfld) r.calculation = 'pulldata("@layer", "getValueAt", "attributes.' + rfld + '", "' + rsrc + (rsrc.indexOf('?') >= 0 ? '&' : '?') + 'distance=' + dist + '&units=esriSRUnit_Meter", ${location}, "")';
         else { r.calculation = ''; rep.open.push(where + ': שיוך לדרך טרם הוגדר (S.sim.survey123.roadLayer.url ו-roadLayer.fields.' + f.name + '). השדה נוצר ריק וקריאה בלבד.'); }
+        const vm = RL && RL.valueMaps && RL.valueMaps[f.name];
+        if (r.calculation && vm && vm.length) { /* שדה הדומיין בשכבה מחזיר קוד: חישוב עזר מסתיר את הקוד והשדה מחזיר את התיאור */
+          const cn = f.name + '_code';
+          r._before = { type: 'calculate', name: cn, label: '', calculation: r.calculation, 'bind::esri:fieldType': 'null' };
+          r.calculation = vm.reduceRight((acc, v) => 'if(${' + cn + '}=' + lit(v.c) + ',' + lit(v.l) + ',' + acc + ')', '${' + cn + '}');
+          rep.open.push(where + ': השכבה מחזירה קוד דומיין; הטופס ממיר לתיאור לפי roadLayer.valueMaps (' + vm.length + ' ערכים). ערך שאינו ברשימה יוצג כקוד.');
+        }
         if (r.calculation) rep.open.push(where + ': שיוך לדרך ברדיוס ' + dist + ' מ\' מהשלט (roadLayer.distanceM). אם יש כמה דרכים ברדיוס, getValueAt עלול לא להחזיר את הקרובה ביותר: לבדוק בשטח.');
       }
       if (/<FORESTS_LAYER_URL>/.test(r.calculation)) {
@@ -124,10 +132,13 @@
         }
       }
       if (f.autoIncrement) {
-        /* מספור רציף: מספר השורות הדומות בחזרה (כולל הנוכחית), נקבע פעם אחת (once). max/preceding-sibling החזירו ערך שגוי בתצוגה של Connect */
-        /* predicate על אחים בחזרה גורם לכשל המרה (IndexOutOfBounds) ב-ODK Validate; לכן position(..) = מספר השורה בחזרה */
-        r.calculation = 'once(position(..))';
-        rep.open.push(where + ': מספור אוטומטי (' + r.calculation + '). אם נמחקת שורה באמצע עלולה להיווצר כפילות והבדיקה תחסום; לאמת בעריכה של שלט עם כנפיים קיימות.');
+        /* מספור רציף רק בין שורות מהסוג autoIncrementWhen: מפתח W/x לכל שורה, מחרוזת המפתחות מחוץ לחזרה, והמספר = מספר ה-W עד השורה הנוכחית */
+        const w = f.autoIncrementWhen;
+        if (w && w.f) {
+          keyed[e.name] = w;
+          r.calculation = "once(string-length(replace(substr(${" + e.name + "_keys}, 0, position(..)), 'x', '')))";
+          rep.open.push(where + ': מספור לפי סדר הרישום של ' + w.v + ' בלבד (' + r.calculation + '). לאמת בטופס אמיתי; הלקוח מתבקש לתקף (Q-027).');
+        } else { r.calculation = 'once(position(..))'; }
       }
       if (f.uniqueInParent) {
         /* predicate עם current() גורם לכשל המרה (IndexOutOfBounds) ב-ODK Validate, לכן אין בדיקת כפילות בטופס */
@@ -145,27 +156,33 @@
         const visitLevel = !!kids(k.name).length || /Visit/i.test(k.name);
         const st = styled('repeat', k.name, k.alias || k.name, SY && SY.repeats && SY.repeats[k.name]);
         const visitsEditOnly = visitLevel && OPT.visitsEditOnly === true; // ברירת מחדל: ה-Repeat של הביקורים תמיד מוצג (S.sim.survey123.options.visitsEditOnly=true מחזיר הצגה בעריכה בלבד)
-        row({ type: 'begin_repeat', name: k.name, label: st.label, appearance: (OPT.collapsedRepeats || []).indexOf(k.name) >= 0 ? 'compact' : '', relevant: visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
+        const ST = (OPT.summaryTables || {})[k.name];
+        const collapsed = (OPT.collapsedRepeats || []).indexOf(k.name) >= 0;
+        /* עם טבלת סיכום: group עוטף את ה-Repeat והטבלה, כך שהכל מתקפל יחד */
+        if (ST) row({ type: 'begin_group', name: 'g_' + k.name, label: st.label.replace(/<span style="font-weight:normal[^"]*">[^<]*<\/span>/, ''), appearance: collapsed ? 'compact' : '', relevant: visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
+        row({ type: 'begin_repeat', name: k.name, label: ST ? '<span style="font-weight:normal;font-size:small;color:#6b7280">רשימה (+ הוספה)</span>' : st.label, appearance: !ST && collapsed ? 'compact' : '', relevant: !ST && visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
         if (visitLevel && !visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת תמיד (גם במיפוי שלט חדש). החלטה פתוחה: אם הביקור הראשון נוצר על ידי Make (D28), יש להגביל לעריכה עם options.visitsEditOnly=true.');
         if (visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת רק בעריכה (' + EDIT_MODE + '), כי במיפוי שלט חדש הביקור הראשון נוצר על ידי Make (D28). דורש אימות ש-pulldata("@property","mode") מחזיר edit בטופס.');
         entityRows(k, depth + 1, false);
-        const ST = (OPT.summaryTables || {})[k.name];
-        if (ST) { /* שורת HTML לכל חזרה (מחוץ לחזרה היא מצטרפת לטבלה); עמודות בסדר DOM הפוך כי הטופס מציג משמאל לימין */
-          const cell = (c) => "'<td style=\"padding:6px; text-align:right;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
+        if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_key', label: 'מפתח שורה', calculation: "if(${" + keyed[k.name].f + "} = " + lit(keyed[k.name].v) + ", 'W', 'x')", 'bind::esri:fieldType': 'null' });
+        if (ST) {
+          const cell = (c) => "'<td style=\"padding:6px 8px; text-align:right; border:1px solid #cbd9d2;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
           const cols = ST.cols.slice().reverse();
-          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr>', " + cols.map(cell).join(', ') + ", '<td style=\"padding:6px; text-align:center;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr style=\"background-color:', if(position(..) mod 2 = 0, '#eef5f1', '#ffffff'), ';\">', " + cols.map(cell).join(', ') + ", '<td style=\"padding:6px 8px; text-align:center; border:1px solid #cbd9d2; color:#1F5A52; font-weight:bold;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
         }
         row({ type: 'end_repeat', name: '', label: '' });
+        if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_keys', label: 'מפתחות שורות', calculation: "join('', ${" + k.name + "_key})", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const th = (t, al) => "'<th style=\"text-align:" + (al || 'right') + ";\">" + t + "</th>'";
+          const th = (t, al) => "'<th style=\"text-align:" + (al || 'right') + "; padding:6px 8px; background-color:#1F5A52; color:#ffffff; font-weight:600; border:1px solid #1F5A52;\">" + t + "</th>'";
           const heads = ST.cols.slice().reverse().map((c) => th(c.l)).concat([th('#', 'center')]).join(', ');
-          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center;\">" + ST.title + "</h3>', '<table border=\"1\" style=\"border-collapse:collapse; width:90%; margin:auto; border-color:black; direction:rtl;\">', '<tr style=\"background-color:#cfe5de; color:black;\">', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; direction:rtl; font-family:Segoe UI, Arial, sans-serif; font-size:14px;\">', '<div style=\"font-weight:600; color:#1F5A52; margin:6px 0;\">" + ST.title + "</div>', '<table style=\"border-collapse:collapse; width:100%; direction:rtl;\">', '<tr>', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
           row({ type: 'note', name: k.name + '_table_note', label: '${' + k.name + '_table}', relevant: "count(${" + k.name + "}) > 0" });
         }
         (OPT.duplicateWarnings || []).filter((d) => d.repeat === k.name).forEach((d) => {
-          row({ type: 'note', name: k.name + '_dup_' + d.field, label: '<font color="red">' + d.msg + '</font>', relevant: "pulldata('@javascript', 'repeats.js', 'hasDuplicates', join('|', ${" + d.field + "})) = 1" });
-          rep.open.push(k.name + '.' + d.field + ': התראת כפילות דרך pulldata("@javascript","repeats.js","hasDuplicates"). הקובץ repeats.js חייב להיות בתיקיית scripts של הסקר (Q-025: התראה או constraint).');
+          row({ type: 'note', name: k.name + '_dup_' + d.field, label: '<font color="red">' + d.msg + '</font>', relevant: "not(pulldata('@javascript', 'repeats.js', 'distinctCheck', ${" + d.field + "}))" });
+          rep.open.push(k.name + '.' + d.field + ': התראת כפילות דרך pulldata("@javascript","repeats.js","distinctCheck") (הקובץ repeats.js בתיקיית scripts של הסקר). Q-025: התראה או constraint.');
         });
+        if (ST) row({ type: 'end_group', name: '', label: '' });
       };
       const placed = new Set();
       if (cats) {
@@ -222,6 +239,21 @@
     rows.forEach((r) => { if (r.required && r.type !== 'begin_repeat' && !r.required_message) r.required_message = 'יש למלא שדה זה'; });
     const BN = S.sim && S.sim.survey123 && S.sim.survey123.banner, TH = S.sim && S.sim.survey123 && S.sim.survey123.theme;
     if (BN && BN.image) { rows.unshift({ type: 'note', name: 'Banner', label: '', 'media::image': BN.image }); rep.open.push('באנר: הקובץ ' + BN.image + ' חייב להיות בתיקיית media של הסקר ב-Connect (Media > Open media folder).'); }
+    { /* מקרא צבעי הטופס: צ'יפים בצבעי הקבוצות הראשיות, מיד אחרי הבאנר */
+      const chips = []; let dpt = 0;
+      rows.forEach((r) => {
+        if (r.type === 'begin_group' || r.type === 'begin_repeat') {
+          if (dpt === 0 || (dpt === 1 && false)) {
+            const st = String(r['body::esri:style'] || ''), bg = (/backgroundColor=(#\w+)/.exec(st) || [])[1], bd = (/borderColor=(#\w+)/.exec(st) || [])[1], tc = (/color:(#\w+)/.exec(r.label || '') || [])[1];
+            const txt = String(r.label || '').replace(/\$\{ro_tag\}/g, '').replace(/<[^>]*>/g, '').replace(/\s*\(\+ הוספה\)|^רשימה.*$/, '').trim();
+            if (bg && bd && txt) chips.push('<span style="display:inline-block; margin:3px 0 3px 6px; padding:3px 12px; border-radius:12px; font-size:12px; background-color:' + bg + '; border:2px solid ' + bd + '; color:' + (tc || '#333') + ';">' + txt + '</span>');
+          }
+          dpt++;
+        } else if (r.type === 'end_group' || r.type === 'end_repeat') dpt--;
+      });
+      const li = rows.findIndex((r) => r.name === 'location');
+      if (chips.length && li >= 0) rows.splice(li, 0, { type: 'note', name: 'ColorLegend', label: '<div style="direction:rtl; text-align:right; font-family:Segoe UI, Arial, sans-serif;"><span style="font-size:12px; color:#6b7280;">מקרא צבעי הטופס: </span>' + chips.join('') + '</div>' });
+    }
     if (TH) rep.open.push('צבעי כותרת וכותרת תחתונה נקבעים בלוח Style ב-Connect (נשמרים ב-.info של הסקר, לא ב-xlsx): כותרת ' + ((TH.header && TH.header.backgroundColor) || '') + ' עם טקסט ' + ((TH.header && TH.header.textColor) || '') + ', כותרת תחתונה ' + ((TH.footer && TH.footer.backgroundColor) || '') + ' עם טקסט ' + ((TH.footer && TH.footer.textColor) || '') + '.');
     rep.open.push("שם מלא של הממפה והמבקר: pulldata(\"@property\", 'userFullName'). בתצוגה המקדימה של Connect עלול להופיע Unknown; לבדוק באפליקציית השטח.");
     const cols = ['type', 'name', 'label', 'hint', 'required', 'required_message', 'relevant', 'calculation', 'constraint', 'constraint_message', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count', 'media::image'];
