@@ -4317,6 +4317,10 @@ window.SCHEMAS["signage"] = {
       },
       "options": {
         "visitsEditOnly": false,
+        "legend": false,
+        "omitFields": [
+          "ResponsibleUnit"
+        ],
         "collapsedRepeats": [
           "SignVisits"
         ],
@@ -4842,4 +4846,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "23.11.2026 16:33";
+window.__BUILT = "23.11.2026 16:56";

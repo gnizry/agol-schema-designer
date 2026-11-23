@@ -136,7 +136,7 @@
         const w = f.autoIncrementWhen;
         if (w && w.f) {
           keyed[e.name] = w;
-          r.calculation = "pulldata('@javascript', 'repeats.js', 'countUpTo', ${" + e.name + "_keys}, position(..), 'W')";
+          r.calculation = "once(pulldata('@javascript', 'repeats.js', 'countUpTo', ${" + e.name + "_keys}, position(..) - 1, 'W') + 1)";
           rep.open.push(where + ': מספור לפי סדר הרישום של ' + w.v + ' בלבד (' + r.calculation + '). לאמת בטופס אמיתי; הלקוח מתבקש לתקף (Q-027).');
         } else { r.calculation = 'once(position(..))'; }
       }
@@ -150,7 +150,7 @@
 
     function entityRows(e, depth, isMain) {
       const cats = isMain && e.groupOrder ? e.groupOrder : null;
-      const fields = e.fields;
+      const fields = (OPT.omitFields || []).length ? e.fields.filter((f) => OPT.omitFields.indexOf(f.name) < 0) : e.fields;
       const after = e.repeatAfter || {}; // { ילד: קבוצה } - ה-Repeat מוצג מיד אחרי הקבוצה
       const kidRows = (k) => {
         const visitLevel = !!kids(k.name).length || /Visit/i.test(k.name);
@@ -166,16 +166,16 @@
         entityRows(k, depth + 1, false);
         if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_key', label: 'מפתח שורה', calculation: "if(${" + keyed[k.name].f + "} = " + lit(keyed[k.name].v) + ", 'W', 'x')", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const cell = (c) => "'<td style=\"padding:6px 8px; text-align:right; border:1px solid #cbd9d2;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
+          const cell = (c) => "'<td style=\"padding:8px; text-align:right; color:#4b5563; border-radius:6px; border-bottom:1px solid #e3ebe7;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
           const cols = ST.cols.slice().reverse();
-          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr style=\"background-color:', if(position(..) mod 2 = 0, '#eef5f1', '#ffffff'), ';\">', " + cols.map(cell).join(', ') + ", '<td style=\"padding:6px 8px; text-align:center; border:1px solid #cbd9d2; color:#1F5A52; font-weight:bold;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr style=\"background-color:', if(position(..) mod 2 = 0, '#f5f9f7', '#ffffff'), ';\">', " + cols.map(cell).join(', ') + ", '<td style=\"padding:8px; text-align:center; color:#6b8f82; border-radius:6px; border-bottom:1px solid #e3ebe7;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
         }
         row({ type: 'end_repeat', name: '', label: '' });
         if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_keys', label: 'מפתחות שורות', calculation: "join('', ${" + k.name + "_key})", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const th = (t, al) => "'<th style=\"text-align:" + (al || 'right') + "; padding:6px 8px; background-color:#1F5A52; color:#ffffff; font-weight:600; border:1px solid #1F5A52;\">" + t + "</th>'";
+          const th = (t, al) => "'<th style=\"text-align:" + (al || 'right') + "; padding:8px; background-color:#dcebe4; color:#3f6358; font-weight:600; border-radius:6px; border-bottom:1px solid #cfdcd6;\">" + t + "</th>'";
           const heads = ST.cols.slice().reverse().map((c) => th(c.l)).concat([th('#', 'center')]).join(', ');
-          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; direction:rtl; font-family:Segoe UI, Arial, sans-serif; font-size:14px;\">', '<div style=\"font-weight:600; color:#1F5A52; margin:6px 0;\">" + ST.title + "</div>', '<table style=\"border-collapse:collapse; width:100%; direction:rtl;\">', '<tr>', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center; color:#3f6358;\">" + ST.title + "</h3>', '<table style=\"border-collapse:separate; border-spacing:0; width:96%; margin:auto; border:1px solid #cfdcd6; border-radius:10px; overflow:hidden; direction:rtl;\">', '<tr>', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
           row({ type: 'note', name: k.name + '_table_note', label: '${' + k.name + '_table}', relevant: "count(${" + k.name + "}) > 0" });
         }
         (OPT.duplicateWarnings || []).filter((d) => d.repeat === k.name).forEach((d) => {
@@ -252,7 +252,7 @@
         } else if (r.type === 'end_group' || r.type === 'end_repeat') dpt--;
       });
       const li = rows.findIndex((r) => r.name === 'location');
-      if (chips.length && li >= 0) {
+      if (chips.length && li >= 0 && OPT.legend !== false) {
         const per = 4, trs = [];
         for (let i = 0; i < chips.length; i += per) { const part = chips.slice(i, i + per); while (part.length < per) part.push('<td></td>'); trs.push('<tr>' + part.join('') + '</tr>'); }
         rows.splice(li, 0, { type: 'note', name: 'ColorLegend', label: '<div style="direction:rtl; font-family:Segoe UI, Arial, sans-serif;"><div style="font-size:13px; color:#6b7280; margin-bottom:3px;">מקרא צבעי הטופס</div><table style="width:100%; border-collapse:separate; border-spacing:4px; direction:rtl;">' + trs.join('') + '</table></div>', 'bind::esri:fieldType': 'null' });
