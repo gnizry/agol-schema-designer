@@ -136,7 +136,7 @@
         const w = f.autoIncrementWhen;
         if (w && w.f) {
           keyed[e.name] = w;
-          r.calculation = "once(string-length(replace(substr(${" + e.name + "_keys}, 0, position(..)), 'x', '')))";
+          r.calculation = "pulldata('@javascript', 'repeats.js', 'countUpTo', ${" + e.name + "_keys}, position(..), 'W')";
           rep.open.push(where + ': מספור לפי סדר הרישום של ' + w.v + ' בלבד (' + r.calculation + '). לאמת בטופס אמיתי; הלקוח מתבקש לתקף (Q-027).');
         } else { r.calculation = 'once(position(..))'; }
       }
@@ -212,7 +212,7 @@
       row({ type: 'note', name: 'form_map', label: '<span style="font-weight:bold">צבעי הטופס</span><br/>' + chips + '<br/><span style="font-size:small;color:#555555">גוון קר: קבוצה חד-פעמית. גוון חם: רשימה שחוזרת (+ להוספה)</span>' });
     }
     row({ type: 'geopoint', name: 'location', label: 'מיקום ' + (main.alias || main.name), required: 'yes' });
-    if (SY) row({ type: 'calculate', name: 'ro_tag', label: '', calculation: "if(" + EDIT_MODE + ", ' (לצפייה בלבד)', '')" });
+    if (SY) row({ type: 'calculate', name: 'ro_tag', label: '', 'bind::esri:fieldType': 'null', calculation: "if(" + EDIT_MODE + ", ' (לצפייה בלבד)', '')" });
     entityRows(main, 0, true);
     const inForm = new Set([main.name]); (function walk(n) { kids(n).forEach((k) => { inForm.add(k.name); walk(k.name); }); })(main.name);
     S.entities.forEach((e) => { if (!inForm.has(e.name)) rep.lookups.push(e.name + ': לא נכללה בטופס (טבלת עזר).'); });
@@ -238,7 +238,7 @@
     const settings = [Object.assign({ form_title: (S.meta && S.meta.title) || 'סקר', form_id: (S.meta && S.meta.key) || 'survey', version: new Date().toISOString().slice(0, 10).replace(/-/g, ''), submission_url: subUrl }, idF && rows.some((r) => r.name === idF) ? { instance_name: '${' + idF + '}' } : {})];
     rows.forEach((r) => { if (r.required && r.type !== 'begin_repeat' && !r.required_message) r.required_message = 'יש למלא שדה זה'; });
     const BN = S.sim && S.sim.survey123 && S.sim.survey123.banner, TH = S.sim && S.sim.survey123 && S.sim.survey123.theme;
-    if (BN && BN.image) { rows.unshift({ type: 'note', name: 'Banner', label: '', 'media::image': BN.image }); rep.open.push('באנר: הקובץ ' + BN.image + ' חייב להיות בתיקיית media של הסקר ב-Connect (Media > Open media folder).'); }
+    if (BN && BN.image) { rows.unshift({ type: 'note', name: 'Banner', label: '', 'media::image': BN.image, 'bind::esri:fieldType': 'null' }); rep.open.push('באנר: הקובץ ' + BN.image + ' חייב להיות בתיקיית media של הסקר ב-Connect (Media > Open media folder).'); }
     { /* מקרא צבעי הטופס: צ'יפים בצבעי הקבוצות הראשיות, מיד אחרי הבאנר */
       const chips = []; let dpt = 0;
       rows.forEach((r) => {
@@ -246,13 +246,17 @@
           if (dpt === 0 || (dpt === 1 && false)) {
             const st = String(r['body::esri:style'] || ''), bg = (/backgroundColor=(#\w+)/.exec(st) || [])[1], bd = (/borderColor=(#\w+)/.exec(st) || [])[1], tc = (/color:(#\w+)/.exec(r.label || '') || [])[1];
             const txt = String(r.label || '').replace(/\$\{ro_tag\}/g, '').replace(/<[^>]*>/g, '').replace(/\s*\(\+ הוספה\)|^רשימה.*$/, '').trim();
-            if (bg && bd && txt) chips.push('<span style="display:inline-block; margin:3px 0 3px 6px; padding:3px 12px; border-radius:12px; font-size:12px; background-color:' + bg + '; border:2px solid ' + bd + '; color:' + (tc || '#333') + ';">' + txt + '</span>');
+            if (bg && bd && txt) chips.push('<td style="background-color:' + bg + '; border:2px solid ' + bd + '; color:' + (tc || '#333') + '; text-align:center; padding:5px 4px; font-size:13px; font-weight:600;">' + txt + '</td>');
           }
           dpt++;
         } else if (r.type === 'end_group' || r.type === 'end_repeat') dpt--;
       });
       const li = rows.findIndex((r) => r.name === 'location');
-      if (chips.length && li >= 0) rows.splice(li, 0, { type: 'note', name: 'ColorLegend', label: '<div style="direction:rtl; text-align:right; font-family:Segoe UI, Arial, sans-serif;"><span style="font-size:12px; color:#6b7280;">מקרא צבעי הטופס: </span>' + chips.join('') + '</div>' });
+      if (chips.length && li >= 0) {
+        const per = 4, trs = [];
+        for (let i = 0; i < chips.length; i += per) { const part = chips.slice(i, i + per); while (part.length < per) part.push('<td></td>'); trs.push('<tr>' + part.join('') + '</tr>'); }
+        rows.splice(li, 0, { type: 'note', name: 'ColorLegend', label: '<div style="direction:rtl; font-family:Segoe UI, Arial, sans-serif;"><div style="font-size:13px; color:#6b7280; margin-bottom:3px;">מקרא צבעי הטופס</div><table style="width:100%; border-collapse:separate; border-spacing:4px; direction:rtl;">' + trs.join('') + '</table></div>', 'bind::esri:fieldType': 'null' });
+      }
     }
     if (TH) rep.open.push('צבעי כותרת וכותרת תחתונה נקבעים בלוח Style ב-Connect (נשמרים ב-.info של הסקר, לא ב-xlsx): כותרת ' + ((TH.header && TH.header.backgroundColor) || '') + ' עם טקסט ' + ((TH.header && TH.header.textColor) || '') + ', כותרת תחתונה ' + ((TH.footer && TH.footer.backgroundColor) || '') + ' עם טקסט ' + ((TH.footer && TH.footer.textColor) || '') + '.');
     rep.open.push("שם מלא של הממפה והמבקר: pulldata(\"@property\", 'userFullName'). בתצוגה המקדימה של Connect עלול להופיע Unknown; לבדוק באפליקציית השטח.");
