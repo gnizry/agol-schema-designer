@@ -688,9 +688,25 @@ window.SCHEMAS["signage"] = {
     },
     "Supplier": {
       "name": "Supplier",
-      "desc": "ספקי שילוט (רשימה טרם נמסרה; מתוחזקת על ידי מנהל המוצר)",
+      "desc": "ספקי שילוט (שומר מקום להדגמה: ספק 1-3; הרשימה האמיתית טרם נמסרה ומתוחזקת על ידי מנהל המוצר)",
       "fieldType": "TEXT",
-      "values": []
+      "values": [
+        {
+          "code": "ספק 1",
+          "label": "ספק 1",
+          "parent": ""
+        },
+        {
+          "code": "ספק 2",
+          "label": "ספק 2",
+          "parent": ""
+        },
+        {
+          "code": "ספק 3",
+          "label": "ספק 3",
+          "parent": ""
+        }
+      ]
     },
     "Mapper": {
       "name": "Mapper",
@@ -1005,7 +1021,8 @@ window.SCHEMAS["signage"] = {
           "mode": "אוטומטי",
           "visible": "קריאה בלבד",
           "open": true,
-          "note": "מקור גזירה וכלל שיוך להשלמה."
+          "note": "שיוך אוטומטי לדרך מתוך שכבת דרכי קהל של קק״ל, לפי מרחק מהשלט (roadLayer.distanceM, הצעה 30 מ׳). השכבה והשדה טרם הוגדרו; המרחק מחכה לתשובת הלקוח (Q-024).",
+          "calc": "pulldata(\"@layer\", \"getValueAt\", \"attributes.<שדה בשכבת דרכי קהל>\", \"<ROADS_LAYER_URL>\", ${location}, \"\")"
         },
         {
           "category": "כתובת יערנית",
@@ -1017,7 +1034,8 @@ window.SCHEMAS["signage"] = {
           "mode": "אוטומטי",
           "visible": "קריאה בלבד",
           "open": true,
-          "note": "אין להסיק צבע ממיקום ללא כלל שיוך מאושר."
+          "note": "צבע הדרך נלקח מאותה דרך שאליה שויך השלט (לפי מרחק, Q-024). שדה הצבע בשכבת הדרכים טרם הוגדר.",
+          "calc": "pulldata(\"@layer\", \"getValueAt\", \"attributes.<שדה בשכבת דרכי קהל>\", \"<ROADS_LAYER_URL>\", ${location}, \"\")"
         },
         {
           "category": "החלפה והצבה",
@@ -1200,6 +1218,10 @@ window.SCHEMAS["signage"] = {
           "name": "WingNumber",
           "alias": "מספר כנף",
           "autoIncrement": true,
+          "autoIncrementWhen": {
+            "f": "ComponentType",
+            "v": "כנף"
+          },
           "uniqueInParent": true,
           "constraintMsg": "מספר הכנף כבר קיים בשלט",
           "type": "SHORT",
@@ -2121,6 +2143,17 @@ window.SCHEMAS["signage"] = {
       "answer": "",
       "date": "",
       "ref": "ResponsibleUnit",
+      "note": ""
+    },
+    {
+      "id": "Q-024",
+      "topic": "כתובת יערנית",
+      "q": "שיוך שלט לדרך: עד איזה מרחק מהדרך (במטרים) נשייך את השלט לדרך ונרשום בו את שם הדרך וצבעה? מה לעשות כששתי דרכים או יותר נמצאות בטווח (לבחור את הקרובה, לא לשייך, או לתת למפה לבחור)? ומה לעשות כשאין דרך בטווח (להשאיר ריק או לאפשר הזנה ידנית)?",
+      "proposal": "30 מטר מהדרך, הקרובה ביותר, ושדה ריק עם אפשרות הזנה ידנית כשאין דרך בטווח. המרחק הוא פרמטר אחד בסכמה (roadLayer.distanceM) וקל לשנותו. השיוך מתבצע בטופס מתוך שכבת דרכי קהל של קק״ל.",
+      "status": "open",
+      "answer": "",
+      "date": "",
+      "ref": "RoadName, RoadColor",
       "note": ""
     }
   ],
@@ -4250,7 +4283,16 @@ window.SCHEMAS["signage"] = {
         }
       },
       "options": {
-        "visitsEditOnly": false
+        "visitsEditOnly": false,
+        "collapsedRepeats": [
+          "SignVisits"
+        ]
+      },
+      "roadLayer": {
+        "url": "",
+        "distanceM": 30,
+        "_note": "שכבת דרכי קהל של קק״ל (כתובת URL של השכבה). distanceM: מרחק שיוך מהדרך במטרים, הצעה עד תשובת הלקוח (Q-024). fields: שם שדה בסכמה -> שם שדה בשכבת הדרכים.",
+        "fields": {}
       },
       "banner": {
         "image": "banner.png",
@@ -4680,4 +4722,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "23.11.2026 15:05";
+window.__BUILT = "23.11.2026 15:29";

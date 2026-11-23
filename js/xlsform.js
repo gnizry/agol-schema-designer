@@ -73,6 +73,12 @@
       if (f.type === 'GUID') { r.type = 'text'; rep.open.push(where + ': שדה GUID שמולא מקישור לרכיב (' + (f.pickFrom || '') + '). נוצר כטקסט; בחירת הרכיב בטופס טעונה בדיקה (B2/C2).'); }
       if (f.calc) r.calculation = f.calc;
       /* כתובת יערנית: pulldata("@layer", "getValueAt") מול שכבת עומדי יער לפי S.sim.survey123.forestLayer; שדה שלא מופה נשאר ריק (בלי שגיאת טופס) */
+      if (/<ROADS_LAYER_URL>/.test(r.calculation)) {
+        const RL = S123.roadLayer || null, rsrc = RL && RL.url, rfld = RL && RL.fields && RL.fields[f.name], dist = (RL && RL.distanceM) || 30;
+        if (rsrc && rfld) r.calculation = 'pulldata("@layer", "getValueAt", "attributes.' + rfld + '", "' + rsrc + (rsrc.indexOf('?') >= 0 ? '&' : '?') + 'distance=' + dist + '&units=esriSRUnit_Meter", ${location}, "")';
+        else { r.calculation = ''; rep.open.push(where + ': שיוך לדרך טרם הוגדר (S.sim.survey123.roadLayer.url ו-roadLayer.fields.' + f.name + '). השדה נוצר ריק וקריאה בלבד.'); }
+        if (r.calculation) rep.open.push(where + ': שיוך לדרך ברדיוס ' + dist + ' מ\' מהשלט (roadLayer.distanceM). אם יש כמה דרכים ברדיוס, getValueAt עלול לא להחזיר את הקרובה ביותר: לבדוק בשטח.');
+      }
       if (/<FORESTS_LAYER_URL>/.test(r.calculation)) {
         const src = FL && (FL.url || FL.itemId), fld = FL && FL.fields && FL.fields[f.name];
         if (src && fld) r.calculation = 'pulldata("@layer", "getValueAt", "attributes.' + fld + '", "' + src + '", ${location}, "")';
@@ -118,15 +124,14 @@
         }
       }
       if (f.autoIncrement) {
-        const path = '/data/' + e.name + '/' + f.name;
-        r.default = 'if(count(' + path + "[.!=''])=0, 1, max(" + path + "[.!=''])+1)";
-        rep.open.push(where + ': ברירת מחדל max+1 (' + r.default + '). הנתיב המלא /data/... מניח ששורש הטופס הוא data. לאמת בטופס אמיתי, כולל התנהגות בעריכה של שלט עם כנפיים קיימות.');
+        /* מספור רציף: מספר השורות הדומות בחזרה (כולל הנוכחית), נקבע פעם אחת (once). max/preceding-sibling החזירו ערך שגוי בתצוגה של Connect */
+        /* predicate על אחים בחזרה גורם לכשל המרה (IndexOutOfBounds) ב-ODK Validate; לכן position(..) = מספר השורה בחזרה */
+        r.calculation = 'once(position(..))';
+        rep.open.push(where + ': מספור אוטומטי (' + r.calculation + '). אם נמחקת שורה באמצע עלולה להיווצר כפילות והבדיקה תחסום; לאמת בעריכה של שלט עם כנפיים קיימות.');
       }
       if (f.uniqueInParent) {
-        const path = '/data/' + e.name + '/' + f.name;
-        r.constraint = 'count(' + path + '[.=current()])=1';
-        r.constraint_message = f.constraintMsg || 'הערך כבר קיים';
-        rep.open.push(where + ': בדיקת כפילות (constraint עם current()) בתוך השלט. לאמת בטופס אמיתי.');
+        /* predicate עם current() גורם לכשל המרה (IndexOutOfBounds) ב-ODK Validate, לכן אין בדיקת כפילות בטופס */
+        rep.open.push(where + ': בדיקת כפילות מספר בתוך השלט לא מוגדרת בטופס (current() בפרדיקט נכשל בהמרה). לבדוק בהמשך בשכבה/Notebook.');
       }
       rep.included.push(where);
       return r;
@@ -140,7 +145,7 @@
         const visitLevel = !!kids(k.name).length || /Visit/i.test(k.name);
         const st = styled('repeat', k.name, k.alias || k.name, SY && SY.repeats && SY.repeats[k.name]);
         const visitsEditOnly = visitLevel && OPT.visitsEditOnly === true; // ברירת מחדל: ה-Repeat של הביקורים תמיד מוצג (S.sim.survey123.options.visitsEditOnly=true מחזיר הצגה בעריכה בלבד)
-        row({ type: 'begin_repeat', name: k.name, label: st.label, relevant: visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
+        row({ type: 'begin_repeat', name: k.name, label: st.label, appearance: (OPT.collapsedRepeats || []).indexOf(k.name) >= 0 ? 'compact' : '', relevant: visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
         if (visitLevel && !visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת תמיד (גם במיפוי שלט חדש). החלטה פתוחה: אם הביקור הראשון נוצר על ידי Make (D28), יש להגביל לעריכה עם options.visitsEditOnly=true.');
         if (visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת רק בעריכה (' + EDIT_MODE + '), כי במיפוי שלט חדש הביקור הראשון נוצר על ידי Make (D28). דורש אימות ש-pulldata("@property","mode") מחזיר edit בטופס.');
         entityRows(k, depth + 1, false);
