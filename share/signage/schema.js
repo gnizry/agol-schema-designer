@@ -4297,13 +4297,64 @@ window.SCHEMAS["signage"] = {
         "visitsEditOnly": false,
         "collapsedRepeats": [
           "SignVisits"
+        ],
+        "summaryTables": {
+          "SignParts": {
+            "title": "רכיבים שנרשמו בשלט זה",
+            "cols": [
+              {
+                "f": "ComponentType",
+                "l": "רכיב"
+              },
+              {
+                "f": "WingNumber",
+                "l": "מס׳ כנף"
+              },
+              {
+                "f": "Direction",
+                "l": "כיוון"
+              },
+              {
+                "f": "Level",
+                "l": "רמה"
+              }
+            ]
+          },
+          "SignVisits": {
+            "title": "ביקורים שנרשמו בשלט זה",
+            "cols": [
+              {
+                "f": "VisitDate",
+                "l": "תאריך",
+                "date": true
+              },
+              {
+                "f": "VisitType",
+                "l": "סוג ביקור"
+              },
+              {
+                "f": "StatusAtVisit",
+                "l": "מצב השלט"
+              }
+            ]
+          }
+        },
+        "duplicateWarnings": [
+          {
+            "repeat": "SignParts",
+            "field": "WingNumber",
+            "msg": "שים לב, מספר כנף אחד לפחות נרשם יותר מפעם אחת!"
+          }
         ]
       },
       "roadLayer": {
-        "url": "",
+        "url": "https://kklrgm.kkl.org.il/kklags/rest/services/allLayersForAgol_b/FeatureServer/33",
         "distanceM": 30,
         "_note": "שכבת דרכי קהל של קק״ל (כתובת URL של השכבה). distanceM: מרחק שיוך מהדרך במטרים, הצעה עד תשובת הלקוח (Q-024). fields: שם שדה בסכמה -> שם שדה בשכבת הדרכים.",
-        "fields": {}
+        "fields": {
+          "RoadName": "TrackName",
+          "RoadColor": "SectionType"
+        }
       },
       "banner": {
         "image": "banner.png",
@@ -4733,4 +4784,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "23.11.2026 15:42";
+window.__BUILT = "23.11.2026 15:58";

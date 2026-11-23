@@ -149,7 +149,23 @@
         if (visitLevel && !visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת תמיד (גם במיפוי שלט חדש). החלטה פתוחה: אם הביקור הראשון נוצר על ידי Make (D28), יש להגביל לעריכה עם options.visitsEditOnly=true.');
         if (visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת רק בעריכה (' + EDIT_MODE + '), כי במיפוי שלט חדש הביקור הראשון נוצר על ידי Make (D28). דורש אימות ש-pulldata("@property","mode") מחזיר edit בטופס.');
         entityRows(k, depth + 1, false);
+        const ST = (OPT.summaryTables || {})[k.name];
+        if (ST) { /* שורת HTML לכל חזרה (מחוץ לחזרה היא מצטרפת לטבלה); עמודות בסדר DOM הפוך כי הטופס מציג משמאל לימין */
+          const cell = (c) => "'<td style=\"padding:6px; text-align:right;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
+          const cols = ST.cols.slice().reverse();
+          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr>', " + cols.map(cell).join(', ') + ", '<td style=\"padding:6px; text-align:center;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
+        }
         row({ type: 'end_repeat', name: '', label: '' });
+        if (ST) {
+          const th = (t, al) => "'<th style=\"text-align:" + (al || 'right') + ";\">" + t + "</th>'";
+          const heads = ST.cols.slice().reverse().map((c) => th(c.l)).concat([th('#', 'center')]).join(', ');
+          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center;\">" + ST.title + "</h3>', '<table border=\"1\" style=\"border-collapse:collapse; width:90%; margin:auto; border-color:black; direction:rtl;\">', '<tr style=\"background-color:#cfe5de; color:black;\">', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'note', name: k.name + '_table_note', label: '${' + k.name + '_table}', relevant: "count(${" + k.name + "}) > 0" });
+        }
+        (OPT.duplicateWarnings || []).filter((d) => d.repeat === k.name).forEach((d) => {
+          row({ type: 'note', name: k.name + '_dup_' + d.field, label: '<font color="red">' + d.msg + '</font>', relevant: "pulldata('@javascript', 'repeats.js', 'hasDuplicates', join('|', ${" + d.field + "})) = 1" });
+          rep.open.push(k.name + '.' + d.field + ': התראת כפילות דרך pulldata("@javascript","repeats.js","hasDuplicates"). הקובץ repeats.js חייב להיות בתיקיית scripts של הסקר (Q-025: התראה או constraint).');
+        });
       };
       const placed = new Set();
       if (cats) {
