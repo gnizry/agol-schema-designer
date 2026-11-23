@@ -766,7 +766,10 @@ window.SCHEMAS["signage"] = {
             "from": "SignModel",
             "attr": "ext"
           },
-          "calc": "instance(\"SignSubModel\")/root/item[name=${SignModel}]/ext"
+          "calc": "instance(\"SignSubModel\")/root/item[name=${SignModel}]/ext",
+          "relExpr": "string-length(instance(\"SignSubModel\")/root/item[name=${SignModel}]/ext) > 0",
+          "placeholderNote": "קוד הממשק יוצג כאן כשיוגדר לדגם",
+          "placeholderWhen": "${SignModel} != '' and string-length(instance(\"SignSubModel\")/root/item[name=${SignModel}]/ext) = 0"
         },
         {
           "category": "סיווג",
@@ -4238,8 +4241,16 @@ window.SCHEMAS["signage"] = {
       "לפירוק": "#E8912E"
     },
     "survey123": {
+      "forestLayer": {
+        "itemId": "ecf32ed7ed244c98829be547c38c44fe",
+        "_note": "שכבת עומדי יער מתעדכנים. fields: שם שדה בסכמה -> שם שדה בשכבה (למפות אחרי בדיקת שדות השכבה). שדה ללא מיפוי נוצר ריק.",
+        "fields": {}
+      },
+      "options": {
+        "visitsEditOnly": false
+      },
       "style": {
-        "map": true,
+        "map": false,
         "groupAppearance": "compact",
         "groups": {
           "כתובת יערנית": {
@@ -4651,4 +4662,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "22.11.2026 12:19";
+window.__BUILT = "23.11.2026 12:12";

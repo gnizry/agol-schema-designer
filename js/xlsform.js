@@ -30,7 +30,11 @@
     const kids = (n) => (S.relationships || []).filter((r) => r.origin === n).map((r) => ent(r.destination)).filter(Boolean);
     const used = new Set();
     const rows = [];
-    const row = (r) => { rows.push(r); return r; };
+    const row = (r) => { rows.push(r); if (r._after) rows.push(r._after); return r; }; // _after: שורת note נלווית (שומר מקום) מיד אחרי השדה
+    const S123 = (S.sim && S.sim.survey123) || {};
+    const OPT = S123.options || {};
+    const FL = S123.forestLayer || null; // { itemId | url, fields: { שם שדה בסכימה: שם שדה בשכבת עומדי היער } }
+    const shade = (c, a) => { const n = parseInt(String(c).slice(1), 16), m = (x) => Math.round(x * (1 - a)).toString(16).padStart(2, '0'); return '#' + m(n >> 16) + m((n >> 8) & 255) + m(n & 255); };
     /* עיצוב: צבע ואייקון לכל קבוצה/חזרה (S.sim.survey123.style): תווית HTML (span style) + body::esri:style (backgroundColor, borderColor). נתמך באפליקציית השדה; באפליקציית הווב עשוי להיות מוגבל */
     const SY = (S.sim && S.sim.survey123 && S.sim.survey123.style) || null;
     const tint = (c, a) => { const n = parseInt(String(c).slice(1), 16), m = (x) => Math.round(x + (255 - x) * a).toString(16).padStart(2, '0'); return '#' + m(n >> 16) + m((n >> 8) & 255) + m(n & 255); };
@@ -38,8 +42,10 @@
     let secN = 0;
     const styled = (kind, name, label, sy, dyn) => {
       if (!SY || !sy) return { label: label };
-      const no = ++secN, tag = kind === 'repeat' ? NB + '(חזרה)' : '';
-      return { label: '<span style="font-weight:bold;color:#ffffff;background-color:' + sy.c + '">' + NB + no + ' · ' + (sy.i ? sy.i + NB : '') + label + (dyn ? '${ro_tag}' : '') + tag + NB + '</span>', style: 'backgroundColor=' + tint(sy.c, kind === 'repeat' ? 0.88 : 0.93) + ' borderColor=' + sy.c };
+      const no = ++secN, tag = kind === 'repeat' ? NB + '(+ הוספה)' : '';
+      if (S123.style && S123.style.labelStyle === 'badge') return { label: '<span style="font-weight:bold;color:#ffffff;background-color:' + sy.c + '">' + NB + no + ' · ' + (sy.i ? sy.i + NB : '') + label + (dyn ? '${ro_tag}' : '') + tag + NB + '</span>', style: 'backgroundColor=' + tint(sy.c, kind === 'repeat' ? 0.88 : 0.93) + ' borderColor=' + sy.c };
+      /* ברירת מחדל: כותרת נקייה בטקסט צבעוני כהה (בלי רקע מלא ובלי מספור), והצבע נשאר ברקע הבהיר ובמסגרת של הקבוצה */
+      return { label: '<span style="font-weight:bold;color:' + shade(sy.c, 0.35) + '">' + (sy.i ? sy.i + NB : '') + label + (dyn ? '${ro_tag}' : '') + (kind === 'repeat' ? '<span style="font-weight:normal;font-size:small;color:#6b7280">' + tag + '</span>' : '') + '</span>', style: 'backgroundColor=' + tint(sy.c, kind === 'repeat' ? 0.9 : 0.94) + ' borderColor=' + sy.c };
     };
 
     const dep = (S.deployments || []).filter((d) => d && d.itemId).slice(-1)[0];
@@ -54,9 +60,24 @@
       const d = f.domain && dom[f.domain] && dom[f.domain].values && dom[f.domain].values.length ? dom[f.domain] : null;
       if (f.domain && !d) rep.lookups.push(where + ': הרשימה ' + f.domain + ' ריקה בסכימה (מקור חיצוני). השדה נוצר כטקסט.');
       const r = { type: d ? 'select_one ' + f.domain : t[0], name: f.name, label: f.alias || f.name, hint: '', required: '', relevant: '', calculation: '', constraint: '', appearance: '', read_only: '', default: '', choice_filter: '', 'bind::esri:fieldType': t[1], 'bind::esri:fieldLength': f.type === 'TEXT' ? (f.length || '255') : '', 'bind::esri:parameters': '', repeat_count: '' };
-      if (d) { used.add(f.domain); if (f.appearance === 'autocomplete') { r.appearance = 'autocomplete'; } else if (d.values.length > 6) r.appearance = 'minimal'; }
+      /* רשימות: autocomplete לפי הסכימה; אחרת dropdown (minimal) לכל רשימה של 3 ערכים ומעלה. רשימה של 2 ערכים נשארת כפתורי בחירה */
+      if (d) { used.add(f.domain); if (f.appearance === 'autocomplete') { r.appearance = 'autocomplete'; } else if (d.values.length >= 3) r.appearance = 'minimal'; }
+      /* טקסט ארוך: multiline לשדה טקסט חופשי שאורכו 500 תווים ומעלה (או f.multiline) */
+      if (!d && f.type === 'TEXT' && (f.multiline || Number(f.length || 255) >= 500)) r.appearance = 'multiline';
       if (f.type === 'GUID') { r.type = 'text'; rep.open.push(where + ': שדה GUID שמולא מקישור לרכיב (' + (f.pickFrom || '') + '). נוצר כטקסט; בחירת הרכיב בטופס טעונה בדיקה (B2/C2).'); }
       if (f.calc) r.calculation = f.calc;
+      /* כתובת יערנית: pulldata("@layer", "getValueAt") מול שכבת עומדי יער לפי S.sim.survey123.forestLayer; שדה שלא מופה נשאר ריק (בלי שגיאת טופס) */
+      if (/<FORESTS_LAYER_URL>/.test(r.calculation)) {
+        const src = FL && (FL.url || FL.itemId), fld = FL && FL.fields && FL.fields[f.name];
+        if (src && fld) r.calculation = 'pulldata("@layer", "getValueAt", "attributes.' + fld + '", "' + src + '", ${location}, "")';
+        else { r.calculation = ''; rep.open.push(where + ': כתובת יערנית אוטומטית טרם מופתה (S.sim.survey123.forestLayer.fields.' + f.name + ' = שם השדה בשכבת עומדי היער). השדה נוצר ריק וקריאה בלבד.'); }
+      }
+      /* instance("X") על רשימה ריקה (טרם נמסרה) גורם לשגיאת טעינה: נפילה לשם המשתמש המחובר */
+      const inst = /instance\("([^"]+)"\)/.exec(r.calculation || '');
+      if (inst && f.domain === inst[1] && !d && /username/.test(r.calculation)) { r.calculation = 'once(pulldata("@property", "username"))'; rep.open.push(where + ': הרשימה ' + inst[1] + ' טרם נמסרה, לכן השדה מקבל את שם המשתמש המחובר. כשהרשימה תימסר יש להחזיר בחירה מרשימה.'); }
+      if (f.relExpr) r.relevant = f.relExpr;
+      if (f.placeholderNote) r._after = { type: 'note', name: f.name + '_ph', label: '<span style="color:#9ca3af;font-size:small">' + f.placeholderNote + '</span>', relevant: f.placeholderWhen || '' };
+      if (f.calc) { /* בוצע למעלה */ }
       else if (f.autoValue === 'today') r.calculation = f.autoOnCreate ? 'once(today())' : 'today()';
       else if (f.autoValue === 'username') r.calculation = 'pulldata("@property", "username")';
       if (/<[^>]+>/.test(r.calculation)) rep.placeholders.push(where + ': ' + (r.calculation.match(/<[^>]+>/g) || []).join(', '));
@@ -78,8 +99,16 @@
       }
       if (d && d.values.some((v) => v.notIn && v.notIn.length)) {
         const pf2 = f.notInParent || 'ModelFamily';
-        r.choice_filter = (r.choice_filter ? r.choice_filter + ' and ' : '') + "(${" + pf2 + "}='' or not(contains(excl, ${" + pf2 + "})))";
-        rep.open.push(where + ': סינון ערכים לפי משפחת הדגם (עמודת excl, choice_filter). הוגדר רק לפי הדרישה המפורשת של הלקוח (פ-1 ללא כנף); שאר הקטלוג חסר. לאמת שהפניה למשפחה מתוך Repeat עובדת.');
+        if (OPT.excludeMode === 'filter') {
+          r.choice_filter = (r.choice_filter ? r.choice_filter + ' and ' : '') + "(${" + pf2 + "}='' or not(contains(excl, ${" + pf2 + "})))";
+          rep.open.push(where + ': סינון ערכים לפי משפחת הדגם (עמודת excl, choice_filter). מצב filter: ברשימה בתוך Repeat הסינון מול שדה מחוץ ל-Repeat גרם לרשימה ריקה בבדיקה ב-Connect.');
+        } else {
+          /* ברירת מחדל: הרשימה מלאה (dropdown רגיל) והחסימה בפועל ב-constraint, כי choice_filter מול שדה שמחוץ ל-Repeat החזיר רשימה ריקה */
+          const parts = d.values.filter((v) => v.notIn && v.notIn.length).map((v) => '(. = ' + lit(v.code) + ' and (' + v.notIn.map((x) => '${' + pf2 + '} = ' + lit(x)).join(' or ') + '))');
+          r.constraint = (r.constraint ? r.constraint + ' and ' : '') + 'not(' + parts.join(' or ') + ')';
+          r.constraint_message = 'ערך זה אינו מתאים למשפחת הדגם שנבחרה';
+          rep.open.push(where + ': הגבלת ערכים לפי משפחת הדגם (פ-1 ללא כנף, לפי דרישת הלקוח) מוגדרת כ-constraint ולא כסינון הרשימה. שאר הקטלוג חסר.');
+        }
       }
       if (f.autoIncrement) {
         const path = '/data/' + e.name + '/' + f.name;
@@ -103,8 +132,10 @@
       const kidRows = (k) => {
         const visitLevel = !!kids(k.name).length || /Visit/i.test(k.name);
         const st = styled('repeat', k.name, k.alias || k.name, SY && SY.repeats && SY.repeats[k.name]);
-        row({ type: 'begin_repeat', name: k.name, label: st.label, relevant: visitLevel ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
-        if (visitLevel) rep.open.push(k.name + ': רמת הביקור מוצגת רק בעריכה (' + EDIT_MODE + '), כי במיפוי שלט חדש הביקור הראשון נוצר על ידי Make (D28). דורש אימות ש-pulldata("@property","mode") מחזיר edit בטופס.');
+        const visitsEditOnly = visitLevel && OPT.visitsEditOnly === true; // ברירת מחדל: ה-Repeat של הביקורים תמיד מוצג (S.sim.survey123.options.visitsEditOnly=true מחזיר הצגה בעריכה בלבד)
+        row({ type: 'begin_repeat', name: k.name, label: st.label, relevant: visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
+        if (visitLevel && !visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת תמיד (גם במיפוי שלט חדש). החלטה פתוחה: אם הביקור הראשון נוצר על ידי Make (D28), יש להגביל לעריכה עם options.visitsEditOnly=true.');
+        if (visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת רק בעריכה (' + EDIT_MODE + '), כי במיפוי שלט חדש הביקור הראשון נוצר על ידי Make (D28). דורש אימות ש-pulldata("@property","mode") מחזיר edit בטופס.');
         entityRows(k, depth + 1, false);
         row({ type: 'end_repeat', name: '', label: '' });
       };
@@ -128,7 +159,7 @@
       kids(e.name).filter((k) => !placed.has(k.name)).forEach(kidRows);
     }
 
-    if (SY && SY.map) {
+    if (SY && SY.map === true) { // מפת הצבעים (צ'יפים) כבויה כברירת מחדל: נראתה צפופה ולא מובנת
       const seq = []; const after = main.repeatAfter || {};
       (main.groupOrder || []).forEach((c) => { seq.push([c, SY.groups && SY.groups[c]]); kids(main.name).filter((k) => after[k.name] === c).forEach((k) => seq.push([k.name, SY.repeats && SY.repeats[k.name]])); });
       kids(main.name).filter((k) => !Object.keys(after).includes(k.name)).forEach((k) => seq.push([k.name, SY.repeats && SY.repeats[k.name]]));
@@ -157,8 +188,11 @@
     if (imgs) rep.open.push('תמונות דגמים: ' + imgs + ' ערכים עם תמונה (עמודת media::image בגיליון choices, שם הקובץ בלבד). יש להעתיק את הקבצים לתיקיית media של פרויקט הטופס. הצגת תמונות ברשימת autocomplete/minimal נתמכת באפליקציית השדה; ב-Survey123 web אינה נתמכת.');
     const anyExcl = choices.some((c) => c.excl), anyImg = choices.some((c) => c['media::image']);
     const cext = (anyParent ? ['parent'] : []).concat(anyExt ? ['ext'] : [], anyImg ? ['media::image'] : [], anyExcl ? ['excl'] : []);
-    const settings = [{ form_title: (S.meta && S.meta.title) || 'סקר', form_id: (S.meta && S.meta.key) || 'survey', version: new Date().toISOString().slice(0, 10).replace(/-/g, ''), submission_url: subUrl }];
-    const cols = ['type', 'name', 'label', 'hint', 'required', 'relevant', 'calculation', 'constraint', 'constraint_message', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count'];
+    /* settings בסגנון Advanced Template: instance_name מזהה כל רשומה בתיבת הדואר (Inbox/Outbox/Sent) לפי מזהה השלט; allow_* נשארים בהגדרות הפרסום */
+    const idF = S.sim && S.sim.idField;
+    const settings = [Object.assign({ form_title: (S.meta && S.meta.title) || 'סקר', form_id: (S.meta && S.meta.key) || 'survey', version: new Date().toISOString().slice(0, 10).replace(/-/g, ''), submission_url: subUrl }, idF && rows.some((r) => r.name === idF) ? { instance_name: '${' + idF + '}' } : {})];
+    rows.forEach((r) => { if (r.required && r.type !== 'begin_repeat' && !r.required_message) r.required_message = 'יש למלא שדה זה'; });
+    const cols = ['type', 'name', 'label', 'hint', 'required', 'required_message', 'relevant', 'calculation', 'constraint', 'constraint_message', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count'];
     const sheets = [
       { name: 'survey', head: cols, rows: rows.map((r) => cols.map((c) => r[c] || '')) },
       { name: 'choices', head: ['list_name', 'name', 'label'].concat(cext), rows: choices.map((c) => ['list_name', 'name', 'label'].concat(cext).map((k) => c[k] || '')) },
