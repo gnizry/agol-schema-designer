@@ -166,16 +166,16 @@
         entityRows(k, depth + 1, false);
         if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_key', label: 'מפתח שורה', calculation: "if(${" + keyed[k.name].f + "} = " + lit(keyed[k.name].v) + ", 'W', 'x')", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const cell = (c) => "'<td style=\"padding:8px; text-align:right; color:#4b5563; border-radius:6px; border-bottom:1px solid #e3ebe7;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
+          const cell = (c) => "'<td style=\"padding:8px; text-align:right;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
           const cols = ST.cols.slice().reverse();
-          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr style=\"background-color:', if(position(..) mod 2 = 0, '#f5f9f7', '#ffffff'), ';\">', " + cols.map(cell).join(', ') + ", '<td style=\"padding:8px; text-align:center; color:#6b8f82; border-radius:6px; border-bottom:1px solid #e3ebe7;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr>', " + cols.map(cell).join(', ') + ", '<td style=\"padding:8px; text-align:center;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
         }
         row({ type: 'end_repeat', name: '', label: '' });
         if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_keys', label: 'מפתחות שורות', calculation: "join('', ${" + k.name + "_key})", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const th = (t, al) => "'<th style=\"text-align:" + (al || 'right') + "; padding:8px; background-color:#dcebe4; color:#3f6358; font-weight:600; border-radius:6px; border-bottom:1px solid #cfdcd6;\">" + t + "</th>'";
+          const th = (t, al) => "'<th style=\"text-align:" + (al || 'right') + "; padding:8px;\">" + t + "</th>'";
           const heads = ST.cols.slice().reverse().map((c) => th(c.l)).concat([th('#', 'center')]).join(', ');
-          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center; color:#3f6358;\">" + ST.title + "</h3>', '<table style=\"border-collapse:separate; border-spacing:0; width:96%; margin:auto; border:1px solid #cfdcd6; border-radius:10px; overflow:hidden; direction:rtl;\">', '<tr>', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center; color:#1F5A52;\">" + ST.title + "</h3>', '<table border=\"1\" style=\"border-collapse:collapse; width:100%; margin:auto; border-color:#7fa99b; direction:rtl;\">', '<tr style=\"background-color:#bcdccf; color:#1F5A52;\">', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
           row({ type: 'note', name: k.name + '_table_note', label: '${' + k.name + '_table}', relevant: "count(${" + k.name + "}) > 0" });
         }
         (OPT.duplicateWarnings || []).filter((d) => d.repeat === k.name).forEach((d) => {
@@ -237,6 +237,17 @@
     const idF = S.sim && S.sim.idField;
     const settings = [Object.assign({ form_title: (S.meta && S.meta.title) || 'סקר', form_id: (S.meta && S.meta.key) || 'survey', version: new Date().toISOString().slice(0, 10).replace(/-/g, ''), submission_url: subUrl }, idF && rows.some((r) => r.name === idF) ? { instance_name: '${' + idF + '}' } : {})];
     rows.forEach((r) => { if (r.required && r.type !== 'begin_repeat' && !r.required_message) r.required_message = 'יש למלא שדה זה'; });
+    { /* כרטיס HTML לכתובת היערנית: השדות נשארים (נשמרים בשירות) אך מוסתרים, ומוצגים בכרטיס אחד */
+      const AC = OPT.addressCard;
+      if (AC && AC.fields && AC.fields.length) {
+        const idx = rows.findIndex((r) => r.name === AC.fields[0]);
+        if (idx >= 0) {
+          const items = AC.fields.map((f) => { const r = rows.find((q) => q.name === f); if (r) r.appearance = 'hidden'; return '<td style="width:50%; padding:6px 10px; vertical-align:top; border-bottom:1px solid #e3ebe7;"><div style="font-size:12px; color:#6b8f82;">' + (r ? String(r.label).replace(/<[^>]*>/g, '') : f) + '</div><div style="font-size:16px; font-weight:600; color:#1F5A52;">${' + f + '}</div></td>'; });
+          const trs = []; for (let i = 0; i < items.length; i += 2) trs.push('<tr>' + items[i] + (items[i + 1] || '<td></td>') + '</tr>');
+          rows.splice(idx, 0, { type: 'note', name: 'AddressCard', label: '<div style="direction:rtl; background-color:#ffffff; border:1px solid #cfdcd6; border-radius:10px; padding:4px;"><table style="width:100%; direction:rtl; border-collapse:collapse;">' + trs.join('') + '</table></div>', 'bind::esri:fieldType': 'null' });
+        }
+      }
+    }
     const BN = S.sim && S.sim.survey123 && S.sim.survey123.banner, TH = S.sim && S.sim.survey123 && S.sim.survey123.theme;
     if (BN && BN.image) { rows.unshift({ type: 'note', name: 'Banner', label: '', 'media::image': BN.image, 'bind::esri:fieldType': 'null' }); rep.open.push('באנר: הקובץ ' + BN.image + ' חייב להיות בתיקיית media של הסקר ב-Connect (Media > Open media folder).'); }
     { /* מקרא צבעי הטופס: צ'יפים בצבעי הקבוצות הראשיות, מיד אחרי הבאנר */

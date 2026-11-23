@@ -762,6 +762,18 @@ window.SCHEMAS["signage"] = {
           "readonlyOnEdit": true
         },
         {
+          "category": "זיהוי",
+          "name": "ResponsibleUnit",
+          "alias": "יחידה אחראית",
+          "type": "TEXT",
+          "length": "255",
+          "domain": "ResponsibleUnit",
+          "mode": "רשימה",
+          "visible": "תמיד",
+          "open": true,
+          "note": "שומר מקום: הרשימה (יחידה 1-3) זמנית. לא ברור למה התכוון הלקוח ביחידה אחראית ומה מקורה; לא מהשכבה של עומדי יער. נקודה לבירור מול הלקוח."
+        },
+        {
           "category": "סיווג",
           "name": "ModelFamily",
           "alias": "משפחת דגם שלט",
@@ -998,18 +1010,6 @@ window.SCHEMAS["signage"] = {
           "open": true,
           "note": "אם המזהה כולל XXXX עם אפסים מובילים — לשקול TEXT. חישוב אוטומטי מהמיקום (נקודה בפוליגון); שם השכבה והשדה בשכבת המקור טרם נמסרו.",
           "calc": "pulldata(\"@layer\", \"getValueAt\", \"attributes.<שדה בשכבת היערות>\", \"<FORESTS_LAYER_URL>\", ${location}, \"\")"
-        },
-        {
-          "category": "כתובת יערנית",
-          "name": "ResponsibleUnit",
-          "alias": "יחידה אחראית",
-          "type": "TEXT",
-          "length": "255",
-          "domain": "ResponsibleUnit",
-          "mode": "רשימה",
-          "visible": "תמיד",
-          "open": true,
-          "note": "שומר מקום: הרשימה (יחידה 1-3) זמנית. לא ברור למה התכוון הלקוח ביחידה אחראית ומה מקורה; לא מהשכבה של עומדי יער. נקודה לבירור מול הלקוח."
         },
         {
           "category": "כתובת יערנית",
@@ -4318,9 +4318,17 @@ window.SCHEMAS["signage"] = {
       "options": {
         "visitsEditOnly": false,
         "legend": false,
-        "omitFields": [
-          "ResponsibleUnit"
-        ],
+        "addressCard": {
+          "fields": [
+            "DistrictName",
+            "RegionName",
+            "GushName",
+            "ForestName",
+            "ForestNumber",
+            "RoadName",
+            "RoadType"
+          ]
+        },
         "collapsedRepeats": [
           "SignVisits"
         ],
@@ -4526,8 +4534,7 @@ window.SCHEMAS["signage"] = {
             "DistrictName",
             "RegionName",
             "GushName",
-            "ForestName",
-            "ResponsibleUnit"
+            "ForestName"
           ]
         }
       ]
@@ -4846,4 +4853,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "23.11.2026 16:56";
+window.__BUILT = "23.11.2026 17:10";
