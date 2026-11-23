@@ -15,6 +15,28 @@ window.SCHEMAS["signage"] = {
     }
   },
   "domains": {
+    "ResponsibleUnit": {
+      "name": "ResponsibleUnit",
+      "desc": "יחידה אחראית (שומר מקום עד בירור מול הלקוח)",
+      "fieldType": "TEXT",
+      "values": [
+        {
+          "code": "יחידה 1",
+          "label": "יחידה 1",
+          "parent": ""
+        },
+        {
+          "code": "יחידה 2",
+          "label": "יחידה 2",
+          "parent": ""
+        },
+        {
+          "code": "יחידה 3",
+          "label": "יחידה 3",
+          "parent": ""
+        }
+      ]
+    },
     "YesNo": {
       "name": "YesNo",
       "desc": "כן / לא",
@@ -967,12 +989,11 @@ window.SCHEMAS["signage"] = {
           "alias": "יחידה אחראית",
           "type": "TEXT",
           "length": "255",
-          "domain": "",
-          "mode": "אוטומטי",
-          "visible": "קריאה בלבד",
+          "domain": "ResponsibleUnit",
+          "mode": "רשימה",
+          "visible": "תמיד",
           "open": true,
-          "note": "שם מקור טכני וכלל שיוך טרם פורטו. חישוב אוטומטי מהמיקום (נקודה בפוליגון); שם השכבה והשדה בשכבת המקור טרם נמסרו.",
-          "calc": "pulldata(\"@layer\", \"getValueAt\", \"attributes.<שדה בשכבת היערות>\", \"<FORESTS_LAYER_URL>\", ${location}, \"\")"
+          "note": "שומר מקום: הרשימה (יחידה 1-3) זמנית. לא ברור למה התכוון הלקוח ביחידה אחראית ומה מקורה; לא מהשכבה של עומדי יער. נקודה לבירור מול הלקוח."
         },
         {
           "category": "כתובת יערנית",
@@ -2126,6 +2147,17 @@ window.SCHEMAS["signage"] = {
       "date": "",
       "ref": "",
       "note": ""
+    },
+    {
+      "id": "Q-023",
+      "topic": "כתובת יערנית",
+      "q": "יחידה אחראית: למה הכוונה ומה המקור שלה? היא לא נמצאת בשכבת עומדי יער מתעדכנים (השדות שם: מרחב, אזור, גוש, שם יער, מספר יער). האם זו יחידה ארגונית בקק\"ל, ומהם הערכים וכלל השיוך (לפי יער, גוש או אחר)?",
+      "proposal": "בינתיים שומר מקום: רשימה בטופס עם \"יחידה 1\", \"יחידה 2\" ו\"יחידה 3\". אחרי תשובת הלקוח להחליף בערכים אמיתיים, או לחשב משכבה אם יש בה שדה מתאים.",
+      "status": "open",
+      "answer": "",
+      "date": "",
+      "ref": "ResponsibleUnit",
+      "note": ""
     }
   ],
   "plan": {
@@ -2603,7 +2635,7 @@ window.SCHEMAS["signage"] = {
       "id": "D11",
       "title": "ערכים נגזרים מוצגים ב-Arcade בחלון הקופץ של השלט (Field Maps) ולא כשדות פיזיים",
       "status": "decided",
-      "note": "שדות פיזיים רק למידע מקור שמעודכן בשטח, ובטבלה הנכונה (אינוונטר). הוסרו: LastRepairDate, SignDescription (Signs), DirectionCode, LevelCode (SignParts). הקוד הטכני נשלף מ-ext של הדומיין. ModelCode, QR נשארים עד הכרעה. ביטוי הפופאפ: kkl/arcade/popups/signage-sign-popup.arcade"
+      "note": "שדות פיזיים רק למידע מקור שמעודכן בשטח, ובטבלה הנכונה (אינוונטר). הוסרו: LastRepairDate, SignDescription (Signs), DirectionCode, LevelCode (SignParts). הקוד הטכני נשלף מ-ext של הדומיין. ModelCode, QR נשארים עד הכרעה. ביטוי הפופאפ: arcade-library: projects/kkl-signage/popups/signs/signs-popup.arcade"
     },
     {
       "id": "D12",
@@ -4244,7 +4276,13 @@ window.SCHEMAS["signage"] = {
       "forestLayer": {
         "itemId": "ecf32ed7ed244c98829be547c38c44fe",
         "_note": "שכבת עומדי יער מתעדכנים. fields: שם שדה בסכמה -> שם שדה בשכבה (למפות אחרי בדיקת שדות השכבה). שדה ללא מיפוי נוצר ריק.",
-        "fields": {}
+        "fields": {
+          "DistrictName": "MerhavName",
+          "RegionName": "EzorName",
+          "GushName": "GushName",
+          "ForestName": "ForestName",
+          "ForestNumber": "FOR_NO"
+        }
       },
       "options": {
         "visitsEditOnly": false
@@ -4662,4 +4700,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "23.11.2026 12:12";
+window.__BUILT = "23.11.2026 14:43";
