@@ -4317,7 +4317,14 @@ window.SCHEMAS["signage"] = {
       },
       "options": {
         "visitsEditOnly": false,
-        "excludeMode": "constraint",
+        "excludeMode": "filter",
+        "locationLabel": "מיקום שלט",
+        "instanceFields": [
+          "ForestName",
+          "SignModel",
+          "SignStatus"
+        ],
+        "defaultLanguage": "Hebrew (he)",
         "legend": false,
         "addressCard": {
           "fields": [
@@ -4854,4 +4861,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "23.11.2026 17:50";
+window.__BUILT = "23.11.2026 18:23";

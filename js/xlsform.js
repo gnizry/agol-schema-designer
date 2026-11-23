@@ -132,10 +132,13 @@
       if (d && d.values.some((v) => v.notIn && v.notIn.length)) {
         const pf2 = f.notInParent || 'ModelFamily';
         if (OPT.excludeMode === 'filter') {
-          let pref = '${' + pf2 + '}';
-          if (depth > 0 && !r._before) { const cn = f.name + '_fam'; r._before = { type: 'calculate', name: cn, label: '', calculation: '${' + pf2 + '}', 'bind::esri:fieldType': 'null' }; pref = '${' + cn + '}'; }
-          r.choice_filter = (r.choice_filter ? r.choice_filter + ' and ' : '') + "(" + pref + "='' or not(contains(excl, " + pref + ")))";
-          rep.open.push(where + ': סינון ערכים לפי משפחת הדגם (עמודת excl, choice_filter). מצב filter: ברשימה בתוך Repeat הסינון מול שדה מחוץ ל-Repeat גרם לרשימה ריקה בבדיקה ב-Connect.');
+          /* סינון רשימה: עמודת incl בגיליון choices (מפתחות משפחות מותרות, מופרדים בפסיק, עם פסיק בהתחלה ובסוף) ו-regex ב-choice_filter. בדיקה ב-Connect: not(regex(excl...)) ו-or מחזירים רשימה ריקה, ו-regex(incl, ...) עובד גם בתוך Repeat. */
+          const keyExpr = "pulldata('@javascript', 'repeats.js', 'famKey', ${" + pf2 + '})';
+          let pref = keyExpr;
+          if (depth > 0 && !r._before) { const cn = f.name + '_fam'; r._before = { type: 'calculate', name: cn, label: '', calculation: keyExpr, 'bind::esri:fieldType': 'null' }; pref = '${' + cn + '}'; }
+          else if (depth > 0) pref = '${' + f.name + '_fam}';
+          r.choice_filter = (r.choice_filter ? r.choice_filter + ' and ' : '') + "regex(incl, concat('.*,', " + pref + ", ',.*'))";
+          rep.open.push(where + ': סינון הרשימה לפי משפחת הדגם (עמודת incl, regex ב-choice_filter). נדרש שהמשפחה תיבחר קודם (שדה חובה). מפתח המשפחה הוא הטקסט עד הנקודתיים.');
         } else {
           /* ברירת מחדל: הרשימה מלאה (dropdown רגיל) והחסימה בפועל ב-constraint, כי choice_filter מול שדה שמחוץ ל-Repeat החזיר רשימה ריקה */
           const parts = d.values.filter((v) => v.notIn && v.notIn.length).map((v) => '(. = ' + lit(v.code) + ' and (' + v.notIn.map((x) => '${' + pf2 + '} = ' + lit(x)).join(' or ') + '))');
@@ -224,7 +227,7 @@
       const chips = seq.filter((x) => x[1]).map((x, i) => '<span style="color:#ffffff;background-color:' + x[1].c + '">' + NB + (i + 1) + ' ' + (x[1].i ? x[1].i + ' ' : '') + (x[1].t || x[0]) + NB + '</span>').join(' ');
       row({ type: 'note', name: 'form_map', label: '<span style="font-weight:bold">צבעי הטופס</span><br/>' + chips + '<br/><span style="font-size:small;color:#555555">גוון קר: קבוצה חד-פעמית. גוון חם: רשימה שחוזרת (+ להוספה)</span>' });
     }
-    row({ type: 'geopoint', name: 'location', label: 'מיקום ' + (main.alias || main.name), required: 'yes' });
+    row({ type: 'geopoint', name: 'location', label: OPT.locationLabel || ('מיקום ' + (main.alias || main.name)), required: 'yes' });
     if (SY) row({ type: 'calculate', name: 'ro_tag', label: '', 'bind::esri:fieldType': 'null', calculation: "if(" + EDIT_MODE + ", ' (לצפייה בלבד)', '')" });
     entityRows(main, 0, true);
     const inForm = new Set([main.name]); (function walk(n) { kids(n).forEach((k) => { inForm.add(k.name); walk(k.name); }); })(main.name);
@@ -237,27 +240,31 @@
     [...used].forEach((k) => dom[k].values.forEach((v) => {
       const c = { list_name: k, name: v.code, label: v.label || v.code };
       if (v.img) c['media::image'] = String(v.img).split('/').pop();
-      if (v.notIn && v.notIn.length) c.excl = v.notIn.join('|');
+      if (v.notIn && v.notIn.length) c.excl = v.notIn.join(',');
+      if (OPT.excludeMode === 'filter' && dom[k].values.some((q) => q.notIn && q.notIn.length)) {
+        const fk = (x) => String(x).split(':')[0].trim(); const fams = ((dom.ModelFamily || {}).values || []).map((q) => q.code);
+        c.incl = ',' + fams.filter((x) => !(v.notIn || []).includes(x)).map(fk).join(',') + ',';
+      }
       if (anyParent) c.parent = v.parent || '';
       if (anyExt) c.ext = v.ext || '';
       choices.push(c);
       if (v.img) imgs++;
     }));
     if (imgs) rep.open.push('תמונות דגמים: ' + imgs + ' ערכים עם תמונה (עמודת media::image בגיליון choices, שם הקובץ בלבד). יש להעתיק את הקבצים לתיקיית media של פרויקט הטופס. הצגת תמונות ברשימת autocomplete/minimal נתמכת באפליקציית השדה; ב-Survey123 web אינה נתמכת.');
-    const anyExcl = choices.some((c) => c.excl), anyImg = choices.some((c) => c['media::image']);
-    const cext = (anyParent ? ['parent'] : []).concat(anyExt ? ['ext'] : [], anyImg ? ['media::image'] : [], anyExcl ? ['excl'] : []);
+    const anyExcl = choices.some((c) => c.excl) && OPT.excludeMode !== 'filter', anyIncl = choices.some((c) => c.incl), anyImg = choices.some((c) => c['media::image']);
+    const cext = (anyParent ? ['parent'] : []).concat(anyExt ? ['ext'] : [], anyImg ? ['media::image'] : [], anyExcl ? ['excl'] : [], anyIncl ? ['incl'] : []);
     /* settings בסגנון Advanced Template: instance_name מזהה כל רשומה בתיבת הדואר (Inbox/Outbox/Sent) לפי מזהה השלט; allow_* נשארים בהגדרות הפרסום */
     const idF = S.sim && S.sim.idField;
-    const settings = [Object.assign({ form_title: (S.meta && S.meta.title) || 'סקר', form_id: (S.meta && S.meta.key) || 'survey', version: new Date().toISOString().slice(0, 10).replace(/-/g, ''), submission_url: subUrl }, idF && rows.some((r) => r.name === idF) ? { instance_name: '${' + idF + '}' } : {})];
+    const settings = [Object.assign({ form_title: (S.meta && S.meta.title) || 'סקר', form_id: (S.meta && S.meta.key) || 'survey', version: new Date().toISOString().slice(0, 10).replace(/-/g, ''), submission_url: subUrl }, idF && rows.some((r) => r.name === idF) ? { instance_name: (function () { const has = (n) => rows.some((r) => r.name === n); const opt = (n) => has(n) ? "if(${" + n + "} != '', concat(' | ', ${" + n + "}), '')" : null; const parts = ["if(${" + idF + "} != '', ${" + idF + "}, 'שלט חדש')"].concat((OPT.instanceFields || []).map(opt).filter(Boolean), ["concat(' | ', format-date(now(), '%d/%m/%Y %H:%M'))"]); return 'concat(' + parts.join(', ') + ')'; })() } : {}, OPT.defaultLanguage ? { default_language: OPT.defaultLanguage } : {})];
     rows.forEach((r) => { if (r.required && r.type !== 'begin_repeat' && !r.required_message) r.required_message = 'יש למלא שדה זה'; });
     { /* כרטיס HTML לכתובת היערנית: השדות נשארים (נשמרים בשירות) אך מוסתרים, ומוצגים בכרטיס אחד */
       const AC = OPT.addressCard;
       if (AC && AC.fields && AC.fields.length) {
         const idx = rows.findIndex((r) => r.name === AC.fields[0]);
         if (idx >= 0) {
-          const items = AC.fields.map((f) => { const r = rows.find((q) => q.name === f); if (r) r.appearance = 'hidden'; return '<td width="50%" style="width:50%; padding:8px 10px; vertical-align:top; text-align:right; border-bottom:1px solid #e3ebe7;"><small style="color:#6b8f82;">' + (r ? String(r.label).replace(/<[^>]*>/g, '') : f) + '</small><br><b style="color:#1F5A52;">${' + f + '}</b></td>'; });
+          const items = AC.fields.map((f) => { const r = rows.find((q) => q.name === f); if (r) r.appearance = 'hidden'; return '<td dir="rtl" width="50%" style="width:50%; padding:8px 10px; vertical-align:top; text-align:right; border-bottom:1px solid #e3ebe7;"><small style="color:#6b8f82;">' + (r ? String(r.label).replace(/<[^>]*>/g, '') : f) + '</small><br><b style="color:#1F5A52;">${' + f + '}</b></td>'; });
           const trs = []; for (let i = 0; i < items.length; i += 2) trs.push('<tr>' + items[i] + (items[i + 1] || '<td></td>') + '</tr>');
-          rows.splice(idx, 0, { type: 'note', name: 'AddressCard', label: '<div style="width:100%; direction:rtl; background-color:#ffffff; border:1px solid #cfdcd6; border-radius:10px;"><table width="100%" style="width:100%; direction:rtl; border-collapse:collapse;">' + trs.join('') + '</table></div>', 'bind::esri:fieldType': 'null' });
+          rows.splice(idx, 0, { type: 'note', name: 'AddressCard', label: '<div dir="rtl" style="width:100%; direction:rtl; text-align:right; background-color:#ffffff; border:1px solid #cfdcd6; border-radius:10px;"><table dir="rtl" width="100%" style="width:100%; direction:rtl; border-collapse:collapse;">' + trs.join('') + '</table></div>', 'bind::esri:fieldType': 'null' });
         }
       }
     }
