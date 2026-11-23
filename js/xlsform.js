@@ -25,6 +25,12 @@
     o = o || {};
     const rep = { included: [], skipped: [], placeholders: [], open: [], lookups: [] };
     const dom = S.domains || {};
+    /* instance('X')/root/item[name=${q}]/ext לא נטען בתצוגה של Connect (SyntaxError), לכן מורחב לשרשרת if() מערכי הדומיין (ext) */
+    const extChain = (e) => (e || '').replace(/instance\((?:"|')([^"']+)(?:"|')\)\/root\/item\[name=\$\{(\w+)\}\]\/ext/g, (m, ln, q) => {
+      const vals = dom[ln] && dom[ln].values ? dom[ln].values.filter((v) => v.ext) : [];
+      if (!vals.length) return m;
+      return vals.reduceRight((acc, v) => 'if(${' + q + '}=' + lit(v.code) + ',' + lit(v.ext) + ',' + acc + ')', "''");
+    });
     const ent = (n) => S.entities.find((e) => e.name === n);
     const main = S.entities.find((e) => e.kind === 'point') || S.entities[0];
     const kids = (n) => (S.relationships || []).filter((r) => r.origin === n).map((r) => ent(r.destination)).filter(Boolean);
@@ -74,12 +80,13 @@
       }
       /* instance("X") על רשימה ריקה (טרם נמסרה) גורם לשגיאת טעינה: נפילה לשם המשתמש המחובר */
       const inst = /instance\("([^"]+)"\)/.exec(r.calculation || '');
-      if (inst && f.domain === inst[1] && !d && /username/.test(r.calculation)) { r.calculation = 'once(pulldata("@property", "username"))'; rep.open.push(where + ': הרשימה ' + inst[1] + ' טרם נמסרה, לכן השדה מקבל את שם המשתמש המחובר. כשהרשימה תימסר יש להחזיר בחירה מרשימה.'); }
-      if (f.relExpr) r.relevant = f.relExpr;
-      if (f.placeholderNote) r._after = { type: 'note', name: f.name + '_ph', label: '<span style="color:#9ca3af;font-size:small">' + f.placeholderNote + '</span>', relevant: f.placeholderWhen || '' };
+      if (inst && f.domain === inst[1] && !d && /username/.test(r.calculation)) { r.calculation = "once(pulldata(\"@property\", 'userFullName'))"; rep.open.push(where + ': הרשימה ' + inst[1] + ' טרם נמסרה, לכן השדה מקבל את שם המשתמש המחובר. כשהרשימה תימסר יש להחזיר בחירה מרשימה.'); }
+      r.calculation = extChain(r.calculation);
+      if (f.relExpr) r.relevant = extChain(f.relExpr);
+      if (f.placeholderNote) r._after = { type: 'note', name: f.name + '_ph', label: '<span style="color:#9ca3af;font-size:small">' + f.placeholderNote + '</span>', relevant: extChain(f.placeholderWhen || '') };
       if (f.calc) { /* בוצע למעלה */ }
       else if (f.autoValue === 'today') r.calculation = f.autoOnCreate ? 'once(today())' : 'today()';
-      else if (f.autoValue === 'username') r.calculation = 'pulldata("@property", "username")';
+      else if (f.autoValue === 'username') r.calculation = "pulldata(\"@property\", 'userFullName')";
       if (/<[^>]+>/.test(r.calculation)) rep.placeholders.push(where + ': ' + (r.calculation.match(/<[^>]+>/g) || []).join(', '));
       if (/instance\("/.test(r.calculation)) rep.open.push(where + ': משתמש בקובץ רשימה חיצוני (instance) שחייב להיות בתיקיית media של הטופס.');
       if (f.required === true) r.required = 'yes';
@@ -192,7 +199,11 @@
     const idF = S.sim && S.sim.idField;
     const settings = [Object.assign({ form_title: (S.meta && S.meta.title) || 'סקר', form_id: (S.meta && S.meta.key) || 'survey', version: new Date().toISOString().slice(0, 10).replace(/-/g, ''), submission_url: subUrl }, idF && rows.some((r) => r.name === idF) ? { instance_name: '${' + idF + '}' } : {})];
     rows.forEach((r) => { if (r.required && r.type !== 'begin_repeat' && !r.required_message) r.required_message = 'יש למלא שדה זה'; });
-    const cols = ['type', 'name', 'label', 'hint', 'required', 'required_message', 'relevant', 'calculation', 'constraint', 'constraint_message', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count'];
+    const BN = S.sim && S.sim.survey123 && S.sim.survey123.banner, TH = S.sim && S.sim.survey123 && S.sim.survey123.theme;
+    if (BN && BN.image) { rows.unshift({ type: 'note', name: 'Banner', label: '', 'media::image': BN.image }); rep.open.push('באנר: הקובץ ' + BN.image + ' חייב להיות בתיקיית media של הסקר ב-Connect (Media > Open media folder).'); }
+    if (TH) rep.open.push('צבעי כותרת וכותרת תחתונה נקבעים בלוח Style ב-Connect (נשמרים ב-.info של הסקר, לא ב-xlsx): כותרת ' + ((TH.header && TH.header.backgroundColor) || '') + ' עם טקסט ' + ((TH.header && TH.header.textColor) || '') + ', כותרת תחתונה ' + ((TH.footer && TH.footer.backgroundColor) || '') + ' עם טקסט ' + ((TH.footer && TH.footer.textColor) || '') + '.');
+    rep.open.push("שם מלא של הממפה והמבקר: pulldata(\"@property\", 'userFullName'). בתצוגה המקדימה של Connect עלול להופיע Unknown; לבדוק באפליקציית השטח.");
+    const cols = ['type', 'name', 'label', 'hint', 'required', 'required_message', 'relevant', 'calculation', 'constraint', 'constraint_message', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count', 'media::image'];
     const sheets = [
       { name: 'survey', head: cols, rows: rows.map((r) => cols.map((c) => r[c] || '')) },
       { name: 'choices', head: ['list_name', 'name', 'label'].concat(cext), rows: choices.map((c) => ['list_name', 'name', 'label'].concat(cext).map((k) => c[k] || '')) },

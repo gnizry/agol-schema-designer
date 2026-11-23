@@ -741,7 +741,7 @@ window.SCHEMAS["signage"] = {
           "required": true,
           "autoValue": "usernameList",
           "autoOnCreate": true,
-          "calc": "once(instance(\"Mapper\")/root/item[ext=pulldata(\"@property\", \"username\")]/name)",
+          "calc": "once(pulldata(\"@property\", 'userFullName'))",
           "readonlyExpr": "pulldata(\"@property\", 'mode') = 'edit'",
           "readonlyOnEdit": true
         },
@@ -1206,25 +1206,13 @@ window.SCHEMAS["signage"] = {
           "length": "",
           "domain": "",
           "mode": "ידני",
-          "visible": "רק בפ-6 / פ-7 וכשהרכיב הוא כנף",
+          "visible": "כשהרכיב הוא כנף",
           "open": true,
           "note": "כמות כנפיים וצירופים מותרים — ממתין לקטלוג.",
           "rel": {
-            "all": [
-              {
-                "f": "^ModelFamily",
-                "op": "in",
-                "v": [
-                  "פ-6: שלט הכוונה (כנפיים)",
-                  "פ-7: שלט הכוונה קטן לשבילי אופניים / הולכי רגל"
-                ]
-              },
-              {
-                "f": "ComponentType",
-                "op": "=",
-                "v": "כנף"
-              }
-            ]
+            "f": "ComponentType",
+            "op": "=",
+            "v": "כנף"
           }
         },
         {
@@ -1235,25 +1223,13 @@ window.SCHEMAS["signage"] = {
           "length": "255",
           "domain": "Direction",
           "mode": "רשימה",
-          "visible": "רק בפ-6 / פ-7 וכשהרכיב הוא כנף",
+          "visible": "כשהרכיב הוא כנף",
           "open": false,
           "note": "ערך טקסטואלי; הקוד המספרי בשדה DirectionCode.",
           "rel": {
-            "all": [
-              {
-                "f": "^ModelFamily",
-                "op": "in",
-                "v": [
-                  "פ-6: שלט הכוונה (כנפיים)",
-                  "פ-7: שלט הכוונה קטן לשבילי אופניים / הולכי רגל"
-                ]
-              },
-              {
-                "f": "ComponentType",
-                "op": "=",
-                "v": "כנף"
-              }
-            ]
+            "f": "ComponentType",
+            "op": "=",
+            "v": "כנף"
           }
         },
         {
@@ -1265,25 +1241,13 @@ window.SCHEMAS["signage"] = {
           "domain": "Level",
           "mode": "רשימה",
           "hint": "א׳ = הכנף העליונה בשלט, ב׳ = האמצעית, ג׳ = התחתונה (סופרים מלמעלה למטה).",
-          "visible": "רק בפ-6 / פ-7 וכשהרכיב הוא כנף",
+          "visible": "כשהרכיב הוא כנף",
           "open": false,
           "note": "ערך טקסטואלי; הקוד בשדה LevelCode.",
           "rel": {
-            "all": [
-              {
-                "f": "^ModelFamily",
-                "op": "in",
-                "v": [
-                  "פ-6: שלט הכוונה (כנפיים)",
-                  "פ-7: שלט הכוונה קטן לשבילי אופניים / הולכי רגל"
-                ]
-              },
-              {
-                "f": "ComponentType",
-                "op": "=",
-                "v": "כנף"
-              }
-            ]
+            "f": "ComponentType",
+            "op": "=",
+            "v": "כנף"
           }
         },
         {
@@ -1443,7 +1407,7 @@ window.SCHEMAS["signage"] = {
           "open": false,
           "note": "נפרד מ-Creator/Editor של רשומת השלט.",
           "autoValue": "username",
-          "calc": "pulldata(\"@property\", \"username\")"
+          "calc": "pulldata(\"@property\", 'userFullName')"
         },
         {
           "category": "תמונת מצב",
@@ -4274,6 +4238,7 @@ window.SCHEMAS["signage"] = {
     },
     "survey123": {
       "forestLayer": {
+        "url": "https://kklrgm.kkl.org.il/kklags/rest/services/allLayersForAgol_b/FeatureServer/11",
         "itemId": "ecf32ed7ed244c98829be547c38c44fe",
         "_note": "שכבת עומדי יער מתעדכנים. fields: שם שדה בסכמה -> שם שדה בשכבה (למפות אחרי בדיקת שדות השכבה). שדה ללא מיפוי נוצר ריק.",
         "fields": {
@@ -4286,6 +4251,21 @@ window.SCHEMAS["signage"] = {
       },
       "options": {
         "visitsEditOnly": false
+      },
+      "banner": {
+        "image": "banner.png",
+        "_note": "הבאנר בראש הטופס: note ראשון עם media::image. הקובץ בתיקיית media של הסקר (SignageSurvey/Survey123/media/banner.png)."
+      },
+      "theme": {
+        "_note": "לוח Style ב-Survey123 Connect (נשמר ב-.info של הסקר, לא ב-xlsx).",
+        "header": {
+          "textColor": "#FFFFFF",
+          "backgroundColor": "#1F5A52"
+        },
+        "footer": {
+          "textColor": "#1F5A52",
+          "backgroundColor": "#E6F0EB"
+        }
       },
       "style": {
         "map": false,
@@ -4700,4 +4680,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "23.11.2026 14:43";
+window.__BUILT = "23.11.2026 15:05";
