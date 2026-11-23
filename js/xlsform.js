@@ -226,10 +226,12 @@
   }
   const xe = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
   const colName = (i) => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+  /* Survey123 מצפה לגרשיים בודדים ב-instance('X'); גרשיים כפולים גרמו לשגיאת SyntaxError בתצוגה */
+  const normQ = (v) => (typeof v === 'string' ? v.replace(/instance\("([^"]+)"\)/g, "instance('$1')") : v);
   function sheetXml(sh) {
     const all = [sh.head].concat(sh.rows);
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>' +
-      all.map((r, ri) => '<row r="' + (ri + 1) + '">' + r.map((v, ci) => (v === '' || v == null ? '' : '<c r="' + colName(ci) + (ri + 1) + '" t="inlineStr"><is><t xml:space="preserve">' + xe(v) + '</t></is></c>')).join('') + '</row>').join('') + '</sheetData></worksheet>';
+      all.map((r, ri) => '<row r="' + (ri + 1) + '">' + r.map((v, ci) => (v === '' || v == null ? '' : '<c r="' + colName(ci) + (ri + 1) + '" t="inlineStr"><is><t xml:space="preserve">' + xe(normQ(v)) + '</t></is></c>')).join('') + '</row>').join('') + '</sheetData></worksheet>';
   }
   function toXlsx(sheets) {
     const files = [
