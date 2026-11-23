@@ -4317,6 +4317,7 @@ window.SCHEMAS["signage"] = {
       },
       "options": {
         "visitsEditOnly": false,
+        "excludeMode": "constraint",
         "legend": false,
         "addressCard": {
           "fields": [
@@ -4853,4 +4854,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "23.11.2026 17:10";
+window.__BUILT = "23.11.2026 17:50";

@@ -116,12 +116,25 @@
       if (d && d.values.some((v) => v.parent)) {
         const parents = new Set(d.values.map((v) => v.parent).filter(Boolean));
         const pf = e.fields.find((x) => x.domain && x.domain !== f.domain && dom[x.domain] && dom[x.domain].values.some((v) => parents.has(v.code)));
-        if (pf) r.choice_filter = 'parent=${' + pf.name + '}'; else rep.open.push(where + ': רשימה מדורגת ללא שדה אב באותה ישות; choice_filter לא הוגדר.');
+        if (pf) {
+          r.choice_filter = 'parent=${' + pf.name + '}';
+          /* משפחה עם תת דגם יחיד: ברירת מחדל אוטומטית (מתעדכן בכל שינוי משפחה; במשפחה עם כמה תתי דגמים הבחירה מתאפסת) */
+          if (!r.calculation && OPT.autoSingleChild !== false) {
+            const byP = {}; d.values.forEach((v) => { if (v.parent) (byP[v.parent] = byP[v.parent] || []).push(v.code); });
+            const singles = Object.keys(byP).filter((p) => byP[p].length === 1);
+            if (singles.length) {
+              r.calculation = singles.map((p) => 'if(${' + pf.name + '} = ' + lit(p) + ', ' + lit(byP[p][0]) + ', ').join('') + "''" + singles.map(() => ')').join('');
+              rep.open.push(where + ': בחירה אוטומטית כשבמשפחה תת דגם יחיד (calculation על שאלת בחירה; ' + singles.length + ' משפחות). לבדוק ב-Field Maps שהמשתמש עדיין יכול לבחור במשפחה עם כמה תתי דגמים.');
+            }
+          }
+        } else rep.open.push(where + ': רשימה מדורגת ללא שדה אב באותה ישות; choice_filter לא הוגדר.');
       }
       if (d && d.values.some((v) => v.notIn && v.notIn.length)) {
         const pf2 = f.notInParent || 'ModelFamily';
         if (OPT.excludeMode === 'filter') {
-          r.choice_filter = (r.choice_filter ? r.choice_filter + ' and ' : '') + "(${" + pf2 + "}='' or not(contains(excl, ${" + pf2 + "})))";
+          let pref = '${' + pf2 + '}';
+          if (depth > 0 && !r._before) { const cn = f.name + '_fam'; r._before = { type: 'calculate', name: cn, label: '', calculation: '${' + pf2 + '}', 'bind::esri:fieldType': 'null' }; pref = '${' + cn + '}'; }
+          r.choice_filter = (r.choice_filter ? r.choice_filter + ' and ' : '') + "(" + pref + "='' or not(contains(excl, " + pref + ")))";
           rep.open.push(where + ': סינון ערכים לפי משפחת הדגם (עמודת excl, choice_filter). מצב filter: ברשימה בתוך Repeat הסינון מול שדה מחוץ ל-Repeat גרם לרשימה ריקה בבדיקה ב-Connect.');
         } else {
           /* ברירת מחדל: הרשימה מלאה (dropdown רגיל) והחסימה בפועל ב-constraint, כי choice_filter מול שדה שמחוץ ל-Repeat החזיר רשימה ריקה */
@@ -242,9 +255,9 @@
       if (AC && AC.fields && AC.fields.length) {
         const idx = rows.findIndex((r) => r.name === AC.fields[0]);
         if (idx >= 0) {
-          const items = AC.fields.map((f) => { const r = rows.find((q) => q.name === f); if (r) r.appearance = 'hidden'; return '<td style="width:50%; padding:6px 10px; vertical-align:top; border-bottom:1px solid #e3ebe7;"><div style="font-size:12px; color:#6b8f82;">' + (r ? String(r.label).replace(/<[^>]*>/g, '') : f) + '</div><div style="font-size:16px; font-weight:600; color:#1F5A52;">${' + f + '}</div></td>'; });
+          const items = AC.fields.map((f) => { const r = rows.find((q) => q.name === f); if (r) r.appearance = 'hidden'; return '<td width="50%" style="width:50%; padding:8px 10px; vertical-align:top; text-align:right; border-bottom:1px solid #e3ebe7;"><small style="color:#6b8f82;">' + (r ? String(r.label).replace(/<[^>]*>/g, '') : f) + '</small><br><b style="color:#1F5A52;">${' + f + '}</b></td>'; });
           const trs = []; for (let i = 0; i < items.length; i += 2) trs.push('<tr>' + items[i] + (items[i + 1] || '<td></td>') + '</tr>');
-          rows.splice(idx, 0, { type: 'note', name: 'AddressCard', label: '<div style="direction:rtl; background-color:#ffffff; border:1px solid #cfdcd6; border-radius:10px; padding:4px;"><table style="width:100%; direction:rtl; border-collapse:collapse;">' + trs.join('') + '</table></div>', 'bind::esri:fieldType': 'null' });
+          rows.splice(idx, 0, { type: 'note', name: 'AddressCard', label: '<div style="width:100%; direction:rtl; background-color:#ffffff; border:1px solid #cfdcd6; border-radius:10px;"><table width="100%" style="width:100%; direction:rtl; border-collapse:collapse;">' + trs.join('') + '</table></div>', 'bind::esri:fieldType': 'null' });
         }
       }
     }
