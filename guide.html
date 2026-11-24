@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>מדריך למשתמש – מעצב פתרונות AGOL</title>
+<style>
+body{font-family:Segoe UI,Arial,sans-serif;max-width:860px;margin:0 auto;padding:24px 18px 60px;color:#1f2a37;line-height:1.7;background:#fafbfc}
+h1{color:#1F5A52}h2{color:#1F5A52;border-bottom:2px solid #bcdccf;padding-bottom:4px;margin-top:38px}
+img{max-width:100%;border:1px solid #cfdcd6;border-radius:8px;margin:10px 0;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.tip{background:#eef6f2;border-right:4px solid #2E7D6B;padding:8px 14px;border-radius:6px;margin:12px 0}
+code{background:#eef1f4;padding:1px 6px;border-radius:4px;direction:ltr;unicode-bidi:embed}
+nav a{margin-left:14px}
+</style></head><body>
+<h1>מדריך למשתמש – מעצב פתרונות AGOL</h1>
+<p>הכלי מאפשר לתכנן סכמת נתונים של ArcGIS Online (שכבות, טבלאות, דומיינים, קשרים), להתנסות בטופס לפני הפיתוח בסימולטור, ולהפיק קבצי פיתוח (XLSForm ל-Survey123 Connect, סקריפט ArcPy ועוד).</p>
+<nav><a href="#start">1. התחלה</a><a href="#structure">2. מבנה הסכמה</a><a href="#sim">3. הסימולטור</a><a href="#s123">4. טופס Survey123</a><a href="#fm">5. Field Maps</a><a href="#notes">6. הערות</a><a href="#export">7. ייצוא</a></nav>
+
+<h2 id="start">1. התחלה</h2>
+<p>הכלי נפתח בדפדפן, ללא התקנה. שני אופני גישה:</p>
+<ul><li><b>צפייה בלבד</b> – קישור עם <code>?view=signage</code>. אפשר לעיין בסכמה, בהתרשימים ובסימולטור, ולהוריד מסמך אפיון. אי אפשר לערוך.</li>
+<li><b>סימולטור בלבד</b> – קישור עם <code>?sim=signage</code>. מיועד לשיתוף עם שותפים לצורך ניסוי בטופס.</li></ul>
+<img src="docs/img/01-main.png" alt="המסך הראשי של הכלי">
+<div class="tip">בצד ימין תפריט הישויות (שכבה וטבלאות), המבנה (דומיינים וקשרים), הניהול (החלטות, שאלות ללקוח, בקשות שינוי) והתרשימים.</div>
+
+<h2 id="structure">2. מבנה הסכמה</h2>
+<p>לכל ישות מוצגים השם, הכינוי, הסוג והשדות שלה. לכל שדה: סוג, אורך, דומיין, והתצוגה בטופס (תמיד / לפי תנאי / קריאה בלבד). שדות המסומנים בצהוב הם שדות חובה. שדות מערכת (GlobalID, Editor Tracking) נוצרים אוטומטית ואין להגדירם.</p>
+
+<h2 id="sim">3. הסימולטור</h2>
+<p>לשונית הסימולטור מחקה את החוויה בשטח, ללא צורך בפרסום. כך אפשר לבדוק את הלוגיקה לפני שמפתחים.</p>
+<img src="docs/img/02-sim-flow.png" alt="הסימולטור – זרימת Field Maps ו-Survey123">
+<ul><li><b>זרימה</b> – המסלול המלא: בחירת שלט במפה ב-Field Maps, פופאפ, פתיחת הטופס ב-Survey123 וחזרה.</li>
+<li><b>Survey123</b> – הטופס עצמו.</li><li><b>Field Maps</b> – המפה והפופאפ.</li>
+<li><b>Manager</b> ו<b>נתונים והשוואה</b> – תצוגת הנתונים שנשמרו.</li></ul>
+
+<h2 id="s123">4. טופס Survey123</h2>
+<p>הסימולטור מחקה את הטופס המעודכן: כותרת וסרגל תחתון בצבעי הערכה, מיקום השלט, כרטיס כתובת יערנית לצפייה בלבד, וקבוצות צבעוניות.</p>
+<img src="docs/img/03-sim-survey123.png" alt="הטופס בסימולטור">
+<ul>
+<li><b>מספר חזרות</b> – בכותרת הקבוצה מופיע מספר הרשומות, למשל "תשתיות ורכיבים (1)".</li>
+<li><b>טבלת סיכום</b> – מתחת לחזרה מוצגת טבלה של הרכיבים (או הביקורים) שנרשמו, עם כותרת מלאה וגבולות.</li>
+<li><b>ביקורים</b> – החזרה נפתחת ריקה. ביקור מוסיפים בלחיצה על +, ולכן שלט חדש נשלח בלי למלא שדות חובה של ביקור.</li>
+<li><b>סינון רשימות</b> – בבחירת דגם השלט רשימת הרכיבים מסוננת, ורכיב שאינו מתאים לדגם אינו מוצג.</li>
+<li>שדה חובה שלא מולא מסומן ב-*, ובשליחה מוצגת רשימת החוסרים.</li></ul>
+
+<h2 id="fm">5. Field Maps</h2>
+<p>במפה בוחרים שלט, ובפופאפ יש קישור לפתיחת טופס Survey123 לעריכה, לפי הקישור המוצג בשלב הראשון בזרימה.</p>
+<img src="docs/img/04-sim-fieldmaps.png" alt="Field Maps בסימולטור">
+
+<h2 id="notes">6. הערות והחלטות</h2>
+<p>הכפתור "הערות" (בפינה השמאלית התחתונה) מאפשר לרשום הערה על כל מסך. ההערות נשמרות בדפדפן וניתן להוריד אותן כקובץ ולהחזיר אותן למעצב. החלטות פתוחות ושאלות ללקוח מנוהלות בלשוניות <b>החלטות פתוחות</b> ו<b>שאלות ללקוח</b>.</p>
+
+<h2 id="export">7. ייצוא</h2>
+<p>הכפתור "ייצוא ושיתוף" מפיק: קובץ XLSForm ל-Survey123 Connect, סקריפט ArcPy, מילון נתונים ומסמך אפיון. לפני שמעלים ל-Connect מומלץ להריץ את כלי העדכון של Esri (<code>xlsform_template_updater.py</code>) על הקובץ.</p>
+<div class="tip">ב-Connect יש לסגור את הסקר לפני החלפת קבצים בתיקייה (xlsx ו-info), אחרת הם נעולים או נדרסים.</div>
+</body></html>

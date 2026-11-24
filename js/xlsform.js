@@ -175,23 +175,27 @@
         const ST = (OPT.summaryTables || {})[k.name];
         const collapsed = (OPT.collapsedRepeats || []).indexOf(k.name) >= 0;
         /* עם טבלת סיכום: group עוטף את ה-Repeat והטבלה, כך שהכל מתקפל יחד */
-        if (ST) row({ type: 'begin_group', name: 'g_' + k.name, label: st.label.replace(/<span style="font-weight:normal[^"]*">[^<]*<\/span>/, ''), appearance: collapsed ? 'compact' : '', relevant: visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
-        row({ type: 'begin_repeat', name: k.name, label: ST ? '<span style="font-weight:normal;font-size:small;color:#6b7280">רשימה (+ הוספה)</span>' : st.label, appearance: !ST && collapsed ? 'compact' : '', relevant: !ST && visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
+        /* מספר החזרות בסוגריים בכותרת: calculate count לפני הכותרת, ומוסף לתווית */
+        const cntName = k.name + '_cnt', withCnt = (lb) => /<\/span>\s*$/.test(lb) ? lb.replace(/<\/span>\s*$/, ' (${' + cntName + '})</span>') : lb + ' (${' + cntName + '})';
+        const minimal = (OPT.minimalRepeats || []).indexOf(k.name) >= 0; // חזרה שנפתחת ריקה (appearance minimal): שדות החובה בה לא חוסמים Submit עד שהמשתמש לוחץ +
+        row({ type: 'calculate', name: cntName, label: '', calculation: 'count(${' + k.name + '})', 'bind::esri:fieldType': 'null' });
+        if (ST) row({ type: 'begin_group', name: 'g_' + k.name, label: withCnt(st.label.replace(/<span style="font-weight:normal[^"]*">[^<]*<\/span>/, '')), appearance: collapsed ? 'compact' : '', relevant: visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
+        row({ type: 'begin_repeat', name: k.name, label: ST ? '<span style="font-weight:normal;font-size:small;color:#6b7280">רשימה (+ הוספה)</span>' : withCnt(st.label), appearance: [!ST && collapsed ? 'compact' : '', minimal ? 'minimal' : ''].filter(Boolean).join(' '), relevant: !ST && visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
         if (visitLevel && !visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת תמיד (גם במיפוי שלט חדש). החלטה פתוחה: אם הביקור הראשון נוצר על ידי Make (D28), יש להגביל לעריכה עם options.visitsEditOnly=true.');
         if (visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת רק בעריכה (' + EDIT_MODE + '), כי במיפוי שלט חדש הביקור הראשון נוצר על ידי Make (D28). דורש אימות ש-pulldata("@property","mode") מחזיר edit בטופס.');
         entityRows(k, depth + 1, false);
         if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_key', label: 'מפתח שורה', calculation: "if(${" + keyed[k.name].f + "} = " + lit(keyed[k.name].v) + ", 'W', 'x')", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const cell = (c) => "'<td style=\"padding:8px; text-align:right;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
+          const cell = (c) => "'<td style=\"border:1px solid #7fa99b; padding:8px; text-align:right;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
           const cols = ST.cols.slice().reverse();
-          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr>', " + cols.map(cell).join(', ') + ", '<td style=\"padding:8px; text-align:center;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr>', " + cols.map(cell).join(', ') + ", '<td style=\"border:1px solid #7fa99b; padding:8px; text-align:center;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
         }
         row({ type: 'end_repeat', name: '', label: '' });
         if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_keys', label: 'מפתחות שורות', calculation: "join('', ${" + k.name + "_key})", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const th = (t, al) => "'<th style=\"text-align:" + (al || 'right') + "; padding:8px;\">" + t + "</th>'";
+          const th = (t, al) => "'<th bgcolor=\"#bcdccf\" style=\"background-color:#bcdccf; color:#1F5A52; border:1px solid #7fa99b; text-align:" + (al || 'right') + "; padding:8px;\">" + t + "</th>'";
           const heads = ST.cols.slice().reverse().map((c) => th(c.l)).concat([th('#', 'center')]).join(', ');
-          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center; color:#1F5A52;\">" + ST.title + "</h3>', '<table border=\"1\" style=\"border-collapse:collapse; width:100%; margin:auto; border-color:#7fa99b; direction:rtl;\">', '<tr style=\"background-color:#bcdccf; color:#1F5A52;\">', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center; color:#1F5A52;\">" + ST.title + "</h3>', '<table border=\"1\" bordercolor=\"#7fa99b\" cellspacing=\"0\" cellpadding=\"8\" width=\"100%\" style=\"border-collapse:collapse; width:100%; margin:auto; border:1px solid #7fa99b; direction:rtl;\">', '<tr bgcolor=\"#bcdccf\" style=\"background-color:#bcdccf; color:#1F5A52;\">', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
           row({ type: 'note', name: k.name + '_table_note', label: '${' + k.name + '_table}', relevant: "count(${" + k.name + "}) > 0" });
         }
         (OPT.duplicateWarnings || []).filter((d) => d.repeat === k.name).forEach((d) => {

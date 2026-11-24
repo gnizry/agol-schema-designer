@@ -95,3 +95,6 @@ tools/generate.js             node tools/generate.js [key]  → generated/ (או
 - **טפסים**: התנהגות כל שדה בטופס. **נתונים**: הטבלאות אחרי הפעולות.
 
 שדות התצורה מתועדים בראש `js/simgen.js`. דוגמה מלאה: `kkl/fire_scars.schema.js` בריפו הסכמות.
+
+## מדריך למשתמש
+מדריך עם צילומי מסך למשתמשים חדשים: [guide.html](guide.html)

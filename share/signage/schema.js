@@ -4340,6 +4340,10 @@ window.SCHEMAS["signage"] = {
         "collapsedRepeats": [
           "SignVisits"
         ],
+        "minimalRepeats": [
+          "SignVisits",
+          "SignPartStatus"
+        ],
         "summaryTables": {
           "SignParts": {
             "title": "רכיבים שנרשמו בשלט זה",
@@ -4861,4 +4865,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "23.11.2026 18:23";
+window.__BUILT = "24.11.2026 06:32";
