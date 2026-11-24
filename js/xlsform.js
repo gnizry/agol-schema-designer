@@ -37,9 +37,49 @@
     const used = new Set();
     const rows = [];
     const keyed = {};
-    const row = (r) => { if (r._before) rows.push(r._before); rows.push(r); if (r._after) rows.push(r._after); return r; }; // _after: שורת note נלווית (שומר מקום) מיד אחרי השדה
+    const row = (r) => { if (r._before) rows.push(r._before); (r._pre || []).forEach((x) => rows.push(x)); rows.push(r); if (r._after) rows.push(r._after); (r._afterMany || []).forEach((x) => rows.push(x)); return r; }; // _after: שורת note נלווית (שומר מקום) מיד אחרי השדה
     const S123 = (S.sim && S.sim.survey123) || {};
     const OPT = S123.options || {};
+
+    /* ---------- כותרות קבוצות עם תקציר (OPT.groupSummaries / OPT.repeatSummaries) ---------- */
+    const SUMSPAN = (nm) => ' <span style="font-weight:normal;font-size:small;color:#6b7280">${' + nm + '}</span>';
+    function sumExpr(e, items) {
+      const parts = items.map((it) => {
+        const f = e.fields.find((x) => x.name === it.f); if (!f) return '';
+        const hasList = f.domain && dom[f.domain] && dom[f.domain].values && dom[f.domain].values.length;
+        let v = '${' + f.name + '}';
+        if (hasList) v = 'jr:choice-name(${' + f.name + "}, '${" + f.name + "}')";
+        if (f.type === 'DATE') v = "format-date(${" + f.name + "}, '%d/%m/%Y')";
+        if (it.before) v = 'substring-before(' + v + ", '" + it.before + "')";
+        if (it.max) v = 'if(string-length(' + v + ') > ' + it.max + ', concat(substr(' + v + ', 0, ' + it.max + "), '…'), " + v + ')';
+        return "if(${" + f.name + "} != '', concat(' · ', " + v + "), '')";
+      }).filter(Boolean);
+      return parts.length ? 'concat(' + parts.join(', ') + ')' : "''";
+    }
+    /* ---------- image-map לרכיבי השלט (OPT.imageMaps) ---------- */
+    const IM = Array.isArray(OPT.imageMaps) ? OPT.imageMaps.filter((m) => m && m.model && m.svg) : [];
+    const imKey = (m) => String(m.model).replace(/[^A-Za-z0-9]/g, '_');
+    const imParts = (m) => {
+      const out = (m.parts || []).map((x) => ({ id: x.id, label: x.label, type: x.type }));
+      if (m.wings) m.wings.levels.forEach((L) => m.wings.dirs.forEach((D) => out.push({ id: 'W_' + L.id + '_' + D.id, label: 'כנף ' + L.label + ' – ' + D.label, type: 'כנף', level: L.label, dir: D.label })));
+      return out;
+    };
+    const imModelIs = (m) => '${ModelCode}=' + lit(m.model);
+    function imInRowExpr(field) {
+      /* ביטוי לשדה בתוך השורה לפי מזהה הרכיב (part_id): סוג / רמה / כיוון */
+      const all = []; IM.forEach((m) => imParts(m).forEach((x) => { if (!all.some((y) => y.id === x.id)) all.push(x); }));
+      if (field === 'ComponentType') {
+        const groups = {}; all.forEach((x) => { const seg = x.id.split('_')[0]; (groups[seg] = groups[seg] || { type: x.type, ids: [] }).ids.push(x.id); });
+        let expr = "''"; const segs = Object.keys(groups).reverse();
+        segs.forEach((seg) => { const g = groups[seg], test = g.ids.some((i) => i.indexOf('_') > 0) ? "starts-with(${part_id}, '" + seg + "_')" : g.ids.map((i) => '${part_id}=' + lit(i)).join(' or '); expr = 'if(' + test + ', ' + lit(g.type) + ', ' + expr + ')'; });
+        return "if(${part_id} = '', '', " + expr + ')';
+      }
+      const wings = all.filter((x) => x.level); if (!wings.length) return '';
+      const key = field === 'Level' ? 'level' : 'dir', pos = field === 'Level' ? '2, 3' : '4';
+      const uniq = []; wings.forEach((x) => { const id = field === 'Level' ? x.id.split('_')[1] : x.id.split('_').slice(2).join('_'); if (!uniq.some((u) => u[0] === id)) uniq.push([id, x[key]]); });
+      return "if(starts-with(${part_id}, 'W_'), " + uniq.reduceRight((acc, u) => 'if(substr(${part_id}, ' + pos + ') = ' + lit(u[0]) + ', ' + lit(u[1]) + ', ' + acc + ')', "''") + ", '')";
+    }
+
     const FL = S123.forestLayer || null; // { itemId | url, fields: { שם שדה בסכימה: שם שדה בשכבת עומדי היער } }
     const shade = (c, a) => { const n = parseInt(String(c).slice(1), 16), m = (x) => Math.round(x * (1 - a)).toString(16).padStart(2, '0'); return '#' + m(n >> 16) + m((n >> 8) & 255) + m(n & 255); };
     /* עיצוב: צבע ואייקון לכל קבוצה/חזרה (S.sim.survey123.style): תווית HTML (span style) + body::esri:style (backgroundColor, borderColor). נתמך באפליקציית השדה; באפליקציית הווב עשוי להיות מוגבל */
@@ -160,6 +200,30 @@
         /* predicate עם current() גורם לכשל המרה (IndexOutOfBounds) ב-ODK Validate, לכן אין בדיקת כפילות בטופס */
         rep.open.push(where + ': בדיקת כפילות מספר בתוך השלט לא מוגדרת בטופס (current() בפרדיקט נכשל בהמרה). לבדוק בהמשך בשכבה/Notebook.');
       }
+
+      if (IM.length && e.name === (OPT.imageMapParent || 'SignParts') && (f.name === 'ComponentType' || f.name === 'Level' || f.name === 'Direction') && !r.calculation) {
+        const ex = imInRowExpr(f.name);
+        if (ex) {
+          r.calculation = ex;
+          if (f.name === 'ComponentType') {
+            const chain = IM.map((m) => 'if(' + imModelIs(m) + ', selected-at(${Parts_' + imKey(m) + '}, position(..) - 1), ').join('') + "''" + IM.map(() => ')').join('');
+            r._pre = (r._pre || []).concat([{ type: 'calculate', name: 'part_id', label: '', calculation: "if(position(..) <= int(${PartsMapCount}), " + chain + ", '')", 'bind::esri:fieldType': 'null' }]);
+          }
+        }
+      }
+      const RSL = (OPT.repeatSummaries || {})[e.name];
+      if (RSL && RSL.label && e.fields[e.fields.length - 1] === f) {
+        /* תווית שורה לתקציר הכותרת: סוג + רמה + כיוון (שדה עזר, לא נשמר) */
+        const lab = RSL.label.map((n, i) => i === 0 ? '${' + n + '}' : 'if(${' + n + "} != '', concat(' ', ${" + n + "}), '')");
+        r._afterMany = (r._afterMany || []).concat([{ type: 'calculate', name: 'RowLabel', label: '', calculation: lab.length > 1 ? 'concat(' + lab.join(', ') + ')' : lab[0], 'bind::esri:fieldType': 'null' }]);
+      }
+      if (OPT.bigImage && OPT.bigImage.field === f.name && d) {
+        const fam = OPT.bigImage.parentField, famD = fam && dom[(e.fields.find((x) => x.name === fam) || {}).domain];
+        const notes = [], img = (v) => String(v.img).split('/').pop(), cap = (t) => '<span style="font-size:small;color:#4f6b4c">נבחר: <b>' + t + '</b>. ודא שזה הסיווג הנכון לשלט שבשטח</span>';
+        if (famD) famD.values.filter((v) => v.img).forEach((v, i) => { const kidsN = d.values.filter((c) => c.parent === v.code).length; if (kidsN > 1) notes.push({ type: 'note', name: f.name + '_fimg_' + (i + 1), label: cap(v.label || v.code), relevant: '${' + fam + '}=' + lit(v.code) + " and ${" + f.name + "}=''", 'media::image': img(v), 'bind::esri:fieldType': 'null' }); });
+        d.values.filter((v) => v.img).forEach((v, i) => notes.push({ type: 'note', name: f.name + '_img_' + (i + 1), label: cap(v.label || v.code), relevant: '${' + f.name + '}=' + lit(v.code), 'media::image': img(v), 'bind::esri:fieldType': 'null' }));
+        r._afterMany = (r._afterMany || []).concat(notes);
+      }
       rep.included.push(where);
       return r;
     }
@@ -179,23 +243,36 @@
         const cntName = k.name + '_cnt', withCnt = (lb) => /<\/span>\s*$/.test(lb) ? lb.replace(/<\/span>\s*$/, ' (${' + cntName + '})</span>') : lb + ' (${' + cntName + '})';
         const minimal = (OPT.minimalRepeats || []).indexOf(k.name) >= 0; // חזרה שנפתחת ריקה (appearance minimal): שדות החובה בה לא חוסמים Submit עד שהמשתמש לוחץ +
         row({ type: 'calculate', name: cntName, label: '', calculation: 'count(${' + k.name + '})', 'bind::esri:fieldType': 'null' });
-        if (ST) row({ type: 'begin_group', name: 'g_' + k.name, label: withCnt(st.label.replace(/<span style="font-weight:normal[^"]*">[^<]*<\/span>/, '')), appearance: collapsed ? 'compact' : '', relevant: visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
-        row({ type: 'begin_repeat', name: k.name, label: ST ? '<span style="font-weight:normal;font-size:small;color:#6b7280">רשימה (+ הוספה)</span>' : withCnt(st.label), appearance: [!ST && collapsed ? 'compact' : '', minimal ? 'minimal' : ''].filter(Boolean).join(' '), relevant: !ST && visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
+        const RS = (OPT.repeatSummaries || {})[k.name]; let rsSuffix = '';
+        if (RS && RS.join) { const sn = k.name + '_sum', jf = 'join(\', \', ${' + (RS.label ? 'RowLabel' : RS.join) + '})', mx = RS.max || 36; row({ type: 'calculate', name: sn, label: '', calculation: 'if(count(${' + k.name + "}) > 0, concat(' · ', if(string-length(" + jf + ') > ' + mx + ', concat(substr(' + jf + ', 0, ' + mx + "), '…'), " + jf + ")), '')", 'bind::esri:fieldType': 'null' }); rsSuffix = sn; }
+        const withSum = (lb) => rsSuffix ? lb.replace(/<\/span>\s*$/, SUMSPAN(rsSuffix) + '</span>') : lb;
+        const hasIM = IM.length && k.name === (OPT.imageMapParent || 'SignParts');
+        if (ST) row({ type: 'begin_group', name: 'g_' + k.name, label: withSum(withCnt(st.label.replace(/<span style="font-weight:normal[^"]*">[^<]*<\/span>/, ''))), appearance: collapsed ? 'compact' : '', relevant: visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
+        if (hasIM) {
+          IM.forEach((m) => row({ type: 'select_multiple Parts_' + imKey(m), name: 'Parts_' + imKey(m), label: 'סמן בציור את רכיבי השלט', hint: 'לחיצה על רכיב בציור מסמנת אותו. לכל רכיב שסומן נוצרת שורה.', appearance: 'image-map', relevant: imModelIs(m), 'media::image': m.svg, 'bind::esri:fieldType': 'null' }));
+          row({ type: 'calculate', name: 'PartsMapCount', label: '', calculation: IM.map((m) => 'if(' + imModelIs(m) + ', count-selected(${Parts_' + imKey(m) + '}), ').join('') + '0' + IM.map(() => ')').join(''), 'bind::esri:fieldType': 'null' });
+          row({ type: 'integer', name: 'ExtraParts', label: 'כמות רכיבים נוספים להוספה (פיקטוגרמה, אביזר, בורג ועוד)', hint: 'שורות ריקות שימלאו ידנית. בדגם בלי ציור: כל הרכיבים נרשמים כאן.', default: '0', constraint: '. >= 0 and . <= 30', constraint_message: 'מספר בין 0 ל-30', 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: 'PartsTotal', label: '', calculation: "int(${PartsMapCount}) + if(${ExtraParts} = '', 0, int(${ExtraParts}))", 'bind::esri:fieldType': 'null' });
+          row({ type: 'note', name: 'PartsNote', label: 'שורות רכיבים שייווצרו: ${PartsTotal} (מסומנים בציור: ${PartsMapCount}).', relevant: '${PartsTotal} > 0', 'bind::esri:fieldType': 'null' });
+          rep.open.push(k.name + ': ' + IM.length + ' דגמים עם ציור לבחירת רכיבים (appearance=image-map, קבצי SVG בתיקיית media של הסקר: ' + IM.map((m) => m.svg).join(', ') + '). מספר השורות קבוע (repeat_count = PartsTotal): מסומנים בציור + כמות נוספת (ExtraParts). שורות לפי סדר הלחיצה. image-map אינו נתמך באפליקציית הווב. הציורים לפי ספר השילוט, טיוטה עד קטלוג הרכיבים של הלקוח.');
+        }
+        row({ type: 'begin_repeat', name: k.name, repeat_count: hasIM ? '${PartsTotal}' : '', label: ST ? '<span style="font-weight:normal;font-size:small;color:#6b7280">רשימה (+ הוספה)</span>' : withSum(withCnt(st.label)), appearance: [!ST && collapsed ? 'compact' : '', minimal ? 'minimal' : ''].filter(Boolean).join(' '), relevant: !ST && visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
         if (visitLevel && !visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת תמיד (גם במיפוי שלט חדש). החלטה פתוחה: אם הביקור הראשון נוצר על ידי Make (D28), יש להגביל לעריכה עם options.visitsEditOnly=true.');
         if (visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת רק בעריכה (' + EDIT_MODE + '), כי במיפוי שלט חדש הביקור הראשון נוצר על ידי Make (D28). דורש אימות ש-pulldata("@property","mode") מחזיר edit בטופס.');
         entityRows(k, depth + 1, false);
         if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_key', label: 'מפתח שורה', calculation: "if(${" + keyed[k.name].f + "} = " + lit(keyed[k.name].v) + ", 'W', 'x')", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const cell = (c) => "'<td bgcolor=\"#ffffff\" style=\"text-align:right;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
+          const ZB = "'<td', if(position(..) mod 2 = 0, ' bgcolor=\"#eef5f2\"', ''), ";
+          const cell = (c) => ZB + "' style=\"text-align:right;\">&nbsp;&nbsp;', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '&nbsp;&nbsp;</td>'";
           const cols = ST.cols.slice().reverse();
-          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr>', " + cols.map(cell).join(', ') + ", '<td bgcolor=\"#ffffff\" style=\"text-align:center;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr>', " + cols.map(cell).join(', ') + ", " + ZB + "' style=\"text-align:center;\">&nbsp;', position(..), '&nbsp;</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
         }
         row({ type: 'end_repeat', name: '', label: '' });
         if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_keys', label: 'מפתחות שורות', calculation: "join('', ${" + k.name + "_key})", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const th = (t, al) => "'<th style=\"color:#1F5A52; text-align:" + (al || 'right') + ";\">" + t + "</th>'";
+          const th = (t, al) => "'<th bgcolor=\"#bcdccf\" style=\"color:#1F5A52; text-align:" + (al || 'right') + ";\">&nbsp;&nbsp;" + t + "&nbsp;&nbsp;</th>'";
           const heads = ST.cols.slice().reverse().map((c) => th(c.l)).concat([th('#', 'center')]).join(', ');
-          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center; color:#1F5A52;\">" + ST.title + "</h3>', '<table border=\"1\" bordercolor=\"#7fa99b\" cellspacing=\"0\" cellpadding=\"8\" width=\"100%\" bgcolor=\"#bcdccf\">', '<tr>', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center; color:#1F5A52;\">" + ST.title + "</h3>', '<table border=\"1\" bordercolor=\"#7fa99b\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">', '<tr>', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
           row({ type: 'note', name: k.name + '_table_note', label: '${' + k.name + '_table}', relevant: "count(${" + k.name + "}) > 0" });
         }
         (OPT.duplicateWarnings || []).filter((d) => d.repeat === k.name).forEach((d) => {
@@ -213,7 +290,9 @@
             const nm = new Set(fr.map((r) => r.name)), sf = fields.filter((f) => f.category === c && nm.has(f.name));
             const dyn = !vo && sf.length > 0 && sf.every((f) => f.mode === 'אוטומטי' || /קריאה בלבד/.test(f.visible || '') && !/במיפוי: למילוי/.test(f.visible || '') || f.readonlyOnEdit || /בעריכה: קריאה בלבד/.test(f.visible || ''));
             const st = styled('group', c, c + (SY && vo ? ' (לצפייה בלבד)' : ''), SY && SY.groups && SY.groups[c], SY && dyn);
-            row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: st.label, 'body::esri:style': st.style || '', appearance: SY && SY.groupAppearance === 'compact' ? 'compact' : '' });
+            const GSI = (OPT.groupSummaries || {})[c]; let glabel = st.label;
+            if (GSI && GSI.length) { const sn = 'grp_' + (gi + 1) + '_sum'; row({ type: 'calculate', name: sn, label: '', calculation: sumExpr(e, GSI), 'bind::esri:fieldType': 'null' }); glabel += SUMSPAN(sn); }
+            row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: glabel, 'body::esri:style': st.style || '', appearance: SY && SY.groupAppearance === 'compact' ? 'compact' : '' });
             fr.forEach(row);
             row({ type: 'end_group', name: '', label: '' });
           }
@@ -239,6 +318,7 @@
 
     // גיליון choices
     const choices = []; let imgs = 0;
+    IM.forEach((m) => imParts(m).forEach((x) => choices.push({ list_name: 'Parts_' + imKey(m), name: x.id, label: x.label })));
     const anyExt = [...used].some((k) => dom[k].values.some((v) => v.ext));
     const anyParent = [...used].some((k) => dom[k].values.some((v) => v.parent));
     [...used].forEach((k) => dom[k].values.forEach((v) => {

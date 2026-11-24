@@ -1,3 +1,53 @@
+/*IM-BEGIN*/
+/* ציורי image-map לרכיבי השלט: מייצר SVG מתוך הגדרת הדגם (S.sim.survey123.options.imageMaps).
+   אותו קוד משמש את הסימולטור (ציור אינטראקטיבי) ואת מחולל הקבצים (kkl/pilot/imagemaps/gen.js) ליצירת קובצי ה-SVG של Survey123,
+   כך שהציור בסימולטור זהה לציור בטופס. ה-id של כל צורה נבחרת = שם הבחירה (choice name). הציורים סכמתיים (לא שרטוט) ומבוססים על מבנה השלט בספר השילוט. */
+(function (root) {
+  'use strict';
+  var POLE = 'fill="#8a6a46" stroke="#4a3320" stroke-width="3"', BOARD = 'fill="#efe0bd" stroke="#7a5a2a" stroke-width="3"';
+  var DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+  function pt(cx, cy, r, a) { return [cx + r * Math.cos(a * Math.PI / 180), cy + r * Math.sin(a * Math.PI / 180)]; }
+  function wedge(cx, cy, k) {
+    var R = 72, r = 24, c = -90 + 45 * k, a0 = c - 21.5, a1 = c + 21.5, p = [pt(cx, cy, R, a0), pt(cx, cy, R, a1), pt(cx, cy, r, a1), pt(cx, cy, r, a0)], f = function (n) { return n.toFixed(1); };
+    return 'M' + f(p[0][0]) + ' ' + f(p[0][1]) + ' A' + R + ' ' + R + ' 0 0 1 ' + f(p[1][0]) + ' ' + f(p[1][1]) + ' L' + f(p[2][0]) + ' ' + f(p[2][1]) + ' A' + r + ' ' + r + ' 0 0 0 ' + f(p[3][0]) + ' ' + f(p[3][1]) + ' Z';
+  }
+  /* opt: { selected: {id:true}, click: function(id) -> מחרוזת attribute (למשל onclick="..."), plain: true לקובץ SVG סטטי } */
+  function svg(m, opt) {
+    opt = opt || {}; var sel = opt.selected || {}, out = [], H, parts = m.parts || [];
+    function shape(id, d, base) {
+      var on = sel[id], st = on ? base.replace(/fill="[^"]*"/, 'fill="#9ed0ff"').replace(/stroke="[^"]*"/, 'stroke="#0b63c5"') : base;
+      return '<path id="' + esc(id) + '" d="' + d + '" ' + st + (opt.click ? ' style="cursor:pointer" ' + opt.click(id) : '') + '/>';
+    }
+    function rect(id, x, y, w, h, base) { return shape(id, 'M' + x + ' ' + y + ' H' + (x + w) + ' V' + (y + h) + ' H' + x + ' Z', base); }
+    function txt(x, y, t, size, w, fill) { return '<text x="' + x + '" y="' + y + '" font-family="Arial, sans-serif" font-size="' + (size || 14) + '" font-weight="' + (w || 'normal') + '" text-anchor="middle" fill="' + (fill || '#3b2a14') + '" pointer-events="none">' + esc(t) + '</text>'; }
+    var poles = parts.filter(function (p) { return p.id.indexOf('POLE') === 0; }), boards = parts.filter(function (p) { return p.id.indexOf('BOARD') === 0; });
+    if (m.wings) {
+      var CX = 330, ys = [125, 320, 515], lv = m.wings.levels;
+      H = 640; out.push(rect('POLE_1', 60, 40, 36, 570, POLE), txt(78, 30, 'עמוד'), txt(230, 22, 'כנפיים לפי רמה וכיוון'));
+      lv.forEach(function (L, li) {
+        var cy = ys[li] || 125 + 195 * li;
+        m.wings.dirs.forEach(function (D, k) { out.push(shape('W_' + L.id + '_' + D.id, wedge(CX, cy, DIRS.indexOf(D.id) >= 0 ? DIRS.indexOf(D.id) : k), 'fill="#efe0bd" stroke="#7a5a2a" stroke-width="2"')); });
+        out.push(txt(CX, cy + 9, L.label, 26, 'bold'));
+        [['צ', 0, -78], ['ד', 0, 90], ['מ', 86, 5], ['מע', -90, 5]].forEach(function (a) { out.push(txt(CX + a[1], cy + a[2], a[0], 13, 'normal', '#6b7280')); });
+      });
+    } else if (poles.length >= 2) {
+      H = 340; out.push(rect(boards[0] ? boards[0].id : 'BOARD_1', 95, 30, 270, 170, BOARD), rect(poles[0].id, 45, 60, 30, 240, POLE), rect(poles[1].id, 385, 60, 30, 240, POLE), txt(230, 125, 'לוח', 20, 'bold'), txt(60, 320, poles[0].label), txt(400, 320, poles[1].label));
+    } else if (poles.length === 1) {
+      H = 330; out.push(rect(boards[0] ? boards[0].id : 'BOARD_1', 90, 30, 280, 130, BOARD), rect(poles[0].id, 215, 160, 30, 140, POLE), txt(230, 100, 'לוח', 20, 'bold'), txt(230, 235, poles[0].label, 14, 'normal', '#fff'));
+    } else { H = 270; out.push(rect(boards[0] ? boards[0].id : 'BOARD_1', 50, 40, 360, 190, BOARD), txt(230, 145, 'לוח', 22, 'bold')); }
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 ' + H + '" width="' + (opt.plain ? 460 : '100%') + '"' + (opt.plain ? ' height="' + H + '"' : '') + '><rect width="460" height="' + H + '" fill="#ffffff"/>' + out.join('') + '</svg>';
+  }
+  /* כל הרכיבים הניתנים לבחירה בדגם: [{id,label,type,level?,dir?}] */
+  function parts(m) {
+    var out = (m.parts || []).map(function (x) { return { id: x.id, label: x.label, type: x.type }; });
+    if (m.wings) m.wings.levels.forEach(function (L) { m.wings.dirs.forEach(function (D) { out.push({ id: 'W_' + L.id + '_' + D.id, label: 'כנף ' + L.label + ' – ' + D.label, type: 'כנף', level: L.label, dir: D.label }); }); });
+    return out;
+  }
+  var api = { svg: svg, parts: parts };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.ImageMaps = api;
+})(typeof window !== 'undefined' ? window : this);
+/*IM-END*/
 /* סימולטור חוויית משתמש: Survey123 + Field Maps + נתונים — נבנה על הסכמה הפעילה.
    תנאי תצוגה מובנים נקראים משדה f.rel = {f:'שדה' | '^שדה-באב', op:'=' | 'in' | '!=', v: ערך | [ערכים]} */
 (function () {
@@ -285,6 +335,14 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
   const rsty = (S, e) => { const sy = SYL(S); return sy && sy.repeats && sy.repeats[e] ? sy.repeats[e] : null; };
   const badge = (S) => !!(S.sim && S.sim.survey123 && S.sim.survey123.style && S.sim.survey123.style.labelStyle === 'badge');
   const band = (t, key, sum, sy, no, tag) => sy && !badge(st.S) ? `<div onclick="SimA.grp('${key}')" dir="rtl" style="background:${tint(sy.c, /^rep\|/.test(key) ? 0.9 : 0.94)};border:1px solid ${sy.c};border-radius:${isCol(key) ? '6px' : '6px 6px 0 0'};color:${shade(sy.c, 0.35)};padding:11px 12px;font-weight:700;font-size:17px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:10px"><span style="font-size:12px;color:#777">${isCol(key) ? '◂' : '▾'}</span><span>${sy.i ? sy.i + ' ' : ''}${t}${tag ? ' <span style="font-weight:400;font-size:15px;color:#555">(' + tag + ')</span>' : ''}</span>${sum && isCol(key) ? `<span style="font-weight:400;font-size:13px;opacity:.85">${esc(sum)}</span>` : ''}</div>` : sy ? `<div onclick="SimA.grp('${key}')" dir="rtl" style="background:${sy.c};color:#fff;padding:11px 14px;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:16px;border-radius:8px 8px 0 0">${no ? `<span style="min-width:24px;height:24px;border-radius:12px;background:#fff;color:${sy.c};font-size:13px;display:flex;align-items:center;justify-content:center">${no}</span>` : ''}<span>${sy.i ? sy.i + ' ' : ''}${t}</span>${tag ? `<span style="font-size:11px;font-weight:600;background:rgba(255,255,255,.25);border-radius:10px;padding:1px 8px">${tag}</span>` : ''}<span style="font-size:13px;margin-right:auto">${isCol(key) ? '◂' : '▾'}</span>${sum && isCol(key) ? `<span style="font-weight:400;font-size:13px;opacity:.9">${esc(sum)}</span>` : ''}</div>` : `<div onclick="SimA.grp('${key}')" dir="rtl" style="background:${BAND};padding:13px 16px;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:14px"><span>${t}</span><span style="font-size:13px;color:#444">${isCol(key) ? '◂' : '▾'}</span>${sum && isCol(key) ? `<span style="font-weight:400;font-size:13px;color:#4F6B4C;margin-right:auto">${esc(sum)}</span>` : ''}</div>`;
+  const opts = (S) => (S.sim && S.sim.survey123 && S.sim.survey123.options) || {};
+  /* סיכום בכותרת קבוצה מקופלת (options.groupSummaries): שדות מייצגים מהקבוצה; before = טקסט שמודבק אחרי הערך (למשל ":") */
+  const clip = (v, n) => { v = String(v); return n && v.length > n ? v.slice(0, n - 1) + '…' : v; };
+  const gSum = (S, ent, g, vals) => { const c = ent.name === S.sim.main && opts(S).groupSummaries && opts(S).groupSummaries[g]; if (!c) return ''; let out = '', prev = false; c.forEach((it) => { const v = vals[it.f]; if (v == null || v === '') return; const t = clip(v, it.max) + (it.before || ''); out += (out ? (prev ? ' ' : ' · ') : '') + t; prev = !!it.before; }); return out; };
+  const rSum = (S, ent, arr) => { const c = opts(S).repeatSummaries && opts(S).repeatSummaries[ent.name]; if (!c || !arr.length) return ''; return clip(arr.map((r) => c.label ? c.label.map((n) => r[n]).filter((x) => x).join(' ') : r[c.join]).filter((x) => x).join(', '), c.max); };
+  /* image-map של הדגם שנבחר: קליק על צורה מוסיף/מסיר שורת רכיב */
+  const curIM = () => { const c = st.sign && (st.sign.ModelCode || st.sign.SignModel), ms = opts(st.S).imageMaps || []; if (!c) return null; return ms.find((m) => { const t = String(c); return t === m.model || (t.indexOf(m.model) === 0 && !/[\w.]/.test(t.charAt(m.model.length))); }) || null; };
+  const imWidget = (m) => { const sel = {}; st.parts.forEach((p) => { if (p.__im) sel[p.__im] = true; }); const n = Object.keys(sel).length; return `<div style="margin:8px 6px;background:#fff;border:1px solid ${LINE};border-radius:6px;padding:6px"><div style="font-size:13px;color:#5F6B5C;margin-bottom:4px">סמן בציור את רכיבי השלט (${esc(m.model)}) · נבחרו ${n}</div><div style="max-width:340px;margin:auto">${ImageMaps.svg(m, { selected: sel, click: (id) => `onclick="SimA.imTog('${id}')"` })}</div><div style="font-size:11px;color:#8A938A;margin-top:3px">ציור טיוטה לפי ספר השילוט · ${esc(m.status || '')}</div></div>`; };
   function mControl(S, ent, f, vals, up, onch) {
     const d = dom(S, f), v = vals[f.name] == null ? '' : vals[f.name], ro = readonly(f) || lockEdit(f);
     const req = !ro && isReq(f, vals, up), bad = req && st.showReq && (v === '' || v == null);
@@ -341,7 +399,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     const vis = ent.fields.filter((f) => isShown(f, vals, up));
     if (flat) return `<div style="padding:0 10px 4px">${vis.map((f) => mControl(S, ent, f, vals, up, onch)).join('')}${attach(ent)}</div>`;
     const groups = {}; vis.forEach((f) => (groups[f.category || 'כללי'] = groups[f.category || 'כללי'] || []).push(f));
-    const ord = ent.groupOrder || []; return Object.keys(groups).sort((a, b) => (ord.indexOf(a) < 0 ? 99 : ord.indexOf(a)) - (ord.indexOf(b) < 0 ? 99 : ord.indexOf(b))).map((g) => { const k = ent.name + '|' + g; const sy = gsty(S, g), vo = sy && !flat && groups[g].length && groups[g].every((f) => readonly(f) || lockEdit(f) || (st.editId && /בעריכה: קריאה בלבד/.test(f.visible || ''))); return band(esc(g), k, g === 'כתובת יערנית' ? vals.ForestName : '', sy, sy ? secNo(S, g) : '', vo ? 'לצפייה בלבד' : '') + (isCol(k) ? '' : `<div style="padding:0 14px 8px;${sy ? 'background:' + tint(sy.c, 0.94) + (badge(S) ? ';border-right:5px solid ' + sy.c + ';border-bottom:1px solid ' + tint(sy.c, 0.6) : ';border:1px solid ' + sy.c + ';border-top:0;border-radius:0 0 6px 6px') : ''}">${addrCard(S, ent, g, vals) || groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`) + (afterFn ? afterFn(g) : ''); }).join('') + `<div style="padding:0 14px">${attach(ent)}</div>`;
+    const ord = ent.groupOrder || []; return Object.keys(groups).sort((a, b) => (ord.indexOf(a) < 0 ? 99 : ord.indexOf(a)) - (ord.indexOf(b) < 0 ? 99 : ord.indexOf(b))).map((g) => { const k = ent.name + '|' + g; const sy = gsty(S, g), vo = sy && !flat && groups[g].length && groups[g].every((f) => readonly(f) || lockEdit(f) || (st.editId && /בעריכה: קריאה בלבד/.test(f.visible || ''))); return band(esc(g), k, gSum(S, ent, g, vals), sy, sy ? secNo(S, g) : '', vo ? 'לצפייה בלבד' : '') + (isCol(k) ? '' : `<div style="padding:0 14px 8px;${sy ? 'background:' + tint(sy.c, 0.94) + (badge(S) ? ';border-right:5px solid ' + sy.c + ';border-bottom:1px solid ' + tint(sy.c, 0.6) : ';border:1px solid ' + sy.c + ';border-top:0;border-radius:0 0 6px 6px') : ''}">${addrCard(S, ent, g, vals) || groups[g].map((f) => mControl(S, ent, f, vals, up, onch)).join('')}</div>`) + (afterFn ? afterFn(g) : ''); }).join('') + `<div style="padding:0 14px">${attach(ent)}</div>`;
   }
   const dms = (v, p, n) => { const a = Math.abs(v), d = Math.floor(a), m = Math.floor((a - d) * 60); return d + '°' + m + "'" + (v >= 0 ? p : n); };
   function s123Phone(S, M, title) {
@@ -361,7 +419,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
       const sumNote = summaryNote(S, ent, arr, i);
       const body = n ? mFields(S, ent, arr[i], up, `${onchFn}.bind(null,${i})`, true) + (kind === 'visits' && M.C ? psBlock(S, M, String(i), arr[i]) : '') : `<div style="padding:14px 10px;color:#757575">אין רשומות. לחץ + להוספה.</div>`;
       const sy = rsty(S, ent.name);
-      return band(title + ' (' + n + ')', key, '', sy, sy ? secNo(S, ent.name) : '', '') + (isCol(key) ? '' : `<div style="margin:0 ${sy ? 0 : 8}px;border:${sy ? (badge(S) ? '2px' : '1px') + ' solid ' + sy.c : '1px solid ' + LINE};border-radius:${sy ? '0 0 6px 6px' : '4px'};background:${sy ? tint(sy.c, 0.88) : '#DCE8DA'};padding:0 4px 4px">${body}${bar}</div>` + sumNote);
+      const imm = kind === 'parts' ? curIM() : null; return band(title + ' (' + n + ')', key, rSum(S, ent, arr), sy, sy ? secNo(S, ent.name) : '', '') + (isCol(key) ? '' : `<div style="margin:0 ${sy ? 0 : 8}px;border:${sy ? (badge(S) ? '2px' : '1px') + ' solid ' + sy.c : '1px solid ' + LINE};border-radius:${sy ? '0 0 6px 6px' : '4px'};background:${sy ? tint(sy.c, 0.88) : '#DCE8DA'};padding:0 4px 4px">${imm ? imWidget(imm) : ''}${body}${bar}</div>` + sumNote);
     };
     const rep = repeat(esc(M.A.ent.alias), st.parts, st.pi, 'parts', M.A.ent, st.sign, 'SimA.pv');
     const repG = (M.main.repeatAfter || {})[M.A.ent.name] || null; // קבוצה שאחריה מוצג ה-Repeat של הרכיבים
@@ -722,6 +780,9 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     closeV() { st.vview = false; st.psform = null; rr(); },
     grp(k) { st.col[k] = !isCol(k); rr(); },
     tab(k) { st.tab = k; rr(); }, variant(v) { st.variant = v; st.modal = null; rr(); }, auto(c) { st.auto = c; rr(); },
+    imTog(id) { const m = curIM(); if (!m) return; const M = model(st.S), p = ImageMaps.parts(m).find((x) => x.id === id); if (!p) return; const i = st.parts.findIndex((r) => r.__im === id);
+      if (i >= 0) { st.parts.splice(i, 1); st.pi = Math.max(0, Math.min(st.pi, st.parts.length - 1)); } else { const r = newRow(M.A.ent); r.__im = id; r.ComponentType = p.type; if (p.level) r.Level = p.level; if (p.dir) r.Direction = p.dir; st.parts.push(r); st.pi = st.parts.length - 1; autoNum(st.pi); }
+      allDerive(); rr(); },
     sv(n, v) { st.sign[n] = v; allDerive(); rr(); }, pv(i, n, v) { st.parts[i][n] = v; if (n === 'ComponentType') autoNum(i); allDerive(); rr(); }, vv(i, n, v) { st.visits[i][n] = v; allDerive(); rr(); },
     add(k) { const a = k === 'parts' ? st.parts : st.visits; a.push(newRow(k === 'parts' ? model(st.S).A.ent : model(st.S).B.ent)); if (k === 'parts') st.pi = a.length - 1; else st.vi = a.length - 1; allDerive(); rr(); },
     del(k) { const a = k === 'parts' ? st.parts : st.visits; const i = k === 'parts' ? st.pi : st.vi; a.splice(i, 1); if (k === 'parts') st.pi = Math.max(0, st.pi - 1); else st.vi = Math.max(0, st.vi - 1); allDerive(); rr(); },

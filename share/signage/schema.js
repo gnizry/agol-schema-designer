@@ -4391,6 +4391,384 @@ window.SCHEMAS["signage"] = {
             "field": "WingNumber",
             "msg": "שים לב, מספר כנף אחד לפחות נרשם יותר מפעם אחת!"
           }
+        ],
+        "_noteSummaries": "כותרות קבוצות עם תקציר: groupSummaries לפי שם קבוצה (שדות לתקציר; before = חיתוך עד התו; max = אורך מקסימלי), repeatSummaries לחזרות (join = שדה שמחוברים ערכיו). הקבוצה נשארת מקופלת והתקציר מופיע בכותרת.",
+        "groupSummaries": {
+          "כתובת יערנית": [
+            {
+              "f": "ForestName"
+            },
+            {
+              "f": "RoadName"
+            }
+          ],
+          "זיהוי": [
+            {
+              "f": "SignID"
+            },
+            {
+              "f": "MapperName"
+            }
+          ],
+          "סיווג": [
+            {
+              "f": "ModelFamily",
+              "before": ":"
+            },
+            {
+              "f": "ModelCode"
+            }
+          ],
+          "מצב": [
+            {
+              "f": "SignStatus"
+            },
+            {
+              "f": "SafetyHazard"
+            }
+          ],
+          "תוכן ומיקום": [
+            {
+              "f": "SignContentText",
+              "max": 28
+            }
+          ],
+          "החלפה והצבה": [
+            {
+              "f": "PlacementDate"
+            }
+          ]
+        },
+        "repeatSummaries": {
+          "SignParts": {
+            "join": "ComponentType",
+            "label": [
+              "ComponentType",
+              "Level",
+              "Direction"
+            ],
+            "max": 40
+          },
+          "SignVisits": {
+            "join": "VisitType",
+            "max": 30
+          }
+        },
+        "bigImage": {
+          "field": "SignModel",
+          "parentField": "ModelFamily"
+        },
+        "_noteImageMaps": "בחירת רכיבי השלט בציור SVG (appearance=image-map) לדגמים שמבנה הרכיבים שלהם מופיע בספר השילוט. ה-id של כל צורה בציור = שם הבחירה. הציורים (kkl/media/imagemaps) נוצרים על ידי kkl/pilot/imagemaps/gen_imagemaps.py. טיוטה: סכמות לפי הספר, ממתין לקטלוג הרכיבים של הלקוח (D1/D16). דגמים ללא ציור: כל הרכיבים נרשמים כשורות ידניות (ExtraParts).",
+        "imageMaps": [
+          {
+            "model": "P5.1",
+            "svg": "im-P5_1.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד 1",
+                "type": "עמוד"
+              },
+              {
+                "id": "POLE_2",
+                "label": "עמוד 2",
+                "type": "עמוד"
+              },
+              {
+                "id": "BOARD_1",
+                "label": "לוח",
+                "type": "לוח"
+              }
+            ]
+          },
+          {
+            "model": "P5.2",
+            "svg": "im-P5_2.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד 1",
+                "type": "עמוד"
+              },
+              {
+                "id": "POLE_2",
+                "label": "עמוד 2",
+                "type": "עמוד"
+              },
+              {
+                "id": "BOARD_1",
+                "label": "לוח",
+                "type": "לוח"
+              }
+            ]
+          },
+          {
+            "model": "P5.3",
+            "svg": "im-P5_3.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד 1",
+                "type": "עמוד"
+              },
+              {
+                "id": "POLE_2",
+                "label": "עמוד 2",
+                "type": "עמוד"
+              },
+              {
+                "id": "BOARD_1",
+                "label": "לוח",
+                "type": "לוח"
+              }
+            ]
+          },
+          {
+            "model": "P5.4",
+            "svg": "im-P5_4.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד",
+                "type": "עמוד"
+              },
+              {
+                "id": "BOARD_1",
+                "label": "לוח",
+                "type": "לוח"
+              }
+            ]
+          },
+          {
+            "model": "P5.5",
+            "svg": "im-P5_5.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד",
+                "type": "עמוד"
+              },
+              {
+                "id": "BOARD_1",
+                "label": "לוח",
+                "type": "לוח"
+              }
+            ]
+          },
+          {
+            "model": "P6",
+            "svg": "im-P6.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד",
+                "type": "עמוד"
+              }
+            ],
+            "wings": {
+              "levels": [
+                {
+                  "id": "A",
+                  "label": "א׳"
+                },
+                {
+                  "id": "B",
+                  "label": "ב׳"
+                },
+                {
+                  "id": "C",
+                  "label": "ג׳"
+                }
+              ],
+              "dirs": [
+                {
+                  "id": "N",
+                  "label": "צפון"
+                },
+                {
+                  "id": "NE",
+                  "label": "צפון־מזרח"
+                },
+                {
+                  "id": "E",
+                  "label": "מזרח"
+                },
+                {
+                  "id": "SE",
+                  "label": "דרום־מזרח"
+                },
+                {
+                  "id": "S",
+                  "label": "דרום"
+                },
+                {
+                  "id": "SW",
+                  "label": "דרום־מערב"
+                },
+                {
+                  "id": "W",
+                  "label": "מערב"
+                },
+                {
+                  "id": "NW",
+                  "label": "צפון־מערב"
+                }
+              ]
+            }
+          },
+          {
+            "model": "P7",
+            "svg": "im-P7.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד",
+                "type": "עמוד"
+              }
+            ],
+            "wings": {
+              "levels": [
+                {
+                  "id": "A",
+                  "label": "א׳"
+                },
+                {
+                  "id": "B",
+                  "label": "ב׳"
+                },
+                {
+                  "id": "C",
+                  "label": "ג׳"
+                }
+              ],
+              "dirs": [
+                {
+                  "id": "N",
+                  "label": "צפון"
+                },
+                {
+                  "id": "NE",
+                  "label": "צפון־מזרח"
+                },
+                {
+                  "id": "E",
+                  "label": "מזרח"
+                },
+                {
+                  "id": "SE",
+                  "label": "דרום־מזרח"
+                },
+                {
+                  "id": "S",
+                  "label": "דרום"
+                },
+                {
+                  "id": "SW",
+                  "label": "דרום־מערב"
+                },
+                {
+                  "id": "W",
+                  "label": "מערב"
+                },
+                {
+                  "id": "NW",
+                  "label": "צפון־מערב"
+                }
+              ]
+            }
+          },
+          {
+            "model": "P10",
+            "svg": "im-P10.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד",
+                "type": "עמוד"
+              },
+              {
+                "id": "BOARD_1",
+                "label": "לוח",
+                "type": "לוח"
+              }
+            ]
+          },
+          {
+            "model": "P11",
+            "svg": "im-P11.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד",
+                "type": "עמוד"
+              },
+              {
+                "id": "BOARD_1",
+                "label": "לוח",
+                "type": "לוח"
+              }
+            ]
+          },
+          {
+            "model": "P12",
+            "svg": "im-P12.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "BOARD_1",
+                "label": "לוח",
+                "type": "לוח"
+              }
+            ]
+          },
+          {
+            "model": "P13.1",
+            "svg": "im-P13_1.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד 1",
+                "type": "עמוד"
+              },
+              {
+                "id": "POLE_2",
+                "label": "עמוד 2",
+                "type": "עמוד"
+              },
+              {
+                "id": "BOARD_1",
+                "label": "לוח",
+                "type": "לוח"
+              }
+            ]
+          },
+          {
+            "model": "P13.2",
+            "svg": "im-P13_2.svg",
+            "status": "טיוטה לפי ספר השילוט, ממתין לקטלוג הרכיבים של הלקוח",
+            "parts": [
+              {
+                "id": "POLE_1",
+                "label": "עמוד",
+                "type": "עמוד"
+              },
+              {
+                "id": "BOARD_1",
+                "label": "לוח",
+                "type": "לוח"
+              }
+            ]
+          }
         ]
       },
       "roadLayer": {
@@ -4865,4 +5243,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "24.11.2026 07:48";
+window.__BUILT = "24.11.2026 11:12";
