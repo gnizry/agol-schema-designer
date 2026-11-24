@@ -186,16 +186,16 @@
         entityRows(k, depth + 1, false);
         if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_key', label: 'מפתח שורה', calculation: "if(${" + keyed[k.name].f + "} = " + lit(keyed[k.name].v) + ", 'W', 'x')", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const cell = (c) => "'<td style=\"border:1px solid #7fa99b; padding:8px; text-align:right;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
+          const cell = (c) => "'<td bgcolor=\"#ffffff\" style=\"text-align:right;\">', " + (c.date ? "if(${" + c.f + "} != '', format-date(${" + c.f + "}, '%d/%m/%Y'), '-')" : "if(${" + c.f + "} != '', ${" + c.f + "}, '-')") + ", '</td>'";
           const cols = ST.cols.slice().reverse();
-          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr>', " + cols.map(cell).join(', ') + ", '<td style=\"border:1px solid #7fa99b; padding:8px; text-align:center;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_row', label: 'שורת סיכום', calculation: "concat('<tr>', " + cols.map(cell).join(', ') + ", '<td bgcolor=\"#ffffff\" style=\"text-align:center;\">', position(..), '</td>', '</tr>')", 'bind::esri:fieldType': 'null' });
         }
         row({ type: 'end_repeat', name: '', label: '' });
         if (keyed[k.name]) row({ type: 'calculate', name: k.name + '_keys', label: 'מפתחות שורות', calculation: "join('', ${" + k.name + "_key})", 'bind::esri:fieldType': 'null' });
         if (ST) {
-          const th = (t, al) => "'<th bgcolor=\"#bcdccf\" style=\"background-color:#bcdccf; color:#1F5A52; border:1px solid #7fa99b; text-align:" + (al || 'right') + "; padding:8px;\">" + t + "</th>'";
+          const th = (t, al) => "'<th style=\"color:#1F5A52; text-align:" + (al || 'right') + ";\">" + t + "</th>'";
           const heads = ST.cols.slice().reverse().map((c) => th(c.l)).concat([th('#', 'center')]).join(', ');
-          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center; color:#1F5A52;\">" + ST.title + "</h3>', '<table border=\"1\" bordercolor=\"#7fa99b\" cellspacing=\"0\" cellpadding=\"8\" width=\"100%\" style=\"border-collapse:collapse; width:100%; margin:auto; border:1px solid #7fa99b; direction:rtl;\">', '<tr bgcolor=\"#bcdccf\" style=\"background-color:#bcdccf; color:#1F5A52;\">', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
+          row({ type: 'calculate', name: k.name + '_table', label: 'טבלת סיכום', calculation: "if(count(${" + k.name + "}) > 0, concat('<div style=\"width:100%; text-align:center; direction:rtl;\">', '<h3 style=\"text-align:center; color:#1F5A52;\">" + ST.title + "</h3>', '<table border=\"1\" bordercolor=\"#7fa99b\" cellspacing=\"0\" cellpadding=\"8\" width=\"100%\" bgcolor=\"#bcdccf\">', '<tr>', " + heads + ", '</tr>', join('', ${" + k.name + "_row}), '</table></div>'), '')", 'bind::esri:fieldType': 'null' });
           row({ type: 'note', name: k.name + '_table_note', label: '${' + k.name + '_table}', relevant: "count(${" + k.name + "}) > 0" });
         }
         (OPT.duplicateWarnings || []).filter((d) => d.repeat === k.name).forEach((d) => {
@@ -295,10 +295,11 @@
     }
     if (TH) rep.open.push('צבעי כותרת וכותרת תחתונה נקבעים בלוח Style ב-Connect (נשמרים ב-.info של הסקר, לא ב-xlsx): כותרת ' + ((TH.header && TH.header.backgroundColor) || '') + ' עם טקסט ' + ((TH.header && TH.header.textColor) || '') + ', כותרת תחתונה ' + ((TH.footer && TH.footer.backgroundColor) || '') + ' עם טקסט ' + ((TH.footer && TH.footer.textColor) || '') + '.');
     rep.open.push("שם מלא של הממפה והמבקר: pulldata(\"@property\", 'userFullName'). בתצוגה המקדימה של Connect עלול להופיע Unknown; לבדוק באפליקציית השטח.");
+    const LNG = OPT.defaultLanguage || ''; /* עמודות טקסט עם שם וקוד שפה, כמו default_language (תיעוד Esri: אותה צורה בכל הגיליון) */
     const cols = ['type', 'name', 'label', 'hint', 'required', 'required_message', 'relevant', 'calculation', 'constraint', 'constraint_message', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count', 'media::image'];
     const sheets = [
-      { name: 'survey', head: cols, rows: rows.map((r) => cols.map((c) => r[c] || '')) },
-      { name: 'choices', head: ['list_name', 'name', 'label'].concat(cext), rows: choices.map((c) => ['list_name', 'name', 'label'].concat(cext).map((k) => c[k] || '')) },
+      { name: 'survey', head: cols.map((c) => LNG && /^(label|hint|required_message|constraint_message)$/.test(c) ? c + '::' + LNG : c), rows: rows.map((r) => cols.map((c) => r[c] || '')) },
+      { name: 'choices', head: ['list_name', 'name', LNG ? 'label::' + LNG : 'label'].concat(cext), rows: choices.map((c) => ['list_name', 'name', 'label'].concat(cext).map((k) => c[k] || '')) },
       { name: 'settings', head: Object.keys(settings[0]), rows: [Object.values(settings[0])] }
     ];
     if (SY && SY.groupAppearance === 'compact') rep.open.push('קבוצות עם appearance=compact נפתחות מקופלות. לבדוק שהודעת שדה חובה חסר בתוך קבוצה מקופלת מוצגת למשתמש בשליחה (בשני הערוצים).');
