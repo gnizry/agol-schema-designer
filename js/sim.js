@@ -22,7 +22,16 @@
     function rect(id, x, y, w, h, base) { return shape(id, 'M' + x + ' ' + y + ' H' + (x + w) + ' V' + (y + h) + ' H' + x + ' Z', base); }
     function txt(x, y, t, size, w, fill) { return '<text x="' + x + '" y="' + y + '" font-family="Arial, sans-serif" font-size="' + (size || 14) + '" font-weight="' + (w || 'normal') + '" text-anchor="middle" fill="' + (fill || '#3b2a14') + '" pointer-events="none">' + esc(t) + '</text>'; }
     var poles = parts.filter(function (p) { return p.id.indexOf('POLE') === 0; }), boards = parts.filter(function (p) { return p.id.indexOf('BOARD') === 0; });
-    if (m.wings) {
+    var ACC = { ACC_TL: [36, 70, 48, 18], ACC_TR: [376, 70, 48, 18], ACC_BL: [36, 214, 48, 18], ACC_BR: [376, 214, 48, 18], ACC_T: [200, 166, 60, 16], ACC_B: [200, 268, 60, 16] }, ACCBASE = 'fill="#f6b73c" stroke="#9a6a00" stroke-width="2"';
+    if (m.layout === 'stack') {
+      var SN = m.slots || 6, SH = 52, top = 44; H = top + SN * SH + 90;
+      out.push(txt(230, 20, 'צדדי העמוד (הצדדים מנוגדים). כל משבצת = פיקטוגרמה', 12, 'normal', '#6b7280'));
+      [['A', 'א׳', 250], ['B', 'ב׳', 50]].forEach(function (sd) {
+        out.push('<rect x="' + sd[2] + '" y="' + top + '" width="160" height="' + (SN * SH + 8) + '" fill="#8a6a46" stroke="#4a3320" stroke-width="3" rx="4"/>', txt(sd[2] + 80, top + SN * SH + 26, 'צד ' + sd[1], 15, 'bold'));
+        for (var i = 1; i <= SN; i++) out.push(rect('PIC_' + sd[0] + '_' + i, sd[2] + 12, top + 6 + (i - 1) * SH, 136, SH - 8, BOARD), txt(sd[2] + 80, top + 6 + (i - 1) * SH + SH / 2 + 2, String(i), 16, 'bold'));
+      });
+      out.push(rect('POLE_1', 40, top + SN * SH + 40, 380, 34, POLE), txt(230, top + SN * SH + 62, 'עמוד', 14, 'normal', '#fff'));
+    } else if (m.wings) {
       var CX = 330, ys = [125, 320, 515], lv = m.wings.levels;
       H = 640; out.push(rect('POLE_1', 60, 40, 36, 570, POLE), txt(78, 30, 'עמוד'), txt(230, 22, 'כנפיים לפי רמה וכיוון'));
       lv.forEach(function (L, li) {
@@ -31,17 +40,29 @@
         out.push(txt(CX, cy + 9, L.label, 26, 'bold'));
         [['צ', 0, -78], ['ד', 0, 90], ['מ', 86, 5], ['מע', -90, 5]].forEach(function (a) { out.push(txt(CX + a[1], cy + a[2], a[0], 13, 'normal', '#6b7280')); });
       });
+      if (m.wings.pics) {
+        var NP = m.wings.pics, y0 = 650, cw = 38, ch = 34, xr = 372, names = { N: 'צפון', NE: 'צפון־מזרח', E: 'מזרח', SE: 'דרום־מזרח', S: 'דרום', SW: 'דרום־מערב', W: 'מערב', NW: 'צפון־מערב' };
+        out.push(txt(230, y0, 'פיקטוגרמות על כנפיים: שורה = כיוון הכנף, עמודה = רמה ומספר הפיקטוגרמה בכנף', 12, 'normal', '#6b7280'));
+        lv.forEach(function (L, li) { out.push(txt(xr - (li * NP + (NP - 1) / 2) * cw - cw / 2 + 2, y0 + 22, 'רמה ' + L.label, 13, 'bold')); });
+        m.wings.dirs.forEach(function (D, di) {
+          var yy = y0 + 30 + di * (ch + 3); out.push(txt(412, yy + 22, names[D.id] || D.label, 12));
+          lv.forEach(function (L, li) { for (var n = 1; n <= NP; n++) { var x = xr - (li * NP + n) * cw; out.push(rect('WP_' + L.id + '_' + D.id + '_' + n, x, yy, cw - 3, ch, BOARD), txt(x + (cw - 3) / 2, yy + 22, String(n), 12, 'normal', '#8a7a5a')); } });
+        });
+        H = y0 + 30 + m.wings.dirs.length * (ch + 3) + 10;
+      }
     } else if (poles.length >= 2) {
       H = 340; out.push(rect(boards[0] ? boards[0].id : 'BOARD_1', 95, 30, 270, 170, BOARD), rect(poles[0].id, 45, 60, 30, 240, POLE), rect(poles[1].id, 385, 60, 30, 240, POLE), txt(230, 125, 'לוח', 20, 'bold'), txt(60, 320, poles[0].label), txt(400, 320, poles[1].label));
     } else if (poles.length === 1) {
       H = 330; out.push(rect(boards[0] ? boards[0].id : 'BOARD_1', 90, 30, 280, 130, BOARD), rect(poles[0].id, 215, 160, 30, 140, POLE), txt(230, 100, 'לוח', 20, 'bold'), txt(230, 235, poles[0].label, 14, 'normal', '#fff'));
     } else { H = 270; out.push(rect(boards[0] ? boards[0].id : 'BOARD_1', 50, 40, 360, 190, BOARD), txt(230, 145, 'לוח', 22, 'bold')); }
+    parts.forEach(function (p) { var a = ACC[p.id]; if (a) out.push(rect(p.id, a[0], a[1], a[2], a[3], ACCBASE), txt(a[0] + a[2] / 2, a[1] + a[3] - 4, 'חבק', 11, 'bold', '#5a3d00')); });
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 ' + H + '" width="' + (opt.plain ? 460 : '100%') + '"' + (opt.plain ? ' height="' + H + '"' : '') + '><rect width="460" height="' + H + '" fill="#ffffff"/>' + out.join('') + '</svg>';
   }
   /* כל הרכיבים הניתנים לבחירה בדגם: [{id,label,type,level?,dir?}] */
   function parts(m) {
-    var out = (m.parts || []).map(function (x) { return { id: x.id, label: x.label, type: x.type }; });
+    var out = (m.parts || []).map(function (x) { return { id: x.id, label: x.label, type: x.type, side: x.side }; });
     if (m.wings) m.wings.levels.forEach(function (L) { m.wings.dirs.forEach(function (D) { out.push({ id: 'W_' + L.id + '_' + D.id, label: 'כנף ' + L.label + ' – ' + D.label, type: 'כנף', level: L.label, dir: D.label }); }); });
+    if (m.wings && m.wings.pics) m.wings.levels.forEach(function (L) { m.wings.dirs.forEach(function (D) { for (var n = 1; n <= m.wings.pics; n++) out.push({ id: 'WP_' + L.id + '_' + D.id + '_' + n, label: 'פיקטוגרמה ' + n + ' בכנף ' + L.label + ' – ' + D.label, type: 'פיקטוגרמה', level: L.label, dir: D.label, wp: true }); }); });
     return out;
   }
   var api = { svg: svg, parts: parts };
@@ -781,7 +802,7 @@ concat('&lt;table&gt;&lt;tr&gt;${cols.map((f) => '&lt;th&gt;' + f.alias + '&lt;/
     grp(k) { st.col[k] = !isCol(k); rr(); },
     tab(k) { st.tab = k; rr(); }, variant(v) { st.variant = v; st.modal = null; rr(); }, auto(c) { st.auto = c; rr(); },
     imTog(id) { const m = curIM(); if (!m) return; const M = model(st.S), p = ImageMaps.parts(m).find((x) => x.id === id); if (!p) return; const i = st.parts.findIndex((r) => r.__im === id);
-      if (i >= 0) { st.parts.splice(i, 1); st.pi = Math.max(0, Math.min(st.pi, st.parts.length - 1)); } else { const r = newRow(M.A.ent); r.__im = id; r.ComponentType = p.type; if (p.level) r.Level = p.level; if (p.dir) r.Direction = p.dir; st.parts.push(r); st.pi = st.parts.length - 1; autoNum(st.pi); }
+      if (i >= 0) { st.parts.splice(i, 1); st.pi = Math.max(0, Math.min(st.pi, st.parts.length - 1)); } else { const r = newRow(M.A.ent); r.__im = id; r.ComponentType = p.type; if (p.level) r.Level = p.level; if (p.dir) r.Direction = p.dir; if (p.side) r.Side = p.side; if (/^ACC_/.test(p.id)) r.ComponentNotes = p.label; st.parts.push(r); st.pi = st.parts.length - 1; autoNum(st.pi); }
       allDerive(); rr(); },
     sv(n, v) { st.sign[n] = v; allDerive(); rr(); }, pv(i, n, v) { st.parts[i][n] = v; if (n === 'ComponentType') autoNum(i); allDerive(); rr(); }, vv(i, n, v) { st.visits[i][n] = v; allDerive(); rr(); },
     add(k) { const a = k === 'parts' ? st.parts : st.visits; a.push(newRow(k === 'parts' ? model(st.S).A.ent : model(st.S).B.ent)); if (k === 'parts') st.pi = a.length - 1; else st.vi = a.length - 1; allDerive(); rr(); },

@@ -60,8 +60,9 @@
     const IM = Array.isArray(OPT.imageMaps) ? OPT.imageMaps.filter((m) => m && m.model && m.svg) : [];
     const imKey = (m) => String(m.model).replace(/[^A-Za-z0-9]/g, '_');
     const imParts = (m) => {
-      const out = (m.parts || []).map((x) => ({ id: x.id, label: x.label, type: x.type }));
+      const out = (m.parts || []).map((x) => ({ id: x.id, label: x.label, type: x.type, side: x.side }));
       if (m.wings) m.wings.levels.forEach((L) => m.wings.dirs.forEach((D) => out.push({ id: 'W_' + L.id + '_' + D.id, label: 'כנף ' + L.label + ' – ' + D.label, type: 'כנף', level: L.label, dir: D.label })));
+      if (m.wings && m.wings.pics) m.wings.levels.forEach((L) => m.wings.dirs.forEach((D) => { for (let n = 1; n <= m.wings.pics; n++) out.push({ id: 'WP_' + L.id + '_' + D.id + '_' + n, label: 'פיקטוגרמה ' + n + ' בכנף ' + L.label + ' – ' + D.label, type: 'פיקטוגרמה', level: L.label, dir: D.label, wp: true }); }));
       return out;
     };
     const imModelIs = (m) => '${ModelCode}=' + lit(m.model);
@@ -74,10 +75,25 @@
         segs.forEach((seg) => { const g = groups[seg], test = g.ids.some((i) => i.indexOf('_') > 0) ? "starts-with(${part_id}, '" + seg + "_')" : g.ids.map((i) => '${part_id}=' + lit(i)).join(' or '); expr = 'if(' + test + ', ' + lit(g.type) + ', ' + expr + ')'; });
         return "if(${part_id} = '', '', " + expr + ')';
       }
-      const wings = all.filter((x) => x.level); if (!wings.length) return '';
-      const key = field === 'Level' ? 'level' : 'dir', pos = field === 'Level' ? '2, 3' : '4';
-      const uniq = []; wings.forEach((x) => { const id = field === 'Level' ? x.id.split('_')[1] : x.id.split('_').slice(2).join('_'); if (!uniq.some((u) => u[0] === id)) uniq.push([id, x[key]]); });
-      return "if(starts-with(${part_id}, 'W_'), " + uniq.reduceRight((acc, u) => 'if(substr(${part_id}, ' + pos + ') = ' + lit(u[0]) + ', ' + lit(u[1]) + ', ' + acc + ')', "''") + ", '')";
+      if (field === 'Side') {
+        const bySide = {}; all.filter((x) => x.side).forEach((x) => (bySide[x.side] = bySide[x.side] || []).push(x.id));
+        const sides = Object.keys(bySide); if (!sides.length) return '';
+        return sides.reduceRight((acc, sd) => 'if(' + bySide[sd].map((i) => '${part_id}=' + lit(i)).join(' or ') + ', ' + lit(sd) + ', ' + acc + ')', "''");
+      }
+      if (field === 'ComponentNotes') {
+        const accs = all.filter((x) => /^ACC_/.test(x.id)); if (!accs.length) return '';
+        return accs.reduceRight((acc, x) => 'if(${part_id}=' + lit(x.id) + ', ' + lit(x.label) + ', ' + acc + ')', "''");
+      }
+      const wings = all.filter((x) => x.level && !x.wp), wps = all.filter((x) => x.wp); if (!wings.length && !wps.length) return '';
+      const key = field === 'Level' ? 'level' : 'dir';
+      /* כנף: W_<רמה>_<כיוון>; פיקטוגרמה על כנף: WP_<רמה>_<כיוון>_<מספר> (substr מבוסס 0) */
+      const chain = (list, test) => { const uniq = []; list.forEach((x) => { const p = x.id.split('_'), id = field === 'Level' ? p[1] : p[2]; if (!uniq.some((u) => u[0] === id)) uniq.push([id, x[key]]); }); return uniq.reduceRight((acc, u) => 'if(' + test(u[0]) + ', ' + lit(u[1]) + ', ' + acc + ')', "''"); };
+      const wTest = (id) => field === 'Level' ? 'substr(${part_id}, 2, 3) = ' + lit(id) : 'substr(${part_id}, 4) = ' + lit(id);
+      const pTest = (id) => field === 'Level' ? 'substr(${part_id}, 3, 4) = ' + lit(id) : 'starts-with(substr(${part_id}, 5), ' + lit(id + '_') + ')';
+      let out = "''";
+      if (wps.length) out = "if(starts-with(${part_id}, 'WP_'), " + chain(wps, pTest) + ', ' + out + ')';
+      if (wings.length) out = "if(starts-with(${part_id}, 'W_'), " + chain(wings, wTest) + ', ' + out + ')';
+      return out;
     }
 
     const FL = S123.forestLayer || null; // { itemId | url, fields: { שם שדה בסכימה: שם שדה בשכבת עומדי היער } }
@@ -112,6 +128,7 @@
       /* טקסט ארוך: multiline לשדה טקסט חופשי שאורכו 500 תווים ומעלה (או f.multiline) */
       if (!d && f.type === 'TEXT' && (f.multiline || Number(f.length || 255) >= 500)) r.appearance = 'multiline';
       if (f.type === 'GUID') { r.type = 'text'; rep.open.push(where + ': שדה GUID שמולא מקישור לרכיב (' + (f.pickFrom || '') + '). נוצר כטקסט; בחירת הרכיב בטופס טעונה בדיקה (B2/C2).'); }
+      if (f.formOnly) { r['bind::esri:fieldType'] = 'null'; r['bind::esri:fieldLength'] = ''; rep.open.push(where + ': שדה עזר בטופס בלבד (ESRI field type = null), לא נשמר בשכבה.'); }
       if (f.calc) r.calculation = f.calc;
       /* כתובת יערנית: pulldata("@layer", "getValueAt") מול שכבת עומדי יער לפי S.sim.survey123.forestLayer; שדה שלא מופה נשאר ריק (בלי שגיאת טופס) */
       if (/<ROADS_LAYER_URL>/.test(r.calculation)) {
@@ -201,7 +218,7 @@
         rep.open.push(where + ': בדיקת כפילות מספר בתוך השלט לא מוגדרת בטופס (current() בפרדיקט נכשל בהמרה). לבדוק בהמשך בשכבה/Notebook.');
       }
 
-      if (IM.length && e.name === (OPT.imageMapParent || 'SignParts') && (f.name === 'ComponentType' || f.name === 'Level' || f.name === 'Direction') && !r.calculation) {
+      if (IM.length && e.name === (OPT.imageMapParent || 'SignParts') && (f.name === 'ComponentType' || f.name === 'Level' || f.name === 'Direction' || f.name === 'Side' || f.name === 'ComponentNotes') && !r.calculation) {
         const ex = imInRowExpr(f.name);
         if (ex) {
           r.calculation = ex;
