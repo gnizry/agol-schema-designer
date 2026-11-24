@@ -4865,4 +4865,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "24.11.2026 06:32";
+window.__BUILT = "24.11.2026 07:48";

@@ -295,7 +295,7 @@
     }
     if (TH) rep.open.push('צבעי כותרת וכותרת תחתונה נקבעים בלוח Style ב-Connect (נשמרים ב-.info של הסקר, לא ב-xlsx): כותרת ' + ((TH.header && TH.header.backgroundColor) || '') + ' עם טקסט ' + ((TH.header && TH.header.textColor) || '') + ', כותרת תחתונה ' + ((TH.footer && TH.footer.backgroundColor) || '') + ' עם טקסט ' + ((TH.footer && TH.footer.textColor) || '') + '.');
     rep.open.push("שם מלא של הממפה והמבקר: pulldata(\"@property\", 'userFullName'). בתצוגה המקדימה של Connect עלול להופיע Unknown; לבדוק באפליקציית השטח.");
-    const LNG = OPT.defaultLanguage || ''; /* עמודות טקסט עם שם וקוד שפה, כמו default_language (תיעוד Esri: אותה צורה בכל הגיליון) */
+    const LNG = ''; /* עמודות טקסט עם שם וקוד שפה, כמו default_language (תיעוד Esri: אותה צורה בכל הגיליון) */
     const cols = ['type', 'name', 'label', 'hint', 'required', 'required_message', 'relevant', 'calculation', 'constraint', 'constraint_message', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count', 'media::image'];
     const sheets = [
       { name: 'survey', head: cols.map((c) => LNG && /^(label|hint|required_message|constraint_message)$/.test(c) ? c + '::' + LNG : c), rows: rows.map((r) => cols.map((c) => r[c] || '')) },

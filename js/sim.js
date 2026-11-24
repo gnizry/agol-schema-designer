@@ -138,10 +138,10 @@
     if (ST) {
       if (!arr.length) return '';
       const fd = (v) => { const d = v ? new Date(v) : null; return d && !isNaN(d) ? d.toLocaleDateString('en-GB') : '-'; };
-      const th = (t, al) => `<th style="color:#1F5A52;padding:8px;text-align:${al || 'right'}">${esc(t)}</th>`;
-      const td = (x, al) => `<td style="background:#fff;padding:8px;text-align:${al || 'right'}">${x}</td>`;
-      const rows = arr.map((r, i) => `<tr>${td(i + 1, 'center')}${ST.cols.map((c) => td(c.date ? fd(r[c.f]) : esc(r[c.f] || '-'))).join('')}</tr>`).join('');
-      return `<div dir="rtl" style="margin:10px 8px 6px;text-align:center"><div style="font-size:19px;font-weight:700;color:#1F5A52;margin-bottom:6px">${esc(ST.title)}</div><table dir="rtl" cellspacing="0" cellpadding="0" style="width:100%;background:#bcdccf;border:1px solid #7fa99b;border-collapse:separate;border-spacing:1px"><tr>${th('#', 'center')}${ST.cols.map((c) => th(c.l)).join('')}</tr>${rows}</table></div>`;
+      const th = (t, al) => `<th style="border:1px solid #7fa99b;background:#bcdccf;color:#1F5A52;padding:5px 8px;text-align:${al || 'right'}">${esc(t)}</th>`;
+      const td = (x, al, i) => `<td style="border:1px solid #7fa99b;background:${i % 2 ? '#eef5f2' : 'transparent'};padding:2px 8px;text-align:${al || 'right'}">${x}</td>`;
+      const rows = arr.map((r, i) => `<tr>${td(i + 1, 'center', i)}${ST.cols.map((c) => td(c.date ? fd(r[c.f]) : esc(r[c.f] || '-'), 'right', i)).join('')}</tr>`).join('');
+      return `<div dir="rtl" style="margin:10px 8px 6px;text-align:center"><div style="font-size:19px;font-weight:700;color:#1F5A52;margin-bottom:6px">${esc(ST.title)}</div><table dir="rtl" cellspacing="0" cellpadding="0" style="width:100%;border:1px solid #7fa99b;border-collapse:collapse"><tr>${th('#', 'center')}${ST.cols.map((c) => th(c.l)).join('')}</tr>${rows}</table></div>`;
     }
     const skip = /ParentGlobalID|GlobalID|Notes|Summary/;
     const cols = ent.fields.filter((f) => !skip.test(f.name) && !hidden(f) && arr.some((r) => r[f.name])).slice(0, 5);
