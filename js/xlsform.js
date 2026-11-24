@@ -313,6 +313,7 @@
             fr.forEach(row);
             row({ type: 'end_group', name: '', label: '' });
           }
+          if (e.photos && e.photos.after === c && e.attachments) { const ph = styled('group', 'תמונות', e.photos.label || 'תמונות', SY && SY.groups && SY.groups['תמונות']); row({ type: 'begin_group', name: 'grp_photos', label: ph.label, 'body::esri:style': ph.style || '', appearance: SY && SY.groupAppearance === 'compact' ? 'compact' : '' }); row({ type: 'image', name: 'SignPhotos', label: e.photos.label || 'תמונות', hint: e.photos.hint || '', appearance: 'multiline' }); row({ type: 'end_group', name: '', label: '' }); rep.open.push(e.name + ': שאלת תמונות (image, appearance=multiline) נשמרת כקבצים מצורפים בשכבה; דורש אימות בשליחה ובעריכה ש-Attachments נוצרים ומוצגים.'); }
           kids(e.name).filter((k) => after[k.name] === c).forEach((k) => { kidRows(k); placed.add(k.name); });
         });
         fields.filter((f) => cats.indexOf(f.category) < 0).map((f) => fieldRow(e, f, depth)).filter(Boolean).forEach(row);

@@ -8,8 +8,8 @@
   var DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
   function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
   function pt(cx, cy, r, a) { return [cx + r * Math.cos(a * Math.PI / 180), cy + r * Math.sin(a * Math.PI / 180)]; }
-  function wedge(cx, cy, k) {
-    var R = 72, r = 24, c = -90 + 45 * k, a0 = c - 21.5, a1 = c + 21.5, p = [pt(cx, cy, R, a0), pt(cx, cy, R, a1), pt(cx, cy, r, a1), pt(cx, cy, r, a0)], f = function (n) { return n.toFixed(1); };
+  function wedge(cx, cy, k, R, r) {
+    R = R || 72; r = r || 24; var c = -90 + 45 * k, a0 = c - 21.5, a1 = c + 21.5, p = [pt(cx, cy, R, a0), pt(cx, cy, R, a1), pt(cx, cy, r, a1), pt(cx, cy, r, a0)], f = function (n) { return n.toFixed(1); };
     return 'M' + f(p[0][0]) + ' ' + f(p[0][1]) + ' A' + R + ' ' + R + ' 0 0 1 ' + f(p[1][0]) + ' ' + f(p[1][1]) + ' L' + f(p[2][0]) + ' ' + f(p[2][1]) + ' A' + r + ' ' + r + ' 0 0 0 ' + f(p[3][0]) + ' ' + f(p[3][1]) + ' Z';
   }
   /* opt: { selected: {id:true}, click: function(id) -> מחרוזת attribute (למשל onclick="..."), plain: true לקובץ SVG סטטי } */
@@ -32,24 +32,31 @@
         for (var i = 1; i <= SN; i++) out.push(rect('PIC_' + sd[0] + '_' + i, sd[2] + 12, top + 6 + (i - 1) * SH, 140, SH - 8, BOARD), txt(sd[2] + 82, top + 6 + (i - 1) * SH + SH / 2 + 2, String(i), 16, 'bold'));
       });
     } else if (m.wings) {
-      var CX = 330, ys = [125, 320, 515], lv = m.wings.levels;
-      H = 640; out.push(rect('POLE_1', 60, 40, 36, 570, POLE), txt(78, 30, 'עמוד'), txt(230, 22, 'כנפיים לפי רמה וכיוון'));
-      lv.forEach(function (L, li) {
-        var cy = ys[li] || 125 + 195 * li;
-        m.wings.dirs.forEach(function (D, k) { out.push(shape('W_' + L.id + '_' + D.id, wedge(CX, cy, DIRS.indexOf(D.id) >= 0 ? DIRS.indexOf(D.id) : k), 'fill="#efe0bd" stroke="#7a5a2a" stroke-width="2"')); });
-        out.push(txt(CX, cy + 9, L.label, 26, 'bold'));
-        [['צ', 0, -78], ['ד', 0, 90], ['מ', 86, 5], ['מע', -90, 5]].forEach(function (a) { out.push(txt(CX + a[1], cy + a[2], a[0], 13, 'normal', '#6b7280')); });
-      });
-      if (m.wings.pics) {
-        var NP = m.wings.pics, y0 = 650, cw = 38, ch = 34, xr = 372, names = { N: 'צפון', NE: 'צפון־מזרח', E: 'מזרח', SE: 'דרום־מזרח', S: 'דרום', SW: 'דרום־מערב', W: 'מערב', NW: 'צפון־מערב' };
-        out.push(txt(230, y0, 'פיקטוגרמות על כנפיים: שורה = כיוון הכנף, עמודה = רמה ומספר הפיקטוגרמה בכנף', 12, 'normal', '#6b7280'));
-        lv.forEach(function (L, li) { out.push(txt(xr - (li * NP + (NP - 1) / 2) * cw - cw / 2 + 2, y0 + 22, 'רמה ' + L.label, 13, 'bold')); });
-        m.wings.dirs.forEach(function (D, di) {
-          var yy = y0 + 30 + di * (ch + 3); out.push(txt(412, yy + 22, names[D.id] || D.label, 12));
-          lv.forEach(function (L, li) { for (var n = 1; n <= NP; n++) { var x = xr - (li * NP + n) * cw; out.push(rect('WP_' + L.id + '_' + D.id + '_' + n, x, yy, cw - 3, ch, BOARD), txt(x + (cw - 3) / 2, yy + 22, String(n), 12, 'normal', '#8a7a5a')); } });
+      var lv = m.wings.levels, NP = m.wings.pics || 0, R = 110, rr = 36, CX = 230, GR = { N: 'צ', NE: 'צ״מ', E: 'מ', SE: 'ד״מ', S: 'ד', SW: 'ד״מע', W: 'מע', NW: 'צ״מע' };
+      var names = { N: 'צפון', NE: 'צפון־מזרח', E: 'מזרח', SE: 'דרום־מזרח', S: 'דרום', SW: 'דרום־מערב', W: 'מערב', NW: 'צפון־מערב' };
+      var y = 8, ch = 30, step = 34, cw = 80;
+      out.push(rect('POLE_1', 110, y, 240, 34, POLE), txt(230, y + 23, 'עמוד', 16, 'bold', '#fff'));
+      y += 56;
+      lv.forEach(function (L) {
+        out.push(txt(CX, y + 16, 'רמה ' + L.label + ': בחר כנף לפי הכיוון', 17, 'bold'));
+        var cy = y + 28 + R;
+        m.wings.dirs.forEach(function (D, k) {
+          var kk = DIRS.indexOf(D.id) >= 0 ? DIRS.indexOf(D.id) : k, ang = -90 + 45 * kk, p = pt(CX, cy, (R + rr) / 2, ang);
+          out.push(shape('W_' + L.id + '_' + D.id, wedge(CX, cy, kk, R, rr), 'fill="#efe0bd" stroke="#7a5a2a" stroke-width="2"'), txt(p[0], p[1] + 5, GR[D.id] || D.label, 15, 'bold'));
         });
-        H = y0 + 30 + m.wings.dirs.length * (ch + 3) + 10;
-      }
+        out.push(txt(CX, cy + 11, L.label, 32, 'bold'));
+        y = cy + R + 22;
+        if (NP) {
+          out.push(txt(CX, y + 4, 'פיקטוגרמות על כנפי רמה ' + L.label + ' (שורה = כיוון, משבצת = מספר הפיקטוגרמה)', 12, 'normal', '#6b7280'));
+          y += 14;
+          m.wings.dirs.forEach(function (D, di) {
+            var yy = y + di * step; out.push(txt(412, yy + 20, names[D.id] || D.label, 14, 'bold'));
+            for (var n = 1; n <= NP; n++) { var x = 360 - n * cw; out.push(rect('WP_' + L.id + '_' + D.id + '_' + n, x, yy, cw - 4, ch, BOARD), txt(x + (cw - 4) / 2, yy + 21, String(n), 15, 'bold', '#8a7a5a')); }
+          });
+          y += m.wings.dirs.length * step + 24;
+        } else y += 6;
+      });
+      H = y;
     } else if (poles.length >= 2 || boards.length > 1) {
       var N = poles.length, nb = boards.length || 1, vert = m.arrange === 'v', bot = m.boardPos === 'bottom';
       H = 340; var bx = N ? 95 : 50, bw = N ? 270 : 360, by = bot ? 200 : 30, bh = bot ? 70 : (N ? 170 : 190), gap = 8, k;
