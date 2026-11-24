@@ -32,29 +32,32 @@
         for (var i = 1; i <= SN; i++) out.push(rect('PIC_' + sd[0] + '_' + i, sd[2] + 12, top + 6 + (i - 1) * SH, 140, SH - 8, BOARD), txt(sd[2] + 82, top + 6 + (i - 1) * SH + SH / 2 + 2, String(i), 16, 'bold'));
       });
     } else if (m.wings) {
-      var lv = m.wings.levels, NP = m.wings.pics || 0, R = 110, rr = 36, CX = 230, GR = { N: 'צ', NE: 'צ״מ', E: 'מ', SE: 'ד״מ', S: 'ד', SW: 'ד״מע', W: 'מע', NW: 'צ״מע' };
+      /* טבלה לכל רמה: שורה = כיוון (חץ + שם), תא "כנף" ותאים 1..N לפיקטוגרמות על אותה כנף. תאים גדולים לנוחות לחיצה בטלפון */
+      var lv = opt.level ? m.wings.levels.filter(function (L) { return L.id === opt.level; }) : m.wings.levels, NP = m.wings.pics || 0;
+      var ARR = { N: '↑', NE: '↗', E: '→', SE: '↘', S: '↓', SW: '↙', W: '←', NW: '↖' };
       var names = { N: 'צפון', NE: 'צפון־מזרח', E: 'מזרח', SE: 'דרום־מזרח', S: 'דרום', SW: 'דרום־מערב', W: 'מערב', NW: 'צפון־מערב' };
-      var y = 8, ch = 30, step = 34, cw = 80;
-      out.push(rect('POLE_1', 110, y, 240, 34, POLE), txt(230, y + 23, 'עמוד', 16, 'bold', '#fff'));
-      y += 56;
+      var WING = 'fill="#d9b97a" stroke="#7a5a2a" stroke-width="3"', y = 8, rh = 44, step = 48, X0 = 340, cw = Math.min(100, Math.floor((X0 - 14) / (1 + NP)));
+      if (!opt.level || opt.level === m.wings.levels[0].id) { out.push(rect('POLE_1', 110, y, 240, 38, POLE), txt(230, y + 26, 'עמוד', 18, 'bold', '#fff')); y += 52; }
       lv.forEach(function (L) {
-        out.push(txt(CX, y + 16, 'רמה ' + L.label + ': בחר כנף לפי הכיוון', 17, 'bold'));
-        var cy = y + 28 + R;
-        m.wings.dirs.forEach(function (D, k) {
-          var kk = DIRS.indexOf(D.id) >= 0 ? DIRS.indexOf(D.id) : k, ang = -90 + 45 * kk, p = pt(CX, cy, (R + rr) / 2, ang);
-          out.push(shape('W_' + L.id + '_' + D.id, wedge(CX, cy, kk, R, rr), 'fill="#efe0bd" stroke="#7a5a2a" stroke-width="2"'), txt(p[0], p[1] + 5, GR[D.id] || D.label, 15, 'bold'));
+        /* מיני-שלט: עמוד עם 3 כנפיים (א׳ עליונה, ג׳ תחתונה), הרמה הנוכחית מודגשת */
+        var POS = { top: 'עליונה', mid: 'אמצעית', bot: 'תחתונה' }, li = m.wings.levels.indexOf(L), hp = ['top', 'mid', 'bot'][li] || '';
+        out.push('<rect x="72" y="' + y + '" width="12" height="104" fill="#6b4a2a" rx="2"/>');
+        m.wings.levels.forEach(function (L2, i) {
+          var on = L2.id === L.id, wy = y + 6 + i * 32;
+          out.push('<rect x="' + (on ? 30 : 36) + '" y="' + wy + '" width="' + (on ? 96 : 84) + '" height="24" rx="3" fill="' + (on ? '#e8912e' : '#e5e7eb') + '" stroke="' + (on ? '#7a3f00' : '#9ca3af') + '" stroke-width="' + (on ? 3 : 1.5) + '"/>', txt(78, wy + 18, L2.label, on ? 16 : 13, 'bold', on ? '#fff' : '#6b7280'));
         });
-        out.push(txt(CX, cy + 11, L.label, 32, 'bold'));
-        y = cy + R + 22;
-        if (NP) {
-          out.push(txt(CX, y + 4, 'פיקטוגרמות על כנפי רמה ' + L.label + ' (שורה = כיוון, משבצת = מספר הפיקטוגרמה)', 12, 'normal', '#6b7280'));
-          y += 14;
-          m.wings.dirs.forEach(function (D, di) {
-            var yy = y + di * step; out.push(txt(412, yy + 20, names[D.id] || D.label, 14, 'bold'));
-            for (var n = 1; n <= NP; n++) { var x = 360 - n * cw; out.push(rect('WP_' + L.id + '_' + D.id + '_' + n, x, yy, cw - 4, ch, BOARD), txt(x + (cw - 4) / 2, yy + 21, String(n), 15, 'bold', '#8a7a5a')); }
-          });
-          y += m.wings.dirs.length * step + 24;
-        } else y += 6;
+        out.push(txt(300, y + 34, 'רמה ' + L.label, 30, 'bold'), txt(300, y + 60, hp ? POS[hp] + ' בשלט (מסומנת בכתום בציור)' : '', 15, 'bold', '#7a3f00'), txt(300, y + 84, NP ? 'סמן כל כנף שקיימת ברמה זו, ואת הפיקטוגרמות שעליה' : 'סמן כל כנף שקיימת ברמה זו', 13, 'normal', '#4b5563'));
+        y += 118;
+        out.push(txt(396, y + 18, 'כיוון', 14, 'bold', '#6b7280'), txt(X0 - cw / 2 - 2, y + 18, 'כנף', 14, 'bold', '#6b7280'));
+        for (var n0 = 1; n0 <= NP; n0++) out.push(txt(X0 - cw * (n0 + 0.5) - 2, y + 18, (NP > 2 ? 'פיק׳ ' : 'פיקטוגרמה ') + n0, 13, 'bold', '#6b7280'));
+        y += 26;
+        m.wings.dirs.forEach(function (D, di) {
+          var yy = y + di * step;
+          out.push(txt(396, yy + 28, (ARR[D.id] || '') + ' ' + (names[D.id] || D.label), 15, 'bold'));
+          out.push(rect('W_' + L.id + '_' + D.id, X0 - cw - 2, yy, cw - 4, rh, WING), txt(X0 - cw / 2 - 4, yy + 28, 'כנף', 15, 'bold', '#5a3d00'));
+          for (var n = 1; n <= NP; n++) { var x = X0 - cw * (n + 1) - 2; out.push(rect('WP_' + L.id + '_' + D.id + '_' + n, x, yy, cw - 4, rh, BOARD), txt(x + (cw - 4) / 2, yy + 28, String(n), 17, 'bold', '#8a7a5a')); }
+        });
+        y += m.wings.dirs.length * step + 14;
       });
       H = y;
     } else if (poles.length >= 2 || boards.length > 1) {

@@ -58,6 +58,7 @@
     }
     /* ---------- image-map לרכיבי השלט (OPT.imageMaps) ---------- */
     const IM = Array.isArray(OPT.imageMaps) ? OPT.imageMaps.filter((m) => m && m.model && m.svg) : [];
+    const imFields = (m) => (m.wings && m.wings.split) ? m.wings.levels.map((L) => ({ key: imKey(m) + '_' + L.id, svg: m.svg.replace('.svg', '-' + L.id + '.svg'), lvl: L.label })) : [{ key: imKey(m), svg: m.svg }];
     const imKey = (m) => String(m.model).replace(/[^A-Za-z0-9]/g, '_');
     const imParts = (m) => {
       const out = (m.parts || []).map((x) => ({ id: x.id, label: x.label, type: x.type, side: x.side }));
@@ -223,7 +224,8 @@
         if (ex) {
           r.calculation = ex;
           if (f.name === 'ComponentType') {
-            const chain = IM.map((m) => 'if(' + imModelIs(m) + ', selected-at(${Parts_' + imKey(m) + '}, position(..) - 1), ').join('') + "''" + IM.map(() => ')').join('');
+            const sel = (m) => { const fs_ = imFields(m); let off = '', e = ''; const parts = fs_.map((f, i) => { const o = off; off += ' - count-selected(${Parts_' + f.key + '})'; return { f, o, cum: fs_.slice(0, i + 1).map((g) => 'count-selected(${Parts_' + g.key + '})').join(' + ') }; }); parts.slice().reverse().forEach((p, i) => { const at = 'selected-at(${Parts_' + p.f.key + '}, position(..) - 1' + p.o + ')'; e = i === 0 ? at : 'if(position(..) <= ' + p.cum + ', ' + at + ', ' + e + ')'; }); return e; };
+            const chain = IM.map((m) => 'if(' + imModelIs(m) + ', ' + sel(m) + ', ').join('') + "''" + IM.map(() => ')').join('');
             r._pre = (r._pre || []).concat([{ type: 'calculate', name: 'part_id', label: '', calculation: "if(position(..) <= int(${PartsMapCount}), " + chain + ", '')", 'bind::esri:fieldType': 'null' }]);
           }
         }
@@ -266,8 +268,8 @@
         const hasIM = IM.length && k.name === (OPT.imageMapParent || 'SignParts');
         if (ST) row({ type: 'begin_group', name: 'g_' + k.name, label: withSum(withCnt(st.label.replace(/<span style="font-weight:normal[^"]*">[^<]*<\/span>/, ''))), appearance: collapsed ? 'compact' : '', relevant: visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
         if (hasIM) {
-          IM.forEach((m) => row({ type: 'select_multiple Parts_' + imKey(m), name: 'Parts_' + imKey(m), label: 'סמן בציור את רכיבי השלט', hint: 'לחיצה על רכיב בציור מסמנת אותו. לכל רכיב שסומן נוצרת שורה.', appearance: 'image-map', relevant: imModelIs(m), 'media::image': m.svg, 'bind::esri:fieldType': 'null' }));
-          row({ type: 'calculate', name: 'PartsMapCount', label: '', calculation: IM.map((m) => 'if(' + imModelIs(m) + ', count-selected(${Parts_' + imKey(m) + '}), ').join('') + '0' + IM.map(() => ')').join(''), 'bind::esri:fieldType': 'null' });
+          IM.forEach((m) => imFields(m).forEach((f) => row({ type: 'select_multiple Parts_' + f.key, name: 'Parts_' + f.key, label: 'סמן בציור את רכיבי השלט' + (f.lvl ? ' – רמה ' + f.lvl : ''), hint: 'לחיצה על רכיב בציור מסמנת אותו. לכל רכיב שסומן נוצרת שורה.', appearance: 'image-map', relevant: imModelIs(m), 'media::image': f.svg, 'bind::esri:fieldType': 'null' })));
+          row({ type: 'calculate', name: 'PartsMapCount', label: '', calculation: IM.map((m) => 'if(' + imModelIs(m) + ', ' + imFields(m).map((f) => 'count-selected(${Parts_' + f.key + '})').join(' + ') + ', ').join('') + '0' + IM.map(() => ')').join(''), 'bind::esri:fieldType': 'null' });
           row({ type: 'calculate', name: 'PartsTotal', label: '', calculation: "int(${PartsMapCount})", 'bind::esri:fieldType': 'null' });
           row({ type: 'note', name: 'PartsNote', label: 'רכיבים שסומנו: ${PartsMapCount}.', relevant: '${PartsTotal} > 0', 'bind::esri:fieldType': 'null' });
           rep.open.push(k.name + ': ' + IM.length + ' דגמים עם ציור לבחירת רכיבים (appearance=image-map, קבצי SVG בתיקיית media של הסקר: ' + IM.map((m) => m.svg).join(', ') + '). מספר השורות קבוע (repeat_count = PartsTotal = מספר הרכיבים שסומנו בציור); אין שדה "כמות רכיבים נוספים" (הוסר 24/11 לבקשת אבי קיי). שורות לפי סדר הלחיצה. image-map אינו נתמך באפליקציית הווב. הציורים לפי ספר השילוט, טיוטה עד קטלוג הרכיבים של הלקוח.');
@@ -336,7 +338,7 @@
 
     // גיליון choices
     const choices = []; let imgs = 0;
-    IM.forEach((m) => imParts(m).forEach((x) => choices.push({ list_name: 'Parts_' + imKey(m), name: x.id, label: x.label })));
+    IM.forEach((m) => imFields(m).forEach((f) => imParts(m).forEach((x) => choices.push({ list_name: 'Parts_' + f.key, name: x.id, label: x.label }))));
     const anyExt = [...used].some((k) => dom[k].values.some((v) => v.ext));
     const anyParent = [...used].some((k) => dom[k].values.some((v) => v.parent));
     [...used].forEach((k) => dom[k].values.forEach((v) => {
@@ -370,6 +372,22 @@
         }
       }
     }
+    if (OPT.scenarios) { /* תרחישי טופס: new (מיפוי שלט חדש) / update (עדכון שלט קיים) / visit (ביקור). הסתרה ב-body::esri:visible ולא ב-relevant, כדי שערכים קיימים לא יימחקו */
+      const SCN_NOTE_FIELDS = OPT.scenarioSummary || ['SignID', 'SignModel', 'SignStatus'];
+      let depth = 0;
+      rows.forEach((r) => {
+        if (/^end_(group|repeat)$/.test(r.type)) { depth--; return; }
+        if (/^begin_(group|repeat)$/.test(r.type)) { if (depth === 0 && r.type === 'begin_group') r['body::esri:visible'] = r.name === 'g_SignVisits' ? "${Scn} = 'visit'" : "${Scn} != 'visit'"; depth++; }
+      });
+      const scn = [
+        { type: 'select_one FormScenario', name: 'FormScenario', label: OPT.scenarioLabel || 'מה לעשות בשלט?', hint: 'עדכון נתוני השלט, או רישום ביקור (פיקוח / טיפול / מעקב). מתמלא אוטומטית כשפותחים את הטופס מהכפתורים בפופאפ.', required: 'yes', relevant: EDIT_MODE, appearance: 'horizontal-compact', 'bind::esri:fieldType': 'null' },
+        { type: 'calculate', name: 'Scn', label: '', calculation: "if(" + EDIT_MODE + ", ${FormScenario}, 'new')", 'bind::esri:fieldType': 'null' },
+        { type: 'note', name: 'ScnSummary', label: '<div dir="rtl" style="background:#f3f4f6;border-radius:8px;padding:8px 10px;font-size:small">שלט <b>${SignID}</b> · ${SignModel} · מצב נוכחי: <b>${SignStatus}</b><br>פרטי השלט מוסתרים בביקור ונשמרים כפי שהם. לעדכון פרטים פתח את הטופס מכפתור "עדכון נתוני שלט".</div>', relevant: "${Scn} = 'visit'", 'bind::esri:fieldType': 'null' }
+      ];
+      rows.splice(0, 0, ...scn);
+      choices.push({ list_name: 'FormScenario', name: 'update', label: 'עדכון נתוני השלט' }, { list_name: 'FormScenario', name: 'visit', label: 'ביקור בשלט (פיקוח / טיפול / מעקב)' });
+      rep.open.push('תרחישי טופס (options.scenarios): FormScenario נבחר ידנית בעריכה; מבחן פתוח: האם field:FormScenario=... בקישור action=edit ממלא אותו מראש באפליקציית השטח. הסתרת קבוצות ב-body::esri:visible (לא מוחק ערכים). לאמת באפליקציית השטח.');
+    }
     const BN = S.sim && S.sim.survey123 && S.sim.survey123.banner, TH = S.sim && S.sim.survey123 && S.sim.survey123.theme;
     if (BN && BN.image) { rows.unshift({ type: 'note', name: 'Banner', label: '', 'media::image': BN.image, 'bind::esri:fieldType': 'null' }); rep.open.push('באנר: הקובץ ' + BN.image + ' חייב להיות בתיקיית media של הסקר ב-Connect (Media > Open media folder).'); }
     { /* מקרא צבעי הטופס: צ'יפים בצבעי הקבוצות הראשיות, מיד אחרי הבאנר */
@@ -394,11 +412,12 @@
     if (TH) rep.open.push('צבעי כותרת וכותרת תחתונה נקבעים בלוח Style ב-Connect (נשמרים ב-.info של הסקר, לא ב-xlsx): כותרת ' + ((TH.header && TH.header.backgroundColor) || '') + ' עם טקסט ' + ((TH.header && TH.header.textColor) || '') + ', כותרת תחתונה ' + ((TH.footer && TH.footer.backgroundColor) || '') + ' עם טקסט ' + ((TH.footer && TH.footer.textColor) || '') + '.');
     rep.open.push("שם מלא של הממפה והמבקר: pulldata(\"@property\", 'userFullName'). בתצוגה המקדימה של Connect עלול להופיע Unknown; לבדוק באפליקציית השטח.");
     const LNG = ''; /* עמודות טקסט עם שם וקוד שפה, כמו default_language (תיעוד Esri: אותה צורה בכל הגיליון) */
-    const cols = ['type', 'name', 'label', 'hint', 'required', 'required_message', 'relevant', 'calculation', 'constraint', 'constraint_message', 'appearance', 'read_only', 'default', 'choice_filter', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:parameters', 'body::esri:style', 'repeat_count', 'media::image'];
+    /* עמודות לפי Advanced Template 3.25 של Survey123 Connect (מרץ 2026): readonly (לא read_only), guidance_hint, fieldAlias, body::esri:visible וכו' */
+    const cols = ['type', 'name', 'label', 'hint', 'guidance_hint', 'appearance', 'required', 'required_message', 'readonly', 'default', 'calculation', 'constraint', 'constraint_message', 'relevant', 'choice_filter', 'repeat_count', 'media::audio', 'media::image', 'bind::type', 'bind::esri:fieldType', 'bind::esri:fieldLength', 'bind::esri:fieldAlias', 'body::esri:style', 'bind::esri:parameters', 'parameters', 'body::accept', 'body::esri:visible', 'body::esri:inputMask', 'label::language (xx)', 'hint::language (xx)', 'guidance_hint::language (xx)', 'required_message::language (xx)', 'constraint_message::language (xx)', 'media::audio::language (xx)', 'media::image::language (xx)', 'body::accuracyThreshold', 'bind::esri:warning', 'bind::esri:warning_message', 'bind::saveIncomplete', 'bind::esri:workflow'];
     const sheets = [
-      { name: 'survey', head: cols.map((c) => LNG && /^(label|hint|required_message|constraint_message)$/.test(c) ? c + '::' + LNG : c), rows: rows.map((r) => cols.map((c) => r[c] || '')) },
+      { name: 'survey', head: cols.map((c) => LNG && /^(label|hint|required_message|constraint_message)$/.test(c) ? c + '::' + LNG : c), rows: rows.map((r) => cols.map((c) => (c === 'readonly' ? (r.readonly || r.read_only) : r[c]) || '')) },
       { name: 'choices', head: ['list_name', 'name', LNG ? 'label::' + LNG : 'label'].concat(cext), rows: choices.map((c) => ['list_name', 'name', 'label'].concat(cext).map((k) => c[k] || '')) },
-      { name: 'settings', head: Object.keys(settings[0]), rows: [Object.values(settings[0])] }
+      { name: 'settings', head: ['form_title', 'form_id', 'instance_name', 'submission_url', 'default_language', 'version', 'style', 'namespaces'], rows: [['form_title', 'form_id', 'instance_name', 'submission_url', 'default_language', 'version', 'style', 'namespaces'].map((k) => k === 'namespaces' ? 'esri="https://esri.com/xforms"' : (settings[0][k] || ''))] }
     ];
     if (SY && SY.groupAppearance === 'compact') rep.open.push('קבוצות עם appearance=compact נפתחות מקופלות. לבדוק שהודעת שדה חובה חסר בתוך קבוצה מקופלת מוצגת למשתמש בשליחה (בשני הערוצים).');
     if (SY) rep.open.push('עיצוב קבוצות וחזרות (צבע, אייקון, מספור): תוויות HTML ו-body::esri:style. מתועד כנתמך באפליקציית השדה; ב-Survey123 web דווח שסגנון עלול להתעלם, לבדוק בשני הערוצים.');

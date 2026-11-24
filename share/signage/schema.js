@@ -5067,6 +5067,7 @@ window.SCHEMAS["signage"] = {
       },
       "options": {
         "visitsEditOnly": true,
+        "scenarios": true,
         "groupRelevant": {
           "החלפה והצבה": "{EDIT} or ${ReplacedToNewTheory} = 'כן'"
         },
@@ -5453,7 +5454,8 @@ window.SCHEMAS["signage"] = {
                   "label": "צפון־מערב"
                 }
               ],
-              "pics": 3
+              "pics": 4,
+              "split": true
             }
           },
           {
@@ -5516,7 +5518,8 @@ window.SCHEMAS["signage"] = {
                   "label": "צפון־מערב"
                 }
               ],
-              "pics": 3
+              "pics": 2,
+              "split": true
             }
           },
           {
@@ -6598,4 +6601,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "24.11.2026 16:07";
+window.__BUILT = "24.11.2026 17:33";
