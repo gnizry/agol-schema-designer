@@ -24,13 +24,13 @@
     var poles = parts.filter(function (p) { return p.id.indexOf('POLE') === 0; }), boards = parts.filter(function (p) { return p.id.indexOf('BOARD') === 0; });
     var ACC = { ACC_TL: [36, 70, 48, 18], ACC_TR: [376, 70, 48, 18], ACC_BL: [36, 214, 48, 18], ACC_BR: [376, 214, 48, 18], ACC_T: [200, 166, 60, 16], ACC_B: [200, 268, 60, 16] }, ACCBASE = 'fill="#f6b73c" stroke="#9a6a00" stroke-width="2"';
     if (m.layout === 'stack') {
-      var SN = m.slots || 6, SH = 52, top = 44; H = top + SN * SH + 90;
-      out.push(txt(230, 20, 'צדדי העמוד (הצדדים מנוגדים). כל משבצת = פיקטוגרמה', 12, 'normal', '#6b7280'));
-      [['A', 'א׳', 250], ['B', 'ב׳', 50]].forEach(function (sd) {
-        out.push('<rect x="' + sd[2] + '" y="' + top + '" width="160" height="' + (SN * SH + 8) + '" fill="#8a6a46" stroke="#4a3320" stroke-width="3" rx="4"/>', txt(sd[2] + 80, top + SN * SH + 26, 'צד ' + sd[1], 15, 'bold'));
-        for (var i = 1; i <= SN; i++) out.push(rect('PIC_' + sd[0] + '_' + i, sd[2] + 12, top + 6 + (i - 1) * SH, 136, SH - 8, BOARD), txt(sd[2] + 80, top + 6 + (i - 1) * SH + SH / 2 + 2, String(i), 16, 'bold'));
+      var SN = m.slots || 6, SH = 52, top = 44; H = top + SN * SH + 50;
+      out.push(txt(230, 20, 'שני צדדים מנוגדים; העמוד באמצע. כל משבצת = פיקטוגרמה', 12, 'normal', '#6b7280'));
+      out.push(rect('POLE_1', 196, top - 8, 68, SN * SH + 24, POLE), txt(230, top + SN * SH / 2, 'עמוד', 16, 'bold', '#fff'));
+      [['A', 'א׳', 276], ['B', 'ב׳', 20]].forEach(function (sd) {
+        out.push('<rect x="' + sd[2] + '" y="' + top + '" width="164" height="' + (SN * SH + 8) + '" fill="#b8956a" stroke="#4a3320" stroke-width="3" rx="4"/>', txt(sd[2] + 82, top + SN * SH + 30, 'צד ' + sd[1], 15, 'bold'));
+        for (var i = 1; i <= SN; i++) out.push(rect('PIC_' + sd[0] + '_' + i, sd[2] + 12, top + 6 + (i - 1) * SH, 140, SH - 8, BOARD), txt(sd[2] + 82, top + 6 + (i - 1) * SH + SH / 2 + 2, String(i), 16, 'bold'));
       });
-      out.push(rect('POLE_1', 40, top + SN * SH + 40, 380, 34, POLE), txt(230, top + SN * SH + 62, 'עמוד', 14, 'normal', '#fff'));
     } else if (m.wings) {
       var CX = 330, ys = [125, 320, 515], lv = m.wings.levels;
       H = 640; out.push(rect('POLE_1', 60, 40, 36, 570, POLE), txt(78, 30, 'עמוד'), txt(230, 22, 'כנפיים לפי רמה וכיוון'));
@@ -50,11 +50,23 @@
         });
         H = y0 + 30 + m.wings.dirs.length * (ch + 3) + 10;
       }
-    } else if (poles.length >= 2) {
-      H = 340; out.push(rect(boards[0] ? boards[0].id : 'BOARD_1', 95, 30, 270, 170, BOARD), rect(poles[0].id, 45, 60, 30, 240, POLE), rect(poles[1].id, 385, 60, 30, 240, POLE), txt(230, 125, 'לוח', 20, 'bold'), txt(60, 320, poles[0].label), txt(400, 320, poles[1].label));
+    } else if (poles.length >= 2 || boards.length > 1) {
+      var N = poles.length, nb = boards.length || 1, vert = m.arrange === 'v', bot = m.boardPos === 'bottom';
+      H = 340; var bx = N ? 95 : 50, bw = N ? 270 : 360, by = bot ? 200 : 30, bh = bot ? 70 : (N ? 170 : 190), gap = 8, k;
+      if (N === 3 || N === 4) { bx = 70; bw = 320; }
+      if (!boards.length) boards = [{ id: 'BOARD_1', label: 'לוח' }];
+      boards.forEach(function (b, i) {
+        var x = bx, y = by, w = bw, h = bh;
+        var tx = null;
+        if (N > 2 && nb === N - 1) { var sp = 340 / (N - 1); w = sp - 30 - 2 * gap; x = 45 + 30 + gap + (N - 2 - i) * sp; }
+        else if (nb > 1 && vert) { h = (bh - gap * (nb - 1)) / nb; y = by + i * (h + gap); } else if (nb > 1) { w = (bw - gap * (nb - 1)) / nb; x = bx + bw - (i + 1) * w - i * gap; }
+        if (bot && N > 2) tx = 45 + 340 / (N - 1) / 2 + 15;
+        out.push(rect(b.id, x, y, w, h, BOARD), txt(tx || (x + w / 2), y + h / 2 + 5, nb > 1 || N === 0 || bot ? b.label : 'לוח', nb > 3 ? 14 : (bot ? 15 : 18), 'bold'));
+      });
+      poles.forEach(function (p, i) { var x = N === 1 ? 215 : 45 + i * (340 / (N - 1)); out.push(rect(p.id, x, bot ? 130 : (N > 2 ? 30 : 60), 30, bot ? 180 : (N > 2 ? 270 : 240), POLE), txt(x + 15, 326, N > 1 ? 'עמוד ' + (i + 1) : 'עמוד', 12)); });
     } else if (poles.length === 1) {
       H = 330; out.push(rect(boards[0] ? boards[0].id : 'BOARD_1', 90, 30, 280, 130, BOARD), rect(poles[0].id, 215, 160, 30, 140, POLE), txt(230, 100, 'לוח', 20, 'bold'), txt(230, 235, poles[0].label, 14, 'normal', '#fff'));
-    } else { H = 270; out.push(rect(boards[0] ? boards[0].id : 'BOARD_1', 50, 40, 360, 190, BOARD), txt(230, 145, 'לוח', 22, 'bold')); }
+    } else { H = 270; out.push(rect(boards[0] ? boards[0].id : 'BOARD_1', 50, 40, 360, 190, BOARD), txt(230, 145, boards[0] ? boards[0].label : 'לוח', 22, 'bold')); }
     parts.forEach(function (p) { var a = ACC[p.id]; if (a) out.push(rect(p.id, a[0], a[1], a[2], a[3], ACCBASE), txt(a[0] + a[2] / 2, a[1] + a[3] - 4, 'חבק', 11, 'bold', '#5a3d00')); });
     return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 ' + H + '" width="' + (opt.plain ? 460 : '100%') + '"' + (opt.plain ? ' height="' + H + '"' : '') + '><rect width="460" height="' + H + '" fill="#ffffff"/>' + out.join('') + '</svg>';
   }

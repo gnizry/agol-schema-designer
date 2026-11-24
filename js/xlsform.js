@@ -268,10 +268,9 @@
         if (hasIM) {
           IM.forEach((m) => row({ type: 'select_multiple Parts_' + imKey(m), name: 'Parts_' + imKey(m), label: 'סמן בציור את רכיבי השלט', hint: 'לחיצה על רכיב בציור מסמנת אותו. לכל רכיב שסומן נוצרת שורה.', appearance: 'image-map', relevant: imModelIs(m), 'media::image': m.svg, 'bind::esri:fieldType': 'null' }));
           row({ type: 'calculate', name: 'PartsMapCount', label: '', calculation: IM.map((m) => 'if(' + imModelIs(m) + ', count-selected(${Parts_' + imKey(m) + '}), ').join('') + '0' + IM.map(() => ')').join(''), 'bind::esri:fieldType': 'null' });
-          row({ type: 'integer', name: 'ExtraParts', label: 'כמות רכיבים נוספים להוספה (פיקטוגרמה, אביזר ועוד)', hint: 'שורות ריקות שימלאו ידנית. בדגם בלי ציור: כל הרכיבים נרשמים כאן.', default: '0', constraint: '. >= 0 and . <= 30', constraint_message: 'מספר בין 0 ל-30', 'bind::esri:fieldType': 'null' });
-          row({ type: 'calculate', name: 'PartsTotal', label: '', calculation: "int(${PartsMapCount}) + if(${ExtraParts} = '', 0, int(${ExtraParts}))", 'bind::esri:fieldType': 'null' });
-          row({ type: 'note', name: 'PartsNote', label: 'שורות רכיבים שייווצרו: ${PartsTotal} (מסומנים בציור: ${PartsMapCount}).', relevant: '${PartsTotal} > 0', 'bind::esri:fieldType': 'null' });
-          rep.open.push(k.name + ': ' + IM.length + ' דגמים עם ציור לבחירת רכיבים (appearance=image-map, קבצי SVG בתיקיית media של הסקר: ' + IM.map((m) => m.svg).join(', ') + '). מספר השורות קבוע (repeat_count = PartsTotal): מסומנים בציור + כמות נוספת (ExtraParts). שורות לפי סדר הלחיצה. image-map אינו נתמך באפליקציית הווב. הציורים לפי ספר השילוט, טיוטה עד קטלוג הרכיבים של הלקוח.');
+          row({ type: 'calculate', name: 'PartsTotal', label: '', calculation: "int(${PartsMapCount})", 'bind::esri:fieldType': 'null' });
+          row({ type: 'note', name: 'PartsNote', label: 'רכיבים שסומנו: ${PartsMapCount}.', relevant: '${PartsTotal} > 0', 'bind::esri:fieldType': 'null' });
+          rep.open.push(k.name + ': ' + IM.length + ' דגמים עם ציור לבחירת רכיבים (appearance=image-map, קבצי SVG בתיקיית media של הסקר: ' + IM.map((m) => m.svg).join(', ') + '). מספר השורות קבוע (repeat_count = PartsTotal = מספר הרכיבים שסומנו בציור); אין שדה "כמות רכיבים נוספים" (הוסר 24/11 לבקשת אבי קיי). שורות לפי סדר הלחיצה. image-map אינו נתמך באפליקציית הווב. הציורים לפי ספר השילוט, טיוטה עד קטלוג הרכיבים של הלקוח.');
         }
         row({ type: 'begin_repeat', name: k.name, repeat_count: hasIM ? '${PartsTotal}' : '', label: ST ? '<span style="font-weight:normal;font-size:small;color:#6b7280">רשימה (+ הוספה)</span>' : withSum(withCnt(st.label)), appearance: [!ST && collapsed ? 'compact' : '', minimal ? 'minimal' : ''].filter(Boolean).join(' '), relevant: !ST && visitsEditOnly ? EDIT_MODE : '', 'body::esri:style': st.style || '' });
         if (visitLevel && !visitsEditOnly) rep.open.push(k.name + ': רמת הביקור מוצגת תמיד (גם במיפוי שלט חדש). החלטה פתוחה: אם הביקור הראשון נוצר על ידי Make (D28), יש להגביל לעריכה עם options.visitsEditOnly=true.');
@@ -309,7 +308,8 @@
             const st = styled('group', c, c + (SY && vo ? ' (לצפייה בלבד)' : ''), SY && SY.groups && SY.groups[c], SY && dyn);
             const GSI = (OPT.groupSummaries || {})[c]; let glabel = st.label;
             if (GSI && GSI.length) { const sn = 'grp_' + (gi + 1) + '_sum'; row({ type: 'calculate', name: sn, label: '', calculation: sumExpr(e, GSI), 'bind::esri:fieldType': 'null' }); glabel += SUMSPAN(sn); }
-            row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: glabel, 'body::esri:style': st.style || '', appearance: SY && SY.groupAppearance === 'compact' ? 'compact' : '' });
+            const GREL = (OPT.groupRelevant || {})[c]; row({ type: 'begin_group', name: 'grp_' + (gi + 1), label: glabel, 'body::esri:style': st.style || '', appearance: SY && SY.groupAppearance === 'compact' ? 'compact' : '', relevant: GREL ? GREL.replace('{EDIT}', EDIT_MODE) : '' });
+            if (GREL) rep.open.push('קבוצה "' + c + '": מוצגת לפי תנאי (' + GREL.replace('{EDIT}', EDIT_MODE) + ').');
             fr.forEach(row);
             row({ type: 'end_group', name: '', label: '' });
           }
