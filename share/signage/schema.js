@@ -2064,6 +2064,19 @@ window.SCHEMAS["signage"] = {
           "visible": "תמיד",
           "open": false,
           "note": ""
+        },
+        {
+          "category": "רכיב",
+          "name": "PartCode",
+          "alias": "קוד רכיב בציור",
+          "type": "TEXT",
+          "length": "50",
+          "domain": "",
+          "mode": "אוטומטי",
+          "visible": "קריאה בלבד (קוד טכני, מוסתר בטופס)",
+          "open": false,
+          "note": "הקוד של הרכיב בציור (image-map), לדוגמה W_A_N = כנף ברמה א׳ בכיוון צפון. נשמר במיפוי כדי שבביקור אפשר יהיה לבחור רכיב בציור ולקשר אותו לרכיב הקיים. רכיבים שנוצרו לפני התוספת (הסבה) אין להם קוד, והקישור שלהם דורש השלמה.",
+          "calc": "${part_id}"
         }
       ]
     },
@@ -2238,9 +2251,21 @@ window.SCHEMAS["signage"] = {
           "mode": "ידני",
           "visible": "תמיד; ממולא מראש מהכפתור בפופאפ הביקור",
           "open": true,
-          "required": true,
+          "required": false,
           "pickFrom": "SignParts",
           "note": "הרכיב שמדווח. ב-Field Maps מגיע מהקישור (featureAttributes); ב-Survey123 נבחר מרכיבי הטופס. הרכיב חייב להיות שייך לשלט של הביקור (בדיקת שלמות)."
+        },
+        {
+          "category": "דיווח",
+          "name": "ReportedPartCode",
+          "alias": "קוד רכיב שסומן בציור",
+          "type": "TEXT",
+          "length": "50",
+          "domain": "",
+          "mode": "אוטומטי",
+          "visible": "קריאה בלבד (קוד טכני, מוסתר בטופס)",
+          "open": false,
+          "note": "קוד הרכיב כפי שסומן בציור בביקור (זהה ל-SignParts.PartCode). מקשר את השורה לרכיב כש-RelatedPartGlobalID ריק (Survey123). ב-Field Maps הקישור נעשה ב-RelatedPartGlobalID מהכפתור."
         },
         {
           "category": "דיווח",
@@ -5067,6 +5092,7 @@ window.SCHEMAS["signage"] = {
       },
       "options": {
         "visitsEditOnly": true,
+        "visitBadMap": true,
         "scenarios": true,
         "groupRelevant": {
           "החלפה והצבה": "{EDIT} or ${ReplacedToNewTheory} = 'כן'"
@@ -6601,4 +6627,4 @@ window.SCHEMAS["signage"] = {
     ]
   }
 };
-window.__BUILT = "24.11.2026 17:33";
+window.__BUILT = "24.11.2026 17:57";

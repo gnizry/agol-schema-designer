@@ -388,6 +388,39 @@
       choices.push({ list_name: 'FormScenario', name: 'update', label: 'עדכון נתוני השלט' }, { list_name: 'FormScenario', name: 'visit', label: 'ביקור בשלט (פיקוח / טיפול / מעקב)' });
       rep.open.push('תרחישי טופס (options.scenarios): FormScenario נבחר ידנית בעריכה; מבחן פתוח: האם field:FormScenario=... בקישור action=edit ממלא אותו מראש באפליקציית השטח. הסתרת קבוצות ב-body::esri:visible (לא מוחק ערכים). לאמת באפליקציית השטח.');
     }
+    if (OPT.visitBadMap && IM.length) { /* ביקור: בחירת רכיבים לא תקינים בציור (image-map), יצירת שורת SignPartStatus לכל רכיב שנבחר, ומצב השלט בביקור = לא תקין כשנבחר רכיב */
+      const flds = []; IM.forEach((m) => imFields(m).forEach((f) => flds.push({ m, f })));
+      const iStat = rows.findIndex((r) => r.name === 'StatusAtVisit'), iSPS = rows.findIndex((r) => r.name === 'SignPartStatus' && r.type === 'begin_repeat');
+      if (iStat >= 0 && iSPS >= 0) {
+        const hide = (n) => { const r = rows.find((q) => q.name === n); if (r) { r.appearance = 'hidden'; r.required = ''; } return r; };
+        hide('PartCode');
+        const iVis = rows.findIndex((r) => r.name === 'g_SignVisits');
+        if (iVis >= 0) { rows.splice(iVis, 0, { type: 'calculate', name: 'SignParts_codes', label: '', calculation: "join(' ', ${PartCode})", 'bind::esri:fieldType': 'null' }); }
+        const st = rows.findIndex((r) => r.name === 'StatusAtVisit'), stRow = rows[st];
+        const vb = flds.map((x) => ({ type: 'select_multiple Parts_' + x.f.key, name: 'VB_' + x.f.key, label: 'סמן X ליד כל רכיב שאינו תקין' + (x.f.lvl ? ' – רמה ' + x.f.lvl : ''), hint: 'לחיצה על ריבוע ה-X ליד הרכיב מסמנת אותו כלא תקין. לכל רכיב שסומן נוצרת שורת מצב רכיב. אם הכל תקין, אל תסמן כלום.', appearance: 'image-map', relevant: imModelIs(x.m), 'media::image': x.f.svg.replace(/^im-/, 'iv-'), 'bind::esri:fieldType': 'null' }));
+        const cnt = flds.map((x) => 'count-selected(${VB_' + x.f.key + '})').join(' + ');
+        const all = "concat(" + flds.map((x) => '${VB_' + x.f.key + '}').join(", ' ', ") + ')';
+        const mid = [
+          { type: 'calculate', name: 'BadCount', label: '', calculation: 'int(' + cnt + ')', 'bind::esri:fieldType': 'null' },
+          { type: 'calculate', name: 'BadAll', label: '', calculation: all, 'bind::esri:fieldType': 'null' },
+          { type: 'note', name: 'BadNote', label: '<div dir="rtl" style="background:#fdecea;border-radius:8px;padding:8px 10px;color:#8a1c12"><b>סומנו ${BadCount} רכיבים לא תקינים.</b> מצב השלט בביקור נקבע אוטומטית: <b>לא תקין</b>. בהמשך אפשר לפרט את מצב כל רכיב.</div>', relevant: '${BadCount} > 0', 'bind::esri:fieldType': 'null' },
+          { type: 'select_one SignStatus', name: 'VisitStatusInput', label: 'מצב שלט בעת הביקור', required: 'yes', appearance: 'minimal', relevant: '${BadCount} = 0', hint: 'לא סומן רכיב לא תקין בציור. אפשר לבחור "לא תקין" גם בלי רכיב ספציפי, למשל כשהשלט חסר.', 'bind::esri:fieldType': 'null' }
+        ];
+        Object.assign(stRow, { type: 'calculate', label: '', required: '', appearance: '', hint: '', calculation: "if(${BadCount} > 0, 'לא תקין', ${VisitStatusInput})" });
+        rows.splice(st, 0, ...vb, ...mid);
+        const iR = rows.findIndex((r) => r.name === 'SignPartStatus' && r.type === 'begin_repeat'); rows[iR].repeat_count = '${BadCount}';
+        const rp = hide('RelatedPartGlobalID'), rc = hide('ReportedPartCode');
+        if (rc) rc.calculation = 'once(selected-at(${BadAll}, position(..) - 1))';
+        const ps = rows.find((r) => r.name === 'PartStatusAtVisit'); if (ps) ps.default = 'לא תקין';
+        const lab = flds.reduceRight((acc, x) => 'if(selected(${VB_' + x.f.key + '}, ${ReportedPartCode}), jr:choice-name(${ReportedPartCode}, \'${VB_' + x.f.key + '}\'), ' + acc + ')', "''");
+        const iRc = rows.findIndex((r) => r.name === 'ReportedPartCode');
+        rows.splice(iRc + 1, 0,
+          { type: 'calculate', name: 'PartLabel', label: '', calculation: lab, 'bind::esri:fieldType': 'null' },
+          { type: 'note', name: 'PartLabelNote', label: '<div dir="rtl"><b>רכיב: ${PartLabel}</b></div>', 'bind::esri:fieldType': 'null' },
+          { type: 'note', name: 'PartNotInSign', label: '<font color="red">הרכיב שסומן אינו רשום ברכיבי השלט. ודא שבחרת נכון, או עדכן קודם את רכיבי השלט (תרחיש עדכון).</font>', relevant: "${SignParts_codes} != '' and not(selected(${SignParts_codes}, ${ReportedPartCode}))", 'bind::esri:fieldType': 'null' });
+        rep.open.push('ביקור image-map (options.visitBadMap): מצב השלט בביקור = לא תקין אוטומטית כשסומן רכיב (StatusAtVisit הוא חישוב, VisitStatusInput נבחר ידנית רק בלי רכיבים לא תקינים). לוגיקה עסקית טעונה אישור הלקוח. SignPartStatus: repeat_count = BadCount (נוצרות שורות רק מהציור); לאמת בשטח שביקורים ישנים בעריכה לא נקטעים. הציור מציג את כל רכיבי הדגם ולא רק את הקיימים בשלט (אזהרה PartNotInSign מבוססת SignParts.PartCode, ורכיבים ישנים בלי קוד יציגו אזהרה). RelatedPartGlobalID לא מתמלא ב-Survey123, הקישור דרך ReportedPartCode.');
+      } else rep.open.push('visitBadMap: לא נמצאו StatusAtVisit/SignPartStatus בטופס.');
+    }
     const BN = S.sim && S.sim.survey123 && S.sim.survey123.banner, TH = S.sim && S.sim.survey123 && S.sim.survey123.theme;
     if (BN && BN.image) { rows.unshift({ type: 'note', name: 'Banner', label: '', 'media::image': BN.image, 'bind::esri:fieldType': 'null' }); rep.open.push('באנר: הקובץ ' + BN.image + ' חייב להיות בתיקיית media של הסקר ב-Connect (Media > Open media folder).'); }
     { /* מקרא צבעי הטופס: צ'יפים בצבעי הקבוצות הראשיות, מיד אחרי הבאנר */
